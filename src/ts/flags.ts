@@ -1,0 +1,1 @@
+const FLAG_SHOW_GL_ERRORS = true;

@@ -1,0 +1,33 @@
+{
+  "name": "test-3d",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/madmaw/js13k2021.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/madmaw/js13k2021/issues"
+  },
+  "homepage": "https://github.com/madmaw/js13k2021#readme",
+  "devDependencies": {
+    "grunt": "^1.5.3",
+    "grunt-closure-compiler": "0.0.21",
+    "grunt-contrib-clean": "^2.0.1",
+    "grunt-contrib-connect": "^3.0.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-cssmin": "^4.0.0",
+    "grunt-contrib-htmlmin": "^3.0.0",
+    "grunt-contrib-watch": "^1.1.0",
+    "grunt-dev-update": "^2.3.0",
+    "grunt-inline": "^0.3.7",
+    "grunt-run": "^0.8.1",
+    "grunt-text-replace": "^0.4.0",
+    "grunt-ts": "^6.0.0-beta.19",
+    "roadroller": "^2.1.0",
+    "typescript": "^4.7.4"
+  }
+}

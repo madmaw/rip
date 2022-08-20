@@ -1,0 +1,15 @@
+var Z;
+var innerWidth;
+var innerHeight;
+var onkeyup;
+var onkeydown;
+var onload;
+var onclick;
+var onmouseleave;
+var onmousedown;
+var onmouseup;
+var onmousemove;
+var ontouchstart;
+var ontouchend;
+var ontouchcancel;
+var ontouchmove;
