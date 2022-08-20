@@ -170,6 +170,28 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         [0, -Math.PI/5, 0],
       ]],
     }],
+    [ACTION_ID_DUCK]: [{
+      maxSpeed: .01,
+      [SKELETON_PART_ID_HEAD]: [[
+        [0, -Math.PI/6, 0],
+      ], 1],
+      [SKELETON_PART_ID_HIPS]: [[
+        [0, Math.PI/6, 0],
+      ], 1, ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK, EASE_OUT_QUAD],
+      [SKELETON_PART_ID_FEMUR_LEFT]: [[
+        [0, -Math.PI*3/10, Math.PI/5],
+      ]],
+      [SKELETON_PART_ID_SHIN_LEFT]: [[
+        [0, Math.PI*5/10, Math.PI/5],
+      ]],
+      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+        [0, -Math.PI*3/10, -Math.PI/5],
+      ]],
+      [SKELETON_PART_ID_SHIN_RIGHT]: [[
+        [0, Math.PI*5/10, -Math.PI/5],
+      ]],
+      
+    }],
   },
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,
@@ -231,7 +253,20 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
                 SKELETON_FOREARM_WIDTH/2,
                 0,
                 0,
-            )
+            ),
+            jointAttachmentHolderTransform: matrix4Multiply(
+                matrix4Translate(
+                    SKELETON_FOREARM_WIDTH/2,
+                    0,
+                    0,
+                ),
+                matrix4Rotate(
+                    -Math.PI/2,
+                    0,
+                    1, 
+                    0,
+                ),
+            ),
           }]
         },
         // left shoulder

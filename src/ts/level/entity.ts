@@ -23,6 +23,7 @@ const ACTION_ID_TURN = 4;
 const ACTION_ID_JUMP = 8;
 const ACTION_ID_RUN = 16;
 const ACTION_ID_FALL = 32;
+const ACTION_ID_DUCK = 64;
 
 type ActionId = 
     | typeof ACTION_ID_TURN
@@ -31,6 +32,7 @@ type ActionId =
     | typeof ACTION_ID_JUMP
     | typeof ACTION_ID_RUN
     | typeof ACTION_ID_FALL
+    | typeof ACTION_ID_DUCK
     ;
 
 type EntityId = number;
@@ -87,7 +89,16 @@ type Oriented = {
   orientation: Orientation,
 };
 
-type EntityBodyPartAnimationSequence = [Vector3[], Booleanish?, number?, Easing?];
+type EntityBodyPartAnimationSequence = [
+  // rotations
+  Vector3[],
+  // required
+  Booleanish?,
+  // mask of blocked action ids
+  number?,
+  // easing to use 
+  Easing?,
+];
 
 type EntityBodyAnimation<ID extends number> = Partial<Record<ID, EntityBodyPartAnimationSequence>> & {
   maxSpeed: number,
@@ -104,12 +115,20 @@ type Part<ID extends number> = {
   readonly postRotationTransform?: Matrix4 | Falsey,
   readonly modelId: number,
   readonly children?: readonly Part<ID>[],
+  // and where is this part held when carried
+  readonly jointAttachmentHeldTransform?: Matrix4 | Falsey,
+  // when picked up, what does this attach to
+  readonly jointAttachmentHolderPartId?: number,
+  // where do we hold if this is the holder
+  readonly jointAttachmentHolderTransform?: Matrix4 | Falsey,
+  // what actions do we confer to the holder
+  // readonly jointAttachmentHolderActions
 };
 
 type Joint = {
   rotation: Vector3,
   //cachedTransform?: Matrix4 | Falsey,
-  //attachedEntity?: Entity,
+  attachedEntity?: Entity,
   anim?: Anim | Falsey,
   animAction?: ActionId | 0,
   animActionIndex?: number,
@@ -124,19 +143,51 @@ const entityIterateParts = <T extends number>(
   const joint = joints?.[part.id];
   let rotationTransform = joint && matrix4RotateInOrder(...joint.rotation);
   const transform = matrix4Multiply(
-    inheritedTransform,
-    part.preRotationTransform,
-    rotationTransform,
-    part.postRotationTransform,
+      inheritedTransform,
+      part.preRotationTransform,
+      rotationTransform,
+      part.postRotationTransform,
   );
   f(part, transform)
   part.children?.forEach(child => {
     entityIterateParts(f, child, joints, transform);
   });
+  if (joint?.attachedEntity) {
+    entityIterateParts(
+        f,
+        joint.attachedEntity.body,
+        joint.attachedEntity.joints,
+        matrix4Multiply(
+            transform,
+            part.jointAttachmentHolderTransform,
+            // TODO this might need to be after rotation
+            joint.attachedEntity.body.jointAttachmentHeldTransform
+        ),
+    )
+  }
 }
 
-const entityCannotPerformAction = <T extends number>(entity: Entity<T>, actionId: ActionId): Booleanish => {
-  if (entity.joints) {
+const entityAvailableActions = <T extends number>(entity: Entity<T>): number => {
+  // let availableActions = -1;
+  // if (entity.body.anims) {
+  //   for (let key in entity.body.anims) {
+  //     const anim: EntityBodyAnimation<T> = entity.body.anims[key];
+      
+  //   }  
+  // }
+  // return availableActions;
+
+  return (entity.joints||[]).reduce((availableActions, joint, jointId) => {
+    if (joint.animAction) {
+      const jointActionAnimations: EntityBodyAnimation<T>[] = entity.body.anims[joint.animAction];
+      const currentFrame: EntityBodyPartAnimationSequence = jointActionAnimations[joint.animActionIndex][jointId];
+      const mask = currentFrame?.[2] || 0;
+      availableActions = availableActions & ~mask;
+    }
+    return availableActions;
+  }, -1);
+
+  // if (entity.joints) {
     //const entityActionAnimations = entity.body.anims[actionId];
     // const requiredJointIds = (entityActionAnimations || []).reduce<number[]>((acc, v) => {
     //   return entity.joints.reduce((acc, joint, jointId) => {
@@ -146,15 +197,7 @@ const entityCannotPerformAction = <T extends number>(entity: Entity<T>, actionId
     //     }
     //     return acc;
     //   }, acc);
-    // }, [])
-  
-    return entity.joints.some((joint, jointId) => {
-      if (joint.anim) {
-        const jointActionAnimations = entity.body.anims[joint.animAction];
-        // TODO required should be a mask
-        const required = jointActionAnimations[joint.animActionIndex][jointId]?.[1] || 0;
-        return required && joint.animAction != actionId;
-      }
-    });
-  }
+    // }, [])  
+  // }
+  // return -1;
 }

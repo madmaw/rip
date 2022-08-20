@@ -1,4 +1,5 @@
 const EPSILON = .00001;
+const GRAVITY = .00001;
 const ONE_MINUS_EPSILON = 1 - EPSILON;
 const MAX_VELOCITY = .01;
 const MAX_COLLISIONS = 5;

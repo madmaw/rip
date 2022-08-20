@@ -213,7 +213,7 @@ stepParts.reduce((z, stepPart, i) => {
 }, 0);  
 
 // clubs
-PARTS_CLUBS.forEach((clubBody, i) => {
+const clubs = PARTS_CLUBS.map((clubBody, i) => {
   const clubShape = shapes[clubBody.modelId];
   const t = matrix4Multiply(matrix4Translate(2.5 + i, 2.5, 1)/*, matrix4Rotate(Math.PI/2, 0, 1, 0)*/);
   const [position, dimensions] = shapeBounds(clubShape, t);
@@ -227,8 +227,9 @@ PARTS_CLUBS.forEach((clubBody, i) => {
     collisionGroup: COLLISION_GROUP_ITEM,
     collisionMask: COLLISION_GROUP_WALL,
   };
-  levelAddEntity(level, club);
+  return club;
 });
+clubs.slice(1).map(club => levelAddEntity(level,club));
 
 // and a player
 const player: Entity<SkeletonPartId> = {
@@ -241,7 +242,11 @@ const player: Entity<SkeletonPartId> = {
   rotation: [0, 0, 0],
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+  joints: PART_SKELETON_BODY.defaultJointRotations.map(rotation => ({
+    rotation,
+  }))  
 };
+player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[1];
 levelAddEntity(level, player);
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
@@ -330,12 +335,14 @@ const update = (now: number) => {
 
         if (entity.velocity) {
           let action: ActionId = ACTION_ID_IDLE;
+          const availableActions = entityAvailableActions(entity);
 
           if (entity == player) {
             const running = keyStates[KEY_SHIFT] || keyStates[KEY_CAPS_LOCK] || 0;
             const right = keyStates[KEY_RIGHT] || keyStates[KEY_D] || 0;
             const left = keyStates[KEY_LEFT] || keyStates[KEY_A] || 0;
             const up = keyStates[KEY_UP] || keyStates[KEY_W] || keyStates[KEY_SPACE] || 0;
+            const down = keyStates[KEY_DOWN] || keyStates[KEY_S] || 0;
             if (up) {
               keyStates[KEY_UP] = 0;
               keyStates[KEY_W] = 0;
@@ -343,24 +350,35 @@ const update = (now: number) => {
             }
             const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
             const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
-            // TODO can we compute all this in one loop?
-            const cannotWalk = entityCannotPerformAction(entity, ACTION_ID_WALK);
-            const cannotRun = entityCannotPerformAction(entity, ACTION_ID_RUN);
-            const cannotJump = entityCannotPerformAction(entity, ACTION_ID_JUMP);
-            const cannotTurn = entityCannotPerformAction(entity, ACTION_ID_TURN);
-            const cannotFall = entityCannotPerformAction(entity, ACTION_ID_FALL);
 
-            const playerVelocity = cannotWalk ? 0 : (right - left) * (1 + (cannotRun ? 0 : running)) / 999;
-            if (!cannotWalk && (left || right) && probablyOnGround) {
+            const canWalk = availableActions & ACTION_ID_WALK;
+            const canRun = availableActions & ACTION_ID_RUN;
+            const canJump = availableActions & ACTION_ID_JUMP;
+            const canTurn = availableActions & ACTION_ID_TURN;
+            const canFall = availableActions & ACTION_ID_FALL;
+            const canDuck = availableActions & ACTION_ID_DUCK;
+
+            // TODO can we compute all this in one loop?
+            // const cannotWalk = entityCannotPerformAction(entity, ACTION_ID_WALK);
+            // const cannotRun = entityCannotPerformAction(entity, ACTION_ID_RUN);
+            // const cannotJump = entityCannotPerformAction(entity, ACTION_ID_JUMP);
+            // const cannotTurn = entityCannotPerformAction(entity, ACTION_ID_TURN);
+            // const cannotFall = entityCannotPerformAction(entity, ACTION_ID_FALL);
+
+            const playerVelocity = canWalk ? (right - left) * (1 + (canRun ? running : 0)) / 999 : 0;
+            if (canWalk && (left || right) && probablyOnGround) {
               action = ACTION_ID_WALK;
             }
-            if (!cannotRun && up && probablyOnGround) {
+            if (canRun && up && probablyOnGround) {
               action = ACTION_ID_RUN;
             }
-            if (!cannotJump && up && probablyOnGround) {
+            if (canJump && up && probablyOnGround) {
               action = ACTION_ID_JUMP;
             }
-            if (!cannotFall && !probablyOnGround) {
+            if (canDuck && down && probablyOnGround) {
+              action = ACTION_ID_DUCK;
+            }
+            if (canFall && !probablyOnGround) {
               action = ACTION_ID_FALL;
             }
             if (definitelyOnGround) {
@@ -368,7 +386,7 @@ const update = (now: number) => {
                   matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
                   playerVelocity,
                   0,
-                  entity.velocity[2] + (cannotJump ? 0 : up * .003),
+                  entity.velocity[2] + (canJump ? up * .003 : 0),
               );
             }
             const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
@@ -377,7 +395,7 @@ const update = (now: number) => {
                     || entity.orientation == targetCameraOrientation && left
                     || (entity.orientation + 2) % 4 == targetCameraOrientation && right
                 )
-                && !cannotTurn
+                && canTurn
             ) {
               entity.orientation =left || cameraDelta && entity.lastCameraOrientation != entity.orientation
                       ? (targetCameraOrientation + 2) % 4 as Orientation
@@ -399,7 +417,7 @@ const update = (now: number) => {
 
           const movable = entity as Moveable;
           // add in gravity
-          movable.velocity[2] -= delta * .00001;
+          movable.velocity[2] -= delta * GRAVITY;
           // move toward centerline of cross-orientation
           if (entity.orientation != null) {
             const crossAxis = (entity.orientation + 1) % 2;
@@ -547,7 +565,7 @@ const update = (now: number) => {
 
           // start new animations
           const bodyAnimations = entity.body.anims?.[action];
-          if (!entityCannotPerformAction(entity, action) && bodyAnimations) {
+          if ((availableActions & action) && bodyAnimations) {
             // find the index with the smallest move time
             const [bestAnimationDuration, bestAnimationIndex] = bodyAnimations.reduce((acc, bodyAnimation, i) => {
               const [min] = acc;
