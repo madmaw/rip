@@ -13,3 +13,6 @@ const MODEL_SKELETON_FEMUR = 11;
 const MODEL_SKELETON_SHIN = 12;
 const MODEL_CLUB_1 = 13;
 const MODEL_CLUB_2 = 14;
+const MODEL_CLUB_3 = 15;
+const MODEL_CLUB_4 = 16;
+const MODEL_CLUB_5 = 17;

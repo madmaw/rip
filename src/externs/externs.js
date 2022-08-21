@@ -13,3 +13,5 @@ var ontouchstart;
 var ontouchend;
 var ontouchcancel;
 var ontouchmove;
+var onresize;
+var onwheel;

@@ -87,111 +87,153 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     [0, Math.PI*3/10, -Math.PI/5],
   ],
   anims: {
-    [ACTION_ID_IDLE]: [{
+    [ACTION_ID_IDLE]: {
       maxSpeed: .001,
-      [SKELETON_PART_ID_HIPS]: [[
-        [0, 0, 0],
-        [0, Math.PI/12, 0],
-      ]],
-      [SKELETON_PART_ID_RIBCAGE]: [[
-        [0, Math.PI/10, 0],
-        [0, 0, 0],
-      ]],
-      [SKELETON_PART_ID_HEAD]: [[
-        [0, 0, 0],
-        [0, -Math.PI/8, 0],
-      ]],
-      [SKELETON_PART_ID_FEMUR_LEFT]: [[
-        [0, Math.PI*3/10, Math.PI/5],
-        [0, Math.PI*2/10, Math.PI/5],
-      ]],
-      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-        [0, Math.PI*3/10, -Math.PI/5],
-        [0, Math.PI*2/10, -Math.PI/5],
-      ]],
-    }],
-    [ACTION_ID_WALK]: [{
+      sequences: [{
+        [SKELETON_PART_ID_HIPS]: [[
+          [0, 0, 0],
+          [0, Math.PI/12, 0],
+        ]],
+        [SKELETON_PART_ID_RIBCAGE]: [[
+          [0, Math.PI/10, 0],
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_HEAD]: [[
+          [0, 0, 0],
+          [0, -Math.PI/8, 0],
+        ]],
+        [SKELETON_PART_ID_FEMUR_LEFT]: [[
+          [0, Math.PI*3/10, Math.PI/5],
+          [0, Math.PI*2/10, Math.PI/5],
+        ]],
+        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+          [0, Math.PI*3/10, -Math.PI/5],
+          [0, Math.PI*2/10, -Math.PI/5],
+        ]],
+      }]
+    },
+    [ACTION_ID_WALK]: {
       maxSpeed: .002,
-      [SKELETON_PART_ID_HIPS]: [[
-        [0, 0, 0],
-      ]],
-      [SKELETON_PART_ID_FEMUR_LEFT]: [[
-        [0, Math.PI/1.5, 0],
-        [0, 0, 0],
-      ]],
-      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-        [0, 0, 0],
-        [0, Math.PI/1.5, 0],
-      ]],
-      [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-        [0, 0, 0],
-        [0, Math.PI/2, 0],
-      ]],
-      [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-        [0, Math.PI/2, 0],
-        [0, 0, 0],
-      ]],
-    }],
-    [ACTION_ID_JUMP]: [{
+      sequences: [{
+        [SKELETON_PART_ID_HIPS]: [[
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_FEMUR_LEFT]: [[
+          [0, Math.PI/1.5, 0],
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+          [0, 0, 0],
+          [0, Math.PI/1.5, 0],
+        ]],
+        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+          [0, 0, 0],
+          [0, Math.PI/2, 0],
+        ]],
+        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+          [0, Math.PI/2, 0],
+          [0, 0, 0],
+        ]],
+      }]
+    },
+    [ACTION_ID_JUMP]: {
       maxSpeed: .01,
-      [SKELETON_PART_ID_HIPS]: [[
-        [0, Math.PI/8, 0],
-      ], 1, ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK, EASE_OUT_QUAD],
-      [SKELETON_PART_ID_FEMUR_LEFT]: [[
-        [0, -Math.PI/6, 0],
-        [0, 0, 0],
-      ]],
-      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-        [0, -Math.PI/6, 0],
-        [0, 0, 0],
-      ]],
-      [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-        [0, Math.PI*3/4, 0],
-      ]],
-      [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-        [0, -Math.PI/3, 0],
-      ]],
-      [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-        [0, Math.PI*3/4, 0],
-      ]],
-      [SKELETON_PART_ID_FOREARM_LEFT]: [[
-        [0, -Math.PI/3, 0],
-      ]],
-    }],
-    [ACTION_ID_FALL]: [{
+      blockActions:  ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK | ACTION_ID_JUMP,
+      translate: [0, 0, -SKELETON_FEMUR_LENGTH],
+      sequences: [{
+        [SKELETON_PART_ID_HIPS]: [[
+          [0, Math.PI/8, 0],
+        ], 1, EASE_OUT_QUAD],
+        [SKELETON_PART_ID_FEMUR_LEFT]: [[
+          [0, -Math.PI/6, 0],
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+          [0, -Math.PI/6, 0],
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+          [0, Math.PI*3/4, 0],
+        ]],
+        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+          [0, -Math.PI/3, 0],
+        ]],
+        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+          [0, Math.PI*3/4, 0],
+        ]],
+        [SKELETON_PART_ID_FOREARM_LEFT]: [[
+          [0, -Math.PI/3, 0],
+        ]],
+      }]
+    },
+    [ACTION_ID_FALL]: {
       maxSpeed: .001,
-      [SKELETON_PART_ID_HIPS]: [[
-        [0, 0, 0],
-      ]],
-      [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-        [0, -Math.PI/2, 0],
-      ]],
-      [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-        [0, -Math.PI/5, 0],
-      ]],
-    }],
-    [ACTION_ID_DUCK]: [{
+      sequences: [{
+        [SKELETON_PART_ID_HIPS]: [[
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+          [0, -Math.PI/2, 0],
+        ]],
+        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+          [0, -Math.PI/5, 0],
+        ]],  
+      }]
+    },
+    [ACTION_ID_DUCK]: {
       maxSpeed: .01,
-      [SKELETON_PART_ID_HEAD]: [[
-        [0, -Math.PI/6, 0],
-      ], 1],
-      [SKELETON_PART_ID_HIPS]: [[
-        [0, Math.PI/6, 0],
-      ], 1, ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK, EASE_OUT_QUAD],
-      [SKELETON_PART_ID_FEMUR_LEFT]: [[
-        [0, -Math.PI*3/10, Math.PI/5],
-      ]],
-      [SKELETON_PART_ID_SHIN_LEFT]: [[
-        [0, Math.PI*5/10, Math.PI/5],
-      ]],
-      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-        [0, -Math.PI*3/10, -Math.PI/5],
-      ]],
-      [SKELETON_PART_ID_SHIN_RIGHT]: [[
-        [0, Math.PI*5/10, -Math.PI/5],
-      ]],
-      
-    }],
+      blockActions: ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK,
+      translate: [0, 0, -SKELETON_FEMUR_LENGTH],
+      sequences: [{
+        [SKELETON_PART_ID_HEAD]: [[
+          [0, -Math.PI/6, 0],
+        ], 1],
+        [SKELETON_PART_ID_HIPS]: [[
+          [0, Math.PI/6, 0],
+        ], 1, EASE_OUT_QUAD],
+        [SKELETON_PART_ID_FEMUR_LEFT]: [[
+          [0, -Math.PI*2/10, Math.PI/5],
+        ], 1],
+        [SKELETON_PART_ID_SHIN_LEFT]: [[
+          [0, Math.PI*5/10, Math.PI/5],
+        ], 1],
+        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+          [0, Math.PI*1/10, -Math.PI/5],
+        ], 1],
+        [SKELETON_PART_ID_SHIN_RIGHT]: [[
+          [0, Math.PI*7/10, 0],
+        ], 1],
+      }],
+    },
+    [ACTION_ID_ATTACK_LIGHT]: {
+      maxSpeed: .005,
+      blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK,
+      sequences: [{
+        [SKELETON_PART_ID_HEAD]: [[
+          [0, -Math.PI/6, Math.PI/3],
+          [0, -Math.PI/6, -Math.PI/3],
+        ], 1],
+        [SKELETON_PART_ID_HIPS]: [[
+          [0, 0, -Math.PI/3],
+          [0, 0, Math.PI/3],
+        ], 1, EASE_IN_QUAD],
+        // [SKELETON_PART_ID_FEMUR_LEFT]: [[
+        //   [0, -Math.PI*2/10, Math.PI/5],
+        // ]],
+        // [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+        //   [0, Math.PI*1/10, -Math.PI/5],
+        // ]],
+        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+          [0, Math.PI/2, Math.PI/2],
+          [0, -Math.PI/8, -Math.PI/2],
+          [0, Math.PI/4, 0],
+        ], 1],
+        // [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+        //   [0, Math.PI/2, 0],
+        //   [0, 0, 0],
+        // ]],
+      }],
+    },    
   },
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,

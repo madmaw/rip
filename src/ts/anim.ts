@@ -14,16 +14,16 @@ const animDeltaRotation = (from: Vector3, to: Vector3) => {
   return Math.acos(cosDiffNormal);
 }
 
-const animLerp = (start: number, joint: Joint, to: Vector3, duration: number, easing: Easing, wrapAngles?: Booleanish) => {
-  const from = joint.rotation;
+const animLerp = (start: number, into: Vector3, to: Vector3, duration: number, easing: Easing, wrapAngles?: Booleanish) => {
+  const from = [...into];
   return (now: number): 0 | 1 => {
     const delta = now - start;
     const proportion = Math.min(delta / duration, 1)
     const progress = easing(proportion);
-    joint.rotation = from.map((v, i) => {
-      const diff = wrapAngles ? mathAngleDiff(v, to[i]) : to[i] - v;
-      return v + diff * progress;
-    }) as Vector3;
+    arrayMapAndSet(into, (_, i) => {
+      const diff = wrapAngles ? mathAngleDiff(from[i], to[i]) : to[i] - from[i];
+      return from[i] + diff * progress;
+    });
     return (proportion | 0) as any; // round down gives zero, until it's >= 1
   }
 };

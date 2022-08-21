@@ -1,7 +1,8 @@
-///<reference path="./models.ts"/>
 ///<reference path="../math/shape.ts"/>
+///<reference path="models.ts"/>
+///<reference path="skeleton.ts"/>
 
-const NUM_CLUBS = 2;
+const NUM_CLUBS = 5;
 
 const BASE_CLUB_WIDTH = .15;
 const CLUB_WIDTH_FACTOR = .05;
@@ -16,6 +17,28 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
   return {
     modelId: MODEL_CLUB_1 + i,
     jointAttachmentHeldTransform: matrix4Translate(clubWidth/3, 0, 0),
+    jointAttachmentHolderPartId: SKELETON_PART_ID_FOREARM_RIGHT,
+    jointAttachmentHolderAnims: {
+      [ACTION_ID_ATTACK_LIGHT]: {
+        maxSpeed: .005,
+        blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK,
+        // overhead smash
+        sequences: [{
+          [SKELETON_PART_ID_HEAD]: [[
+            [0, -Math.PI/9, 0],
+            [0, 0, 0],
+          ], 1],
+          [SKELETON_PART_ID_RIBCAGE]: [[
+            [0, -Math.PI/8, 0],
+            [0, Math.PI/8, 0],
+          ], 1],
+          [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+            [0, -Math.PI/2, 0],
+            [0, Math.PI/2, 0],
+          ], 1, EASE_IN_QUAD],
+        }],
+      },   
+    }
   };
 });
 

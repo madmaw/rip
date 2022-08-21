@@ -10,7 +10,7 @@
 ///<reference path="util/arrays.ts"/>
 ///<reference path="constants.ts"/>
 ///<reference path="flags.ts"/>
-///<reference path="keys.ts"/>
+///<reference path="inputs.ts"/>
 ///<reference path="webgl.ts"/>
 
 
@@ -213,15 +213,15 @@ stepParts.reduce((z, stepPart, i) => {
 }, 0);  
 
 // clubs
-const clubs = PARTS_CLUBS.map((clubBody, i) => {
+const clubs = PARTS_CLUBS.slice(0, 1).map((clubBody, i) => {
   const clubShape = shapes[clubBody.modelId];
-  const t = matrix4Multiply(matrix4Translate(2.5 + i, 2.5, 1)/*, matrix4Rotate(Math.PI/2, 0, 1, 0)*/);
+  const t = matrix4Multiply(matrix4Translate(i + .5, 2.5, 1.2)/*, matrix4Rotate(Math.PI/2, 0, 1, 0)*/);
   const [position, dimensions] = shapeBounds(clubShape, t);
   const club: Entity<ClubPartId> = {
     id: id++,
     body: clubBody,
     dimensions,
-    position: [position[0], position[1], position[2] + .5],
+    position,
     rotation: [0, 0, 0],
     velocity: [0, 0, 0],
     collisionGroup: COLLISION_GROUP_ITEM,
@@ -229,7 +229,7 @@ const clubs = PARTS_CLUBS.map((clubBody, i) => {
   };
   return club;
 });
-clubs.slice(1).map(club => levelAddEntity(level,club));
+clubs.map(club => levelAddEntity(level, club));
 
 // and a player
 const player: Entity<SkeletonPartId> = {
@@ -242,11 +242,12 @@ const player: Entity<SkeletonPartId> = {
   rotation: [0, 0, 0],
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+  // TODO remove this
   joints: PART_SKELETON_BODY.defaultJointRotations.map(rotation => ({
-    rotation,
+    rotation: [...rotation],
   }))  
 };
-player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[1];
+// player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
@@ -271,25 +272,12 @@ zoom();
 let targetCameraOrientation: Orientation = ORIENTATION_EAST;
 let cameraZRotation = 0;
 
-let keyStates: Record<number, 0 | 1> = {};
-
 onkeydown = (e: KeyboardEvent) => {
-  keyStates[e.keyCode] = 1;
-  if (e.keyCode == KEY_E) {
-    targetCameraOrientation = (targetCameraOrientation - 1) as Orientation;
-    if (targetCameraOrientation < 0) {
-      targetCameraOrientation = ORIENTATION_SOUTH;
-    }
-  } 
-  if (e.keyCode == KEY_Q) {
-    targetCameraOrientation = (targetCameraOrientation + 1) % 4 as Orientation
-  }
+  keySet(e.keyCode as KeyCode, then, 1);
   e.preventDefault();
 };
 
-onkeyup = (e: KeyboardEvent) => {
-  keyStates[e.keyCode] = 0;
-};
+onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);
 
 let then = 0;
 let worldTime = 0;
@@ -322,50 +310,68 @@ const update = (now: number) => {
         // update animations
         if (!entity.joints && entity.body.defaultJointRotations) {
           entity.joints = entity.body.defaultJointRotations.map(rotation => ({
-            rotation,
+            rotation: [...rotation],
           }));
         }
-        // TODO can we make the entity a joint?
         [...(entity.joints || []), entity].forEach((joint) => {
-          if (joint.anim && joint.anim(worldTime)) {
+          if (joint.anim && joint.anim?.(worldTime)) {
             joint.anim = 0;
             joint.animAction = 0;
           }
         });
+        if (entity.offsetAnim && entity.offsetAnim(worldTime)) {
+          entity.offsetAnim = 0;
+        }
 
         if (entity.velocity) {
-          let action: ActionId = ACTION_ID_IDLE;
+          let action: ActionId | 0 = 0;
           const availableActions = entityAvailableActions(entity);
+          const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
+          const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
+          levelRemoveEntity(level, entity);
+
 
           if (entity == player) {
-            const running = keyStates[KEY_SHIFT] || keyStates[KEY_CAPS_LOCK] || 0;
-            const right = keyStates[KEY_RIGHT] || keyStates[KEY_D] || 0;
-            const left = keyStates[KEY_LEFT] || keyStates[KEY_A] || 0;
-            const up = keyStates[KEY_UP] || keyStates[KEY_W] || keyStates[KEY_SPACE] || 0;
-            const down = keyStates[KEY_DOWN] || keyStates[KEY_S] || 0;
-            if (up) {
-              keyStates[KEY_UP] = 0;
-              keyStates[KEY_W] = 0;
-              keyStates[KEY_SPACE] = 0;
-            }
-            const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
-            const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
 
+            const canIdle = availableActions & ACTION_ID_IDLE;
             const canWalk = availableActions & ACTION_ID_WALK;
             const canRun = availableActions & ACTION_ID_RUN;
             const canJump = availableActions & ACTION_ID_JUMP;
             const canTurn = availableActions & ACTION_ID_TURN;
             const canFall = availableActions & ACTION_ID_FALL;
             const canDuck = availableActions & ACTION_ID_DUCK;
+            const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
+            const canHeavyAttack = availableActions & ACTION_ID_ATTACK_HEAVY;
 
-            // TODO can we compute all this in one loop?
-            // const cannotWalk = entityCannotPerformAction(entity, ACTION_ID_WALK);
-            // const cannotRun = entityCannotPerformAction(entity, ACTION_ID_RUN);
-            // const cannotJump = entityCannotPerformAction(entity, ACTION_ID_JUMP);
-            // const cannotTurn = entityCannotPerformAction(entity, ACTION_ID_TURN);
-            // const cannotFall = entityCannotPerformAction(entity, ACTION_ID_FALL);
+            const right = inputRead(INPUT_RIGHT);
+            const left = inputRead(INPUT_LEFT);
+            const up = canJump && probablyOnGround && inputRead(INPUT_UP, now);
+            const down = inputRead(INPUT_DOWN);
+            const rotateCameraRight = inputRead(INPUT_ROTATE_CAMERA_RIGHT, now);
+            const rotateCameraLeft = inputRead(INPUT_ROTATE_CAMERA_LEFT, now);
+            const lightAttack = inputRead(INPUT_ATTACK_LIGHT, now);
+            const heavyAttack = inputRead(INPUT_ATTACK_HEAVY, now);
+
+            let running = 0;
+            let interact = 0;
+            // running and interact share keys, so we want to avoid collisions
+            if (down) {
+              interact = inputRead(INPUT_INTERACT, now);
+            } else {
+              running = inputRead(INPUT_RUN, now, 1);
+            }
+            
+            if (rotateCameraRight) {
+              targetCameraOrientation = mathSafeMod(targetCameraOrientation - 1, 4) as Orientation;
+            }
+            if (rotateCameraLeft) {
+              targetCameraOrientation = ((targetCameraOrientation + 1) % 4) as Orientation;
+            }
 
             const playerVelocity = canWalk ? (right - left) * (1 + (canRun ? running : 0)) / 999 : 0;
+            if (canIdle) {
+              action = ACTION_ID_IDLE;
+            }
             if (canWalk && (left || right) && probablyOnGround) {
               action = ACTION_ID_WALK;
             }
@@ -374,6 +380,7 @@ const update = (now: number) => {
             }
             if (canJump && up && probablyOnGround) {
               action = ACTION_ID_JUMP;
+              entity.velocity[2] += .003;
             }
             if (canDuck && down && probablyOnGround) {
               action = ACTION_ID_DUCK;
@@ -381,12 +388,48 @@ const update = (now: number) => {
             if (canFall && !probablyOnGround) {
               action = ACTION_ID_FALL;
             }
+            if (canLightAttack && lightAttack) {
+              action = ACTION_ID_ATTACK_LIGHT;
+            }
+            if (canHeavyAttack && heavyAttack) {
+              action = ACTION_ID_ATTACK_HEAVY;
+            }
+            if (interact) {
+              // find any entities we might be able to pick up
+              let pickedUp: Entity | undefined;
+              levelIterateEntitiesInBounds(level, entity.position, entity.dimensions, found => {
+                // NOTE: while 0 is a valid part id, we assume it's not used for extremities
+                if (found.body.jointAttachmentHolderPartId) {
+                  // TODO get the closest one
+                  pickedUp = found;
+                }
+              });
+              // drop whatever we are carrying
+              const joint = entity.joints.find(
+                  (joint, partId) => joint.attachedEntity && (!pickedUp || partId == pickedUp.body.jointAttachmentHolderPartId),
+              );
+              if (joint) {
+                // add the attached entity back into the world
+                const held = joint.attachedEntity as Entity;
+                held.position = entity.position.map(
+                    (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
+                ) as Vector3;
+                held.rotation = [...entity.rotation];
+                held.velocity = [0, 0, 0];
+                levelAddEntity(level, held);
+                joint.attachedEntity = 0;
+              }
+              if (pickedUp) {
+                levelRemoveEntity(level, pickedUp);
+                entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
+              }
+            }
             if (definitelyOnGround) {
               entity.velocity = vector3TransformMatrix4(
                   matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
                   playerVelocity,
                   0,
-                  entity.velocity[2] + (canJump ? up * .003 : 0),
+                  entity.velocity[2],
               );
             }
             const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
@@ -405,7 +448,7 @@ const update = (now: number) => {
               const to: Vector3 = [0, 0, targetAngle];
               entity.anim = animLerp(
                   worldTime,
-                  player,
+                  player.rotation,
                   to,
                   499,
                   EASE_IN_OUT_QUAD,
@@ -440,16 +483,15 @@ const update = (now: number) => {
             const targetPosition = entity.position.map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
             const maximalPosition = entity.position.map((v, i) => Math.min(v, targetPosition[i])) as Vector3;
             const maximalDimensions = entity.dimensions.map(
-                (v, i) => v + Math.abs(entity.velocity[i] * remainingDelta),
+                (v, i) => v + Math.abs(targetPosition[i] - entity.position[i]),
             ) as Vector3;
 
             let maxOverlapDelta = 0;
             let maxCollisionEntity: Entity | Falsey;
             maxOverlapIndex = -1;
-            levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions , collisionEntity => {
-              if (collisionEntity == entity
-                  || !(collisionEntity.collisionGroup & entity.collisionMask)
-              ) {
+            levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions, collisionEntity => {
+              // no need to check for ourselves since we have been removed from the level at this point
+              if (!(collisionEntity.collisionGroup & entity.collisionMask)) {
                 return;
               }
               const startingIntersection = rect3Intersection(
@@ -468,6 +510,9 @@ const update = (now: number) => {
                   console.log('collision dimensions' , collisionEntity.dimensions);
                   console.log('intersection', startingIntersection);
                   console.log('previous collision', entity.previousCollision);
+                  console.log('previous position', entity['previousPosition']);
+                  console.log('previous velocity', entity['previousVelocity']);
+                  console.log('previous move delta', entity['previousMoveDelta']);
                   //console.log('index', i);
               }
 
@@ -530,6 +575,12 @@ const update = (now: number) => {
             });
             const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta - .1);
             remainingDelta = maxOverlapDelta;
+            entity['previousPosition'] = entity.position;
+            entity['previousVelocity'] = entity.velocity;
+            entity['previousMoveDelta'] = moveDelta;
+            entity['previousCollisions'] = collisions;
+            entity['previousMaximalPosition'] = maximalPosition;
+            entity['previousMaximalDimensions'] = maximalDimensions;
             entity.position = entity.position.map((v, i) => v + entity.velocity[i] * moveDelta) as Vector3;
             if (maxCollisionEntity) {
               entity.previousCollision = {
@@ -564,10 +615,13 @@ const update = (now: number) => {
           }
 
           // start new animations
-          const bodyAnimations = entity.body.anims?.[action];
-          if ((availableActions & action) && bodyAnimations) {
+          const bodyAnimations: EntityBodyAnimation<number> = action && entity.joints?.reduce<Falsey | EntityBodyAnimation<number>>(
+              (acc, joint) => acc || joint.attachedEntity && joint.attachedEntity.body.jointAttachmentHolderAnims?.[action],
+              0,
+          ) || entity.body.anims?.[action];
+          if (bodyAnimations) {
             // find the index with the smallest move time
-            const [bestAnimationDuration, bestAnimationIndex] = bodyAnimations.reduce((acc, bodyAnimation, i) => {
+            const [bestAnimationDuration, bestAnimationIndex] = bodyAnimations.sequences.reduce((acc, bodyAnimation, i) => {
               const [min] = acc;
               const animationDuration = entity.joints.reduce((max, v, jointId) => {
                 const jointBodyAnim = bodyAnimation[jointId];
@@ -581,27 +635,58 @@ const update = (now: number) => {
               }
               return acc;
             }, [9999, 0]);
-            const bodyAnimation = bodyAnimations[bestAnimationIndex];
+            
+            if (!entity.offsetAnim) {
+              entity.offset = entity.offset || [0, 0, 0];
+              entity.offsetAnim = animLerp(
+                  worldTime,
+                  entity.offset,
+                  bodyAnimations.translate || [0, 0, 0],
+                  bestAnimationDuration,
+                  EASE_LINEAR,
+              );
+            }
+
+            const bodyAnimation = bodyAnimations.sequences[bestAnimationIndex];
+            const animFrameDurations = entity.joints.reduce<number[]>((acc, joint, jointId) => {
+              const bodyJointAnimation = bodyAnimation[jointId];
+              let prev = joint.rotation;
+              return bodyJointAnimation?.[0].reduce((acc, rotation, index) => {
+                const deltaRotation = animDeltaRotation(prev, rotation);
+                const minDuration = deltaRotation / bodyAnimations.maxSpeed;
+                if (index < acc.length) {
+                  acc[index] = Math.max(minDuration, acc[index]);
+                } else {
+                  acc.push(minDuration);
+                }
+                prev = rotation;
+                return acc;
+              }, acc) || acc;
+            }, []);
+
             entity.joints.forEach((joint, jointId) => {
               const bodyJointAnimation = bodyAnimation[jointId];
               const defaultBodyJointRotation = entity.body.defaultJointRotations?.[jointId];
               if (joint.animAction != action && bodyJointAnimation
                   || defaultBodyJointRotation && !joint.animAction) {
-                const easing = bodyJointAnimation?.[3] || EASE_LINEAR;
+                const easing = bodyJointAnimation?.[2] || EASE_LINEAR;
                 const anim = bodyJointAnimation
-                    ? animComposite(...bodyJointAnimation[0].map(rotation => {
+                    ? animComposite(...bodyJointAnimation[0].map((rotation, index) => {
                       // TODO use max speed correctly
-                      const duration = 1/bodyAnimation.maxSpeed;
-                      return now => animLerp(now, joint, rotation, duration, easing);
+                      //const duration = 1/bodyAnimations.maxSpeed;
+                      const duration = animFrameDurations[index];
+                      return now => animLerp(now, joint.rotation, rotation, duration, easing);
                     }))
                     // TODO use overall speed of the animation
-                    : animLerp(worldTime, joint, defaultBodyJointRotation, 100, easing);
+                    : animLerp(worldTime, joint.rotation, defaultBodyJointRotation, 100, easing);
                 joint.anim = anim;
                 joint.animAction = action;
                 joint.animActionIndex = bestAnimationIndex;
               }
             })
           }
+
+          levelAddEntity(level, entity);
         }
 
         entityIterateParts(
@@ -614,7 +699,9 @@ const update = (now: number) => {
             entity.body,
             entity.joints,
             matrix4Multiply(
-                matrix4Translate(...(entity.dimensions.map((v, i) => v/2 + entity.position[i]) as Vector3)),
+                matrix4Translate(...(entity.dimensions.map(
+                    (v, i) => v/2 + entity.position[i] + (entity.offset?.[i] || 0)) as Vector3),
+                ),
                 matrix4RotateInOrder(...entity.rotation),
             ),
         );

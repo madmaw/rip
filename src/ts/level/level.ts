@@ -8,7 +8,7 @@ type Tile = Record<EntityId, Entity>;
 const levelIterateInBounds = (
     level: Level,
     position: Vector3, 
-    imensions: Vector3,
+    dimensions: Vector3,
     f: (tile: Tile, x: number, y: number, z: number) => void,
 ) => {
   const [minx, miny, minz] = position.map(
@@ -29,7 +29,7 @@ const levelIterateInBounds = (
 const levelIterateEntitiesInBounds = (
     level: Level,
     position: Vector3, 
-    imensions: Vector3,
+    dimensions: Vector3,
     f: (entity: Entity) => void,
 ) => {
   const iteratedEntities: Record<EntityId, Truthy> = {};

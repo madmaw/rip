@@ -24,6 +24,8 @@ const ACTION_ID_JUMP = 8;
 const ACTION_ID_RUN = 16;
 const ACTION_ID_FALL = 32;
 const ACTION_ID_DUCK = 64;
+const ACTION_ID_ATTACK_LIGHT = 128;
+const ACTION_ID_ATTACK_HEAVY = 256;
 
 type ActionId = 
     | typeof ACTION_ID_TURN
@@ -33,6 +35,8 @@ type ActionId =
     | typeof ACTION_ID_RUN
     | typeof ACTION_ID_FALL
     | typeof ACTION_ID_DUCK
+    | typeof ACTION_ID_ATTACK_LIGHT
+    | typeof ACTION_ID_ATTACK_HEAVY
     ;
 
 type EntityId = number;
@@ -52,6 +56,8 @@ const COLLISION_GROUP_ITEM = 4;
 type EntityBase<T extends number> = {
   readonly id: EntityId,
   position: Vector3,
+  offset?: Vector3,
+  offsetAnim?: Anim | Falsey,
   readonly dimensions: Vector3,
   readonly body: EntityBody<T>,
   joints?: Joint[],
@@ -94,18 +100,20 @@ type EntityBodyPartAnimationSequence = [
   Vector3[],
   // required
   Booleanish?,
-  // mask of blocked action ids
-  number?,
   // easing to use 
   Easing?,
 ];
 
-type EntityBodyAnimation<ID extends number> = Partial<Record<ID, EntityBodyPartAnimationSequence>> & {
+type EntityBodyAnimation<ID extends number> = {
   maxSpeed: number,
+  // mask of blocked action ids
+  blockActions?: number,
+  sequences: Partial<Record<ID, EntityBodyPartAnimationSequence>>[],
+  translate?: Vector3,
 };
 
 type EntityBody<ID extends number> = Part<ID> & {
-  anims?: Partial<Record<ActionId, EntityBodyAnimation<ID>[]>>,
+  anims?: Partial<Record<ActionId, EntityBodyAnimation<ID>>>,
   defaultJointRotations?: Record<ID, Vector3> & Vector3[],
 }
 
@@ -122,13 +130,13 @@ type Part<ID extends number> = {
   // where do we hold if this is the holder
   readonly jointAttachmentHolderTransform?: Matrix4 | Falsey,
   // what actions do we confer to the holder
-  // readonly jointAttachmentHolderActions
+  readonly jointAttachmentHolderAnims?: Partial<Record<ActionId, EntityBodyAnimation<number>>>,
 };
 
 type Joint = {
   rotation: Vector3,
   //cachedTransform?: Matrix4 | Falsey,
-  attachedEntity?: Entity,
+  attachedEntity?: Entity | Falsey,
   anim?: Anim | Falsey,
   animAction?: ActionId | 0,
   animActionIndex?: number,
@@ -179,9 +187,8 @@ const entityAvailableActions = <T extends number>(entity: Entity<T>): number => 
 
   return (entity.joints||[]).reduce((availableActions, joint, jointId) => {
     if (joint.animAction) {
-      const jointActionAnimations: EntityBodyAnimation<T>[] = entity.body.anims[joint.animAction];
-      const currentFrame: EntityBodyPartAnimationSequence = jointActionAnimations[joint.animActionIndex][jointId];
-      const mask = currentFrame?.[2] || 0;
+      const jointActionAnimation: EntityBodyAnimation<T> = entity.body.anims[joint.animAction];
+      const mask = jointActionAnimation.blockActions || 0;
       availableActions = availableActions & ~mask;
     }
     return availableActions;
