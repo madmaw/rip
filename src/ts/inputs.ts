@@ -89,14 +89,13 @@ const keySet = (keyCode: KeyCode, now: number, intensity: number) => {
   }
 };
 
-
 const INPUT_KEYS: Record<Input, KeyCode[]> & KeyCode[][] = [
   // LEFT
   [KEY_LEFT], 
   // RIGHT
   [KEY_RIGHT],
   // UP
-  [KEY_UP],
+  [KEY_UP, KEY_SPACE],
   // DOWN
   [KEY_DOWN],
   // RUN

@@ -53,7 +53,9 @@ const VERTEX_SHADER = `#version 300 es
   void main() {
     vec4 position = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
     ${V_POSITION} = position.xyz;
-    ${V_NORMAL} = normalize(${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.) - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)).xyz;
+    ${V_NORMAL} = normalize(
+        ${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.) - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+    ).xyz;
     gl_Position = ${U_PROJECTION_MATRIX} * position;
   }
 `;
@@ -80,7 +82,7 @@ const FRAGMENT_SHADER = `#version 300 es
         if (${U_LIGHT_POSITIONS}[i].w > 0.) {
           vec3 d = ${U_LIGHT_POSITIONS}[i].xyz - ${V_POSITION};
           l += mix(
-                  dot(normalize(${V_NORMAL}), normalize(d)),
+                  max(0., dot(normalize(${V_NORMAL}), normalize(d))),
                   1.,
                   pow(max(0., (${MIN_LIGHT_THROW} - length(d))*${U_LIGHT_POSITIONS}[i].w), 2.)
               )
@@ -90,7 +92,7 @@ const FRAGMENT_SHADER = `#version 300 es
       }  
     }
     vec3 c = vec3(l + ambientLight);
-    ${OUT_RESULT} = vec4(c, 1.);
+    ${OUT_RESULT} = vec4(pow(c, vec3(.45)), 1.);
   }
 `;
 
@@ -297,7 +299,7 @@ const player: Entity<SkeletonPartId> = {
     rotation: [...rotation],
   }))  
 };
-player.joints[SKELETON_PART_ID_HEAD].light = .5;
+player.joints[SKELETON_PART_ID_HEAD].light = .3;
 // player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
 
@@ -361,30 +363,13 @@ const update = (now: number) => {
     matrix4Translate(...negatedPlayerMidPoint),
   );
 
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.uniformMatrix4fv(
-      uniformProjectionMatrix,
-      false,
+  updateAndRenderLevel(
       matrix4Multiply(projection, cameraPositionMatrix),
-  );
-  gl.uniform3fv(
-      uniformCameraPosition,
       cameraPosition,
-  );
-
-  gl.uniform4fv(
-      uniformLightPositions,
-      previousLights
-          .slice(0, MAX_LIGHTS)
-          .concat(...new Array(Math.max(0, MAX_LIGHTS - previousLights.length)).fill([0, 0, 0, 0]))
-          .flat(),
-  );
-  previousLights = [];
-
-  levelIterateEntitiesInBounds(
-      level, [0, 0, 0],
+      [0, 0, 0],
       level.dimensions,
-      entity => {
+      previousLights,
+      (entity: Entity) => {
         // update animations
         if (!entity.joints && entity.body.defaultJointRotations) {
           entity.joints = entity.body.defaultJointRotations.map(rotation => ({
@@ -407,7 +392,6 @@ const update = (now: number) => {
           const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
           const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
           levelRemoveEntity(level, entity);
-
 
           if (entity == player) {
 
@@ -765,22 +749,63 @@ const update = (now: number) => {
               }
             })
           }
-
           levelAddEntity(level, entity);
         }
 
         const entityMidpoint = entity.position.map((v, i) => v + entity.dimensions[i]/2) as Vector3;
-        // do we need to render?
         const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityMidpoint);
-        const shouldRender = (cy > 0 || cz < 0) || entity.joints?.some(j => j.light); 
+        return (cy < 0 && cz > 0);
+      },
+  );
+
+  requestAnimationFrame(update);
+};
+update(0);
+
+function updateAndRenderLevel(
+    cameraProjectionMatrix: Matrix4,
+    cameraPosition: Vector3,
+    position: Vector3,
+    dimensions: Vector3,
+    lights: Vector4[] = [],
+    // returb false if want to render
+    updateEntity?: (e: Entity) => Booleanish,
+) {
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.uniformMatrix4fv(
+      uniformProjectionMatrix,
+      false,
+      cameraProjectionMatrix,
+  );
+  gl.uniform3fv(
+      uniformCameraPosition,
+      cameraPosition,
+  );
+  gl.uniform4fv(
+      uniformLightPositions,
+      lights
+          .slice(0, MAX_LIGHTS)
+          .concat(...new Array(Math.max(0, MAX_LIGHTS - previousLights.length)).fill([0, 0, 0, 0]))
+          .flat(),
+  );
+  lights.splice(0, lights.length);  
+
+  levelIterateEntitiesInBounds(
+      level,
+      position,
+      dimensions,
+      entity => {
+        // do we need to render?
+        const ignoreRendering = updateEntity?.(entity);
+        const shouldRender = !ignoreRendering || entity.joints?.some(j => j.light); 
         if (shouldRender) {
           entityIterateParts(
             (part, transform, joint) => {
               if (joint?.light) {
                 const position = vector3TransformMatrix4(transform, 0, 0, 0);
-                previousLights.push([...position, joint.light]);
+                lights.push([...position, joint.light]);
               }
-              if (cy > 0 || cz < 0) {
+              if (!ignoreRendering) {
                 const [vao, count] = models[part.modelId];
                 gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
                 gl.uniform1f(uniformModelAttributes, joint?.light || 0);
@@ -797,10 +822,7 @@ const update = (now: number) => {
                 matrix4RotateInOrder(...entity.rotation),
             ),
           );
-        }
+        }        
       },
   );
-
-  requestAnimationFrame(update);
-};
-update(0);
+}
