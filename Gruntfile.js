@@ -112,7 +112,7 @@ module.exports = function (grunt) {
             overwrite: true,
             replacements: [{
               from: /build\/out\.js/g,
-              to:"out.min.js"
+              to:"out.min.rr.js"
             }, { // gut the HTML entirely!
               from: "</body></html>",
               to: ""
@@ -246,7 +246,7 @@ module.exports = function (grunt) {
             'roadroller',
             'dist/out.min.js',
             '-o',
-            'dist/out.min.js'
+            'dist/out.min.rr.js'
           ]
         },
         zip: {

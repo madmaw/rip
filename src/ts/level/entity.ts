@@ -140,10 +140,12 @@ type Joint = {
   anim?: Anim | Falsey,
   animAction?: ActionId | 0,
   animActionIndex?: number,
+  // how much light the associated part emits (default to none)
+  light?: number,
 };
 
 const entityIterateParts = <T extends number>(
-  f: (part: Part<T>, transform: Matrix4) => void,
+  f: (part: Part<T>, transform: Matrix4, joint?: Joint) => void,
   part: Part<T>,
   joints?: Record<T, Joint>,
   inheritedTransform?: Matrix4 | Falsey,
@@ -156,7 +158,7 @@ const entityIterateParts = <T extends number>(
       rotationTransform,
       part.postRotationTransform,
   );
-  f(part, transform)
+  f(part, transform, joint)
   part.children?.forEach(child => {
     entityIterateParts(f, child, joints, transform);
   });

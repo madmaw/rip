@@ -15,18 +15,29 @@
 
 
 const A_VERTEX_POSIITON = 'aVertexPosition';
+const A_VERTEX_NORMAL = 'aVertexNormal';
+
+const ATTRIBUTES = [
+  A_VERTEX_POSIITON,
+  A_VERTEX_NORMAL,
+];
 
 const U_MODEL_VIEW_MATRIX = 'uModelViewMatrix';
+const U_MODEL_ATTRIBUTES = 'uModelAttributes';
 const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
+const U_LIGHT_POSITIONS = 'uLightPositions';
 
 const UNIFORMS = [
   U_MODEL_VIEW_MATRIX,
+  U_MODEL_ATTRIBUTES,
   U_PROJECTION_MATRIX,
   U_CAMERA_POSITION,
+  U_LIGHT_POSITIONS,
 ];
 
 const V_POSITION = 'vPosition';
+const V_NORMAL = 'vNormal';
 
 const VERTEX_SHADER = `#version 300 es
   precision lowp float;
@@ -35,11 +46,14 @@ const VERTEX_SHADER = `#version 300 es
   uniform mat4 ${U_PROJECTION_MATRIX};
 
   in vec4 ${A_VERTEX_POSIITON};
+  in vec3 ${A_VERTEX_NORMAL};
   out vec3 ${V_POSITION};
+  out vec3 ${V_NORMAL};
 
   void main() {
     vec4 position = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
     ${V_POSITION} = position.xyz;
+    ${V_NORMAL} = normalize(${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.) - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)).xyz;
     gl_Position = ${U_PROJECTION_MATRIX} * position;
   }
 `;
@@ -49,14 +63,33 @@ const OUT_RESULT = 'result';
 const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
 
+  float ambientLight = 0.;
+
   uniform vec3 ${U_CAMERA_POSITION};
+  uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
+  uniform float ${U_MODEL_ATTRIBUTES};
 
   in vec3 ${V_POSITION};
+  in vec3 ${V_NORMAL};
   out vec4 ${OUT_RESULT};
 
   void main() {
-    float d = length(${U_CAMERA_POSITION} - ${V_POSITION});
-    vec3 c = mix(${V_POSITION}/9., vec3(0.), d/3.);
+    float l =${U_MODEL_ATTRIBUTES};
+    if (l <= 0.) {
+      for (int i=0; i<${MAX_LIGHTS}; i++) {
+        if (${U_LIGHT_POSITIONS}[i].w > 0.) {
+          vec3 d = ${U_LIGHT_POSITIONS}[i].xyz - ${V_POSITION};
+          l += mix(
+                  dot(normalize(${V_NORMAL}), normalize(d)),
+                  1.,
+                  pow(max(0., (${MIN_LIGHT_THROW} - length(d))*${U_LIGHT_POSITIONS}[i].w), 2.)
+              )
+              * ${U_LIGHT_POSITIONS}[i].w
+              * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW}*${U_LIGHT_POSITIONS}[i].w - length(d))/${MAX_LIGHT_THROW}, 2.));
+        }
+      }  
+    }
+    vec3 c = vec3(l + ambientLight);
     ${OUT_RESULT} = vec4(c, 1.);
   }
 `;
@@ -82,12 +115,17 @@ if (FLAG_SHOW_GL_ERRORS && !gl.getProgramParameter(program, gl.LINK_STATUS)) {
   throw new Error(gl.getProgramInfoLog(program) || 'bad');
 }
 
-const attributeVertexPosition = gl.getAttribLocation(program, A_VERTEX_POSIITON);
+const [
+  attributeVertexPosition,
+  attributeVertexNormal,
+] = ATTRIBUTES.map(attribute => gl.getAttribLocation(program, attribute));
 
 const [
   uniformModelViewMatrix,
+  uniformModelAttributes,
   uniformProjectionMatrix,
   uniformCameraPosition,
+  uniformLightPositions,
 ] = UNIFORMS.map(uniform => gl.getUniformLocation(program, uniform));
 
 gl.useProgram(program);
@@ -118,34 +156,46 @@ const shapes = [
   ...SHAPES_CLUBS,
 ];
 const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
-  const [vertexData, indices] = shape.reduce<[Vector3[], number[]]>(([vertexData, indices], face) => {
-    
-    const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
-    const surfaceIndices = face.perimeter.slice(2).flatMap(
-        (_, i) => [vertexData.length, vertexData.length + i + 1, vertexData.length + i + 2]
-    );
-    indices.push(...surfaceIndices);
-    vertexData.push(
-        ...points.map(([x, y]) =>
-            vectorNToPrecision(
-                vector3TransformMatrix4(face.transformFromCoordinateSpace, x, y, 0),
+  const [positions, normals, indices] = shape.reduce<[Vector3[], Vector3[], number[]]>(
+      ([positions, normals, indices], face) => {
+        const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
+        const surfaceIndices = face.perimeter.slice(2).flatMap(
+            (_, i) => [positions.length, positions.length + i + 1, positions.length + i + 2]
+        );
+        indices.push(...surfaceIndices);
+        positions.push(
+            ...points.map(p =>
+                vectorNToPrecision(
+                    vector3TransformMatrix4(face.transformFromCoordinateSpace, ...p, 0),
+                ),
             ),
-        ),
-    );  
-    return [vertexData, indices];
-  }, [[], []]);
+        );
+        normals.push(
+            ...new Array<Vector3>(points.length).fill(face.plane.normal),
+        )
+        return [positions, normals, indices];
+      },
+      [[], [], []],
+  );
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
 
-  const vertexBuffer = gl.createBuffer();
-  gl.enableVertexAttribArray(attributeVertexPosition);
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(vertexData.flat()),
-    gl.STATIC_DRAW,
+  ([
+    [attributeVertexPosition, positions],
+    [attributeVertexNormal, normals],
+  ] as const).forEach(
+      ([attribute, vectors]) => {
+        const buffer = gl.createBuffer();
+        gl.enableVertexAttribArray(attribute);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(vectors.flat()),
+          gl.STATIC_DRAW,
+        );
+        gl.vertexAttribPointer(attribute, vectors[0].length, gl.FLOAT, false, 0, 0);  
+      }
   );
-  gl.vertexAttribPointer(attributeVertexPosition, 3, gl.FLOAT, false, 0, 0);
 
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -247,6 +297,7 @@ const player: Entity<SkeletonPartId> = {
     rotation: [...rotation],
   }))  
 };
+player.joints[SKELETON_PART_ID_HEAD].light = .5;
 // player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
 
@@ -281,27 +332,54 @@ onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);
 
 let then = 0;
 let worldTime = 0;
+let previousLights: Vector4[] = [];
 const update = (now: number) => {
   const delta = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
   worldTime += delta;
   then = now;
 
+  const playerCenter = player.position.map((v, i) => v + player.dimensions[i]/2);
+  previousLights.sort((a, b) => {
+    return vectorNLength(vectorNSubtract(playerCenter, a)) - vectorNLength(vectorNSubtract(playerCenter, b));
+  });
+
   const targetCameraZRotation = targetCameraOrientation * Math.PI/2;  
   const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
   cameraZRotation += cameraZDelta * delta / 100;
   const cameraRotation = matrix4Rotate(cameraZRotation, 0, 0, 1);
-  const playerMidPoint = player.position.map((v, i) => -player.dimensions[i]/2  - v) as Vector3;
+  const playerMidPoint = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
+  const negatedPlayerMidPoint = vectorNScale(playerMidPoint, -1);
+  const cameraPositionMatrix = matrix4Multiply(
+      cameraOffsetTransform,
+      cameraRotation,
+      matrix4Translate(...negatedPlayerMidPoint),
+  );
+  const cameraPosition = vector3TransformMatrix4(matrix4Invert(cameraPositionMatrix), 0, 0, 0);
+  const cameraRenderCutoffTransform = matrix4Multiply(
+    matrix4Translate(0, .5, .2),
+    matrix4Rotate(cameraZRotation, 0, 0, 1),
+    matrix4Translate(...negatedPlayerMidPoint),
+  );
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.uniformMatrix4fv(
       uniformProjectionMatrix,
       false,
-      matrix4Multiply(projection, cameraOffsetTransform, cameraRotation, matrix4Translate(...playerMidPoint)),
+      matrix4Multiply(projection, cameraPositionMatrix),
   );
   gl.uniform3fv(
       uniformCameraPosition,
-      player.position,
+      cameraPosition,
   );
+
+  gl.uniform4fv(
+      uniformLightPositions,
+      previousLights
+          .slice(0, MAX_LIGHTS)
+          .concat(...new Array(Math.max(0, MAX_LIGHTS - previousLights.length)).fill([0, 0, 0, 0]))
+          .flat(),
+  );
+  previousLights = [];
 
   levelIterateEntitiesInBounds(
       level, [0, 0, 0],
@@ -636,17 +714,6 @@ const update = (now: number) => {
               return acc;
             }, [9999, 0]);
             
-            if (!entity.offsetAnim) {
-              entity.offset = entity.offset || [0, 0, 0];
-              entity.offsetAnim = animLerp(
-                  worldTime,
-                  entity.offset,
-                  bodyAnimations.translate || [0, 0, 0],
-                  bestAnimationDuration,
-                  EASE_LINEAR,
-              );
-            }
-
             const bodyAnimation = bodyAnimations.sequences[bestAnimationIndex];
             const animFrameDurations = entity.joints.reduce<number[]>((acc, joint, jointId) => {
               const bodyJointAnimation = bodyAnimation[jointId];
@@ -663,6 +730,19 @@ const update = (now: number) => {
                 return acc;
               }, acc) || acc;
             }, []);
+
+            entity.offset = entity.offset || [0, 0, 0];
+            
+            if (entity.offset?.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) < EPSILON)) {
+              const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
+              entity.offsetAnim = animLerp(
+                  worldTime,
+                  entity.offset,
+                  bodyAnimations.translate || [0, 0, 0],
+                  totalDuration,
+                  EASE_OUT_QUAD,
+              );
+            }
 
             entity.joints.forEach((joint, jointId) => {
               const bodyJointAnimation = bodyAnimation[jointId];
@@ -689,12 +769,24 @@ const update = (now: number) => {
           levelAddEntity(level, entity);
         }
 
-        entityIterateParts(
-            (part, transform) => {
-              const [vao, count] = models[part.modelId];
-              gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
-              gl.bindVertexArray(vao);
-              gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+        const entityMidpoint = entity.position.map((v, i) => v + entity.dimensions[i]/2) as Vector3;
+        // do we need to render?
+        const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityMidpoint);
+        const shouldRender = (cy > 0 || cz < 0) || entity.joints?.some(j => j.light); 
+        if (shouldRender) {
+          entityIterateParts(
+            (part, transform, joint) => {
+              if (joint?.light) {
+                const position = vector3TransformMatrix4(transform, 0, 0, 0);
+                previousLights.push([...position, joint.light]);
+              }
+              if (cy > 0 || cz < 0) {
+                const [vao, count] = models[part.modelId];
+                gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
+                gl.uniform1f(uniformModelAttributes, joint?.light || 0);
+                gl.bindVertexArray(vao);
+                gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+              }
             },
             entity.body,
             entity.joints,
@@ -704,7 +796,8 @@ const update = (now: number) => {
                 ),
                 matrix4RotateInOrder(...entity.rotation),
             ),
-        );
+          );
+        }
       },
   );
 

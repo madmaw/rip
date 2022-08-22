@@ -78,17 +78,17 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     //SKELETON_PART_ID_FOREARM_LEFT
     [0, -Math.PI/8, 0],
     //SKELETON_PART_ID_FEMUR_RIGHT
-    [0, Math.PI*3/10, -Math.PI/5],
+    [0, Math.PI*3/10, 0],
     //SKELETON_PART_ID_SHIN_RIGHT
-    [0, Math.PI*3/10, Math.PI/5],
+    [0, Math.PI*3/10, 0],
     //SKELETON_PART_ID_FEMUR_LEFT
-    [0, Math.PI*3/10, Math.PI/5],
+    [0, Math.PI*3/10, 0],
     //SKELETON_PART_ID_SHIN_LEFT
-    [0, Math.PI*3/10, -Math.PI/5],
+    [0, Math.PI*3/10, 0],
   ],
   anims: {
     [ACTION_ID_IDLE]: {
-      maxSpeed: .001,
+      maxSpeed: .0001,
       sequences: [{
         [SKELETON_PART_ID_HIPS]: [[
           [0, 0, 0],
@@ -103,12 +103,10 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           [0, -Math.PI/8, 0],
         ]],
         [SKELETON_PART_ID_FEMUR_LEFT]: [[
-          [0, Math.PI*3/10, Math.PI/5],
-          [0, Math.PI*2/10, Math.PI/5],
+          [0, Math.PI*3/10, 0],
         ]],
         [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-          [0, Math.PI*3/10, -Math.PI/5],
-          [0, Math.PI*2/10, -Math.PI/5],
+          [0, Math.PI*3/10, 0],
         ]],
       }]
     },
@@ -130,9 +128,15 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           [0, 0, 0],
           [0, Math.PI/2, 0],
         ]],
+        [SKELETON_PART_ID_SHIN_LEFT]: [[
+          [0, Math.PI*3/10, 0],
+        ]],
         [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
           [0, Math.PI/2, 0],
           [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_SHIN_RIGHT]: [[
+          [0, Math.PI*3/10, 0],
         ]],
       }]
     },
@@ -181,9 +185,9 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       }]
     },
     [ACTION_ID_DUCK]: {
-      maxSpeed: .01,
+      maxSpeed: .005,
       blockActions: ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK,
-      translate: [0, 0, -SKELETON_FEMUR_LENGTH],
+      translate: [0, 0, -SKELETON_SHIN_LENGTH],
       sequences: [{
         [SKELETON_PART_ID_HEAD]: [[
           [0, -Math.PI/6, 0],

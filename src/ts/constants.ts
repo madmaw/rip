@@ -5,6 +5,9 @@ const MAX_VELOCITY = .01;
 const MAX_COLLISIONS = 5;
 const MAX_MILLISECONDS_PER_FRAME = 40;
 const MAX_JUMP_DELAY = 199;
+const MAX_LIGHTS = 9;
+const MAX_LIGHT_THROW = '9.';
+const MIN_LIGHT_THROW = '2.';
 
 const VECTOR3_UP: [number, number, number] = [0, 0, 1];
 const VECTOR3_EAST: [number, number, number] = [1, 0, 0];
