@@ -1,3 +1,5 @@
+///<reference path="math/matrix.ts"/>
+
 const EPSILON = .00001;
 const GRAVITY = .00001;
 const ONE_MINUS_EPSILON = 1 - EPSILON;
@@ -11,3 +13,21 @@ const MIN_LIGHT_THROW = '2.';
 
 const VECTOR3_UP: [number, number, number] = [0, 0, 1];
 const VECTOR3_EAST: [number, number, number] = [1, 0, 0];
+
+// 1 = tan(90 degrees/2)
+const CUBE_MAP_PERPSECTIVE_TRANSFORM = matrix4InfinitePerspective(1, 1, .09);
+const CUBE_MAP_ROTATION_TRANSFORMS: Matrix4[] = ([
+  // +ve X
+  [0, -Math.PI/2, Math.PI],
+  // -ve X
+  [0, Math.PI/2, Math.PI],
+  // +ve Y
+  [-Math.PI/2, 0, 0],
+  // -ve Y
+  [Math.PI/2, 0, 0],
+  // +ve Z
+  [Math.PI, 0, 0],
+  // -ve Z
+  [0, 0, 0],
+] as Vector3[]).map(v => matrix4RotateInOrder(...v));
+const CUBE_MAP_DIMENSION = 128;

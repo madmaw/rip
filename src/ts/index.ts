@@ -27,6 +27,7 @@ const U_MODEL_ATTRIBUTES = 'uModelAttributes';
 const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
 const U_LIGHT_POSITIONS = 'uLightPositions';
+const U_VISION_TEXTURE = 'uVisionTexture';
 
 const UNIFORMS = [
   U_MODEL_VIEW_MATRIX,
@@ -34,10 +35,12 @@ const UNIFORMS = [
   U_PROJECTION_MATRIX,
   U_CAMERA_POSITION,
   U_LIGHT_POSITIONS,
+  U_VISION_TEXTURE,
 ];
 
 const V_POSITION = 'vPosition';
 const V_NORMAL = 'vNormal';
+const V_ORIGIN = 'vOrigin';
 
 const VERTEX_SHADER = `#version 300 es
   precision lowp float;
@@ -49,8 +52,10 @@ const VERTEX_SHADER = `#version 300 es
   in vec3 ${A_VERTEX_NORMAL};
   out vec3 ${V_POSITION};
   out vec3 ${V_NORMAL};
+  out vec3 ${V_ORIGIN};
 
   void main() {
+    ${V_ORIGIN} = ${A_VERTEX_POSIITON}.xyz;
     vec4 position = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
     ${V_POSITION} = position.xyz;
     ${V_NORMAL} = normalize(
@@ -65,14 +70,14 @@ const OUT_RESULT = 'result';
 const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
 
-  float ambientLight = 0.;
-
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
   uniform float ${U_MODEL_ATTRIBUTES};
+  uniform samplerCube ${U_VISION_TEXTURE};
 
   in vec3 ${V_POSITION};
   in vec3 ${V_NORMAL};
+  in vec3 ${V_ORIGIN};
   out vec4 ${OUT_RESULT};
 
   void main() {
@@ -91,7 +96,7 @@ const FRAGMENT_SHADER = `#version 300 es
         }
       }  
     }
-    vec3 c = vec3(l + ambientLight);
+    vec3 c = vec3(texture(${U_VISION_TEXTURE}, normalize(${V_ORIGIN})).a + .5) * l;
     ${OUT_RESULT} = vec4(pow(c, vec3(.45)), 1.);
   }
 `;
@@ -102,8 +107,6 @@ if (FLAG_SHOW_GL_ERRORS && gl == null) {
 }
 const vertexShader = loadShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
 const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-
-gl.clearColor(0, 0, 0, 1);
 
 const program = gl.createProgram();
 if (FLAG_SHOW_GL_ERRORS && program == null) {
@@ -128,14 +131,66 @@ const [
   uniformProjectionMatrix,
   uniformCameraPosition,
   uniformLightPositions,
+  uniformVisionTexure,
 ] = UNIFORMS.map(uniform => gl.getUniformLocation(program, uniform));
 
 gl.useProgram(program);
 gl.enable(gl.DEPTH_TEST);
-gl.depthFunc(gl.LESS);
 gl.enable(gl.CULL_FACE);
-gl.clearColor(0, 0, 0, 1);
-gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.clearColor(0, 0, 0, 0);
+
+const visionFramebuffer = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
+
+const [visionTexture] = new Array(2).fill(0).map((_, i) => {
+  const texture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0 + i);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+  CUBE_MAP_ROTATION_TRANSFORMS.forEach((_, j) => {
+    // gl.texImage2D(
+    //     gl.TEXTURE_CUBE_MAP_POSITIVE_X+j,
+    //     0,
+    //     gl.DEPTH_COMPONENT16,
+    //     CUBE_MAP_DIMENSION,
+    //     CUBE_MAP_DIMENSION,
+    //     0,
+    //     gl.DEPTH_COMPONENT,
+    //     gl.UNSIGNED_SHORT,
+    //     null,
+    // );
+    gl.texImage2D(
+        gl.TEXTURE_CUBE_MAP_POSITIVE_X+j,
+        0,
+        gl.RGBA,
+        CUBE_MAP_DIMENSION,
+        CUBE_MAP_DIMENSION,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null,
+    );
+    // const canvas = document.createElement('canvas');
+    // canvas.width = CUBE_MAP_DIMENSION;
+    // canvas.height = CUBE_MAP_DIMENSION;
+    // const ctx = canvas.getContext('2d');
+    // ctx.fillStyle = ['red', 'green', 'blue', 'yellow', 'cyan', 'purple'][j];
+    // ctx.fillRect(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
+    // gl.texImage2D(
+    //     gl.TEXTURE_CUBE_MAP_POSITIVE_X+j,
+    //     0,
+    //     gl.RGBA,
+    //     gl.RGBA,
+    //     gl.UNSIGNED_BYTE,
+    //     canvas,
+    // );
+  });
+  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  return texture;
+});
+
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
 
 const width = 9;
 const height = 9;
@@ -311,7 +366,6 @@ const resizeCanvas = () => {
   Z.width = innerWidth;
   Z.height = innerHeight;
   projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
-  gl.viewport(0, 0, Z.width, Z.height);
 }
 resizeCanvas();
 onresize = resizeCanvas;
@@ -340,10 +394,58 @@ const update = (now: number) => {
   worldTime += delta;
   then = now;
 
-  const playerCenter = player.position.map((v, i) => v + player.dimensions[i]/2);
+  const playerCenter = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
   previousLights.sort((a, b) => {
-    return vectorNLength(vectorNSubtract(playerCenter, a)) - vectorNLength(vectorNSubtract(playerCenter, b));
+    // a/b are vector 4, however subtract will use the first param as the length
+    return vectorNLength(vectorNSubtract(playerCenter, a as any)) - vectorNLength(vectorNSubtract(playerCenter, b as any));
   });
+
+  // generate visibility cube map
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, visionTexture);
+  gl.viewport(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
+  gl.uniform1i(uniformVisionTexure, 1);
+
+  CUBE_MAP_ROTATION_TRANSFORMS.forEach((rotationTransform, i) => {
+    // write to the cube map
+    // gl.framebufferTexture2D(
+    //     gl.FRAMEBUFFER,
+    //     gl.DEPTH_ATTACHMENT,
+    //     gl.TEXTURE_CUBE_MAP_POSITIVE_X+i,
+    //     visionTexture,
+    //     0,
+    // );
+
+    gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.COLOR_ATTACHMENT0,
+        gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+        visionTexture,
+        0,
+    );
+
+    const faceCameraTransform = matrix4Multiply(
+        CUBE_MAP_PERPSECTIVE_TRANSFORM,
+        rotationTransform,
+        // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
+        matrix4Translate(...vectorNScale(playerCenter, -1)),
+    );
+    updateAndRenderLevel(
+        faceCameraTransform,
+        playerCenter,
+        // TODO player view distance?
+        [0, 0, 0],
+        level.dimensions,
+        [],
+        // only occlude on scenery, not monsters or items
+        e => e.velocity != null,
+    );
+  });
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, Z.width, Z.height);
+  gl.uniform1i(uniformVisionTexure, 0);
 
   const targetCameraZRotation = targetCameraOrientation * Math.PI/2;  
   const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
@@ -362,9 +464,16 @@ const update = (now: number) => {
     matrix4Rotate(cameraZRotation, 0, 0, 1),
     matrix4Translate(...negatedPlayerMidPoint),
   );
+  const cameraProjectionMatrix = matrix4Multiply(projection, cameraPositionMatrix);
 
+//   const faceCameraTransform = matrix4Multiply(
+//     CUBE_MAP_PERPSECTIVE_TRANSFORM,
+//     CUBE_MAP_ROTATION_TRANSFORMS[0],
+//     // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
+//     matrix4Translate(...vectorNScale(playerCenter, -1)),
+// );
   updateAndRenderLevel(
-      matrix4Multiply(projection, cameraPositionMatrix),
+    cameraProjectionMatrix,
       cameraPosition,
       [0, 0, 0],
       level.dimensions,
@@ -797,7 +906,9 @@ function updateAndRenderLevel(
       entity => {
         // do we need to render?
         const ignoreRendering = updateEntity?.(entity);
-        const shouldRender = !ignoreRendering || entity.joints?.some(j => j.light); 
+        const predicate = (j: Joint) =>
+            j.light || j.attachedEntity && j.attachedEntity.joints?.some(predicate);
+        const shouldRender = !ignoreRendering || entity.joints?.some(predicate); 
         if (shouldRender) {
           entityIterateParts(
             (part, transform, joint) => {
