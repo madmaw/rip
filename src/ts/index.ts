@@ -81,22 +81,47 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   void main() {
-    float l =${U_MODEL_ATTRIBUTES};
-    if (l <= 0.) {
-      for (int i=0; i<${MAX_LIGHTS}; i++) {
-        if (${U_LIGHT_POSITIONS}[i].w > 0.) {
-          vec3 d = ${U_LIGHT_POSITIONS}[i].xyz - ${V_POSITION};
-          l += mix(
-                  max(0., dot(normalize(${V_NORMAL}), normalize(d))),
-                  1.,
-                  pow(max(0., (${MIN_LIGHT_THROW} - length(d))*${U_LIGHT_POSITIONS}[i].w), 2.)
-              )
-              * ${U_LIGHT_POSITIONS}[i].w
-              * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW}*${U_LIGHT_POSITIONS}[i].w - length(d))/${MAX_LIGHT_THROW}, 2.));
-        }
+    vec3 dist = ${V_POSITION} - ${U_CAMERA_POSITION};
+    vec3 dn = normalize(dist);
+    vec3 pn = normalize(
+        abs(dn.x) > abs(dn.y) && abs(dn.x) > abs(dn.z)
+            ? vec3(dn.x, 0, 0)
+            : abs(dn.y) > abs(dn.z)
+                ? vec3(0, dn.y, 0)
+                : vec3(0, 0, dn.z)
+    );
+    float d = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+        / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * texture(${U_VISION_TEXTURE}, dn).x - 1.)
+            * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
+        ) * dot(dn, pn));
+    float l = ${U_MODEL_ATTRIBUTES};
+    float n = dot(${V_NORMAL}, dn);
+    float bias = d*(1.01 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+    if (length(dist) > d + bias) {
+      l = 0.;
+    } else {
+      if (l <= 0.) {
+        for (int i=0; i<${MAX_LIGHTS}; i++) {
+          if (${U_LIGHT_POSITIONS}[i].w > 0.) {
+            vec3 d = ${U_LIGHT_POSITIONS}[i].xyz - ${V_POSITION};
+            l += mix(
+                    max(0., dot(normalize(${V_NORMAL}), normalize(d))),
+                    1.,
+                    pow(max(0., (${MIN_LIGHT_THROW} - length(d))*${U_LIGHT_POSITIONS}[i].w), 2.)
+                )
+                * ${U_LIGHT_POSITIONS}[i].w
+                * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW}*${U_LIGHT_POSITIONS}[i].w - length(d))/${MAX_LIGHT_THROW}, 2.));
+          }
+        }  
       }  
     }
-    vec3 c = vec3(texture(${U_VISION_TEXTURE}, normalize(${V_ORIGIN})).a + .5) * l;
+    // vec3 c = vec3(
+    //     length(dist) < d + bias ? 1. - d/9. : 0.,
+    //     length(dist)/9.,
+    //     length(dist) < d ? .2 : 0.
+    // );
+    //vec3 c = texture(${U_VISION_TEXTURE}, normalize(${V_ORIGIN})).xyz;
+    vec3 c = vec3(l);
     ${OUT_RESULT} = vec4(pow(c, vec3(.45)), 1.);
   }
 `;
@@ -137,38 +162,35 @@ const [
 gl.useProgram(program);
 gl.enable(gl.DEPTH_TEST);
 gl.enable(gl.CULL_FACE);
-gl.clearColor(0, 0, 0, 0);
-
-const visionFramebuffer = gl.createFramebuffer();
-gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
+gl.clearColor(0, 0, 0, 1);
 
 const [visionTexture] = new Array(2).fill(0).map((_, i) => {
   const texture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + i);
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
   CUBE_MAP_ROTATION_TRANSFORMS.forEach((_, j) => {
-    // gl.texImage2D(
-    //     gl.TEXTURE_CUBE_MAP_POSITIVE_X+j,
-    //     0,
-    //     gl.DEPTH_COMPONENT16,
-    //     CUBE_MAP_DIMENSION,
-    //     CUBE_MAP_DIMENSION,
-    //     0,
-    //     gl.DEPTH_COMPONENT,
-    //     gl.UNSIGNED_SHORT,
-    //     null,
-    // );
     gl.texImage2D(
-        gl.TEXTURE_CUBE_MAP_POSITIVE_X+j,
+        gl.TEXTURE_CUBE_MAP_POSITIVE_X + j,
         0,
-        gl.RGBA,
+        gl.DEPTH_COMPONENT16,
         CUBE_MAP_DIMENSION,
         CUBE_MAP_DIMENSION,
         0,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
+        gl.DEPTH_COMPONENT,
+        gl.UNSIGNED_SHORT,
         null,
     );
+    // gl.texImage2D(
+    //     gl.TEXTURE_CUBE_MAP_POSITIVE_X + j,
+    //     0,
+    //     gl.RGBA,
+    //     CUBE_MAP_DIMENSION,
+    //     CUBE_MAP_DIMENSION,
+    //     0,
+    //     gl.RGBA,
+    //     gl.UNSIGNED_BYTE,
+    //     null,
+    // );
     // const canvas = document.createElement('canvas');
     // canvas.width = CUBE_MAP_DIMENSION;
     // canvas.height = CUBE_MAP_DIMENSION;
@@ -184,12 +206,17 @@ const [visionTexture] = new Array(2).fill(0).map((_, i) => {
     //     canvas,
     // );
   });
-  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
   return texture;
 });
 
-gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+const visionFramebuffer = gl.createFramebuffer();
+// gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
+// gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 
 const width = 9;
@@ -365,7 +392,8 @@ let projection: Matrix4;
 const resizeCanvas = () => {
   Z.width = innerWidth;
   Z.height = innerHeight;
-  projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
+  //projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
+  projection = matrix4Multiply(matrix4Perspective(.8, Z.width/Z.height, .1, 99), baseCameraRotation);
 }
 resizeCanvas();
 onresize = resizeCanvas;
@@ -388,11 +416,13 @@ onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);
 
 let then = 0;
 let worldTime = 0;
+let updateCount = 0;
 let previousLights: Vector4[] = [];
 const update = (now: number) => {
   const delta = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
   worldTime += delta;
   then = now;
+  updateCount++;
 
   const playerCenter = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
   previousLights.sort((a, b) => {
@@ -407,41 +437,44 @@ const update = (now: number) => {
   gl.viewport(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
   gl.uniform1i(uniformVisionTexure, 1);
 
-  CUBE_MAP_ROTATION_TRANSFORMS.forEach((rotationTransform, i) => {
-    // write to the cube map
-    // gl.framebufferTexture2D(
-    //     gl.FRAMEBUFFER,
-    //     gl.DEPTH_ATTACHMENT,
-    //     gl.TEXTURE_CUBE_MAP_POSITIVE_X+i,
-    //     visionTexture,
-    //     0,
-    // );
+  if (updateCount % 6 == 0) {
+    CUBE_MAP_ROTATION_TRANSFORMS.forEach((rotationTransform, i) => {
+      // write to the cube map
+      gl.framebufferTexture2D(
+          gl.FRAMEBUFFER,
+          gl.DEPTH_ATTACHMENT,
+          gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+          visionTexture,
+          0,
+      );
+  
+      // gl.framebufferTexture2D(
+      //     gl.FRAMEBUFFER,
+      //     gl.COLOR_ATTACHMENT0,
+      //     gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+      //     visionTexture,
+      //     0,
+      // );
+  
+      const faceCameraTransform = matrix4Multiply(
+          CUBE_MAP_PERPSECTIVE_TRANSFORM,
+          rotationTransform,
+          // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
+          matrix4Translate(...vectorNScale(playerCenter, -1)),
+      );
+      updateAndRenderLevel(
+          faceCameraTransform,
+          playerCenter,
+          // TODO player view distance?
+          [0, 0, 0],
+          level.dimensions,
+          [],
+          // only occlude on scenery, not monsters or items
+          e => e.velocity != null,
+      );
+    });
+  }
 
-    gl.framebufferTexture2D(
-        gl.FRAMEBUFFER,
-        gl.COLOR_ATTACHMENT0,
-        gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
-        visionTexture,
-        0,
-    );
-
-    const faceCameraTransform = matrix4Multiply(
-        CUBE_MAP_PERPSECTIVE_TRANSFORM,
-        rotationTransform,
-        // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
-        matrix4Translate(...vectorNScale(playerCenter, -1)),
-    );
-    updateAndRenderLevel(
-        faceCameraTransform,
-        playerCenter,
-        // TODO player view distance?
-        [0, 0, 0],
-        level.dimensions,
-        [],
-        // only occlude on scenery, not monsters or items
-        e => e.velocity != null,
-    );
-  });
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, Z.width, Z.height);
@@ -473,8 +506,8 @@ const update = (now: number) => {
 //     matrix4Translate(...vectorNScale(playerCenter, -1)),
 // );
   updateAndRenderLevel(
-    cameraProjectionMatrix,
-      cameraPosition,
+      cameraProjectionMatrix,
+      playerMidPoint,
       [0, 0, 0],
       level.dimensions,
       previousLights,
