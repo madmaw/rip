@@ -1,6 +1,7 @@
 ///<reference path="bodies/clubs.ts"/>
 ///<reference path="bodies/steps.ts"/>
 ///<reference path="bodies/skeleton.ts"/>
+///<reference path="bodies/torch.ts"/>
 ///<reference path="bodies/wall.ts"/>
 ///<reference path="level/entity.ts"/>
 ///<reference path="level/level.ts"/>
@@ -27,7 +28,7 @@ const U_MODEL_ATTRIBUTES = 'uModelAttributes';
 const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
 const U_LIGHT_POSITIONS = 'uLightPositions';
-const U_VISION_TEXTURE = 'uVisionTexture';
+const U_LIGHT_TEXTURES = 'uLightTextures';
 
 const UNIFORMS = [
   U_MODEL_VIEW_MATRIX,
@@ -35,7 +36,7 @@ const UNIFORMS = [
   U_PROJECTION_MATRIX,
   U_CAMERA_POSITION,
   U_LIGHT_POSITIONS,
-  U_VISION_TEXTURE,
+  U_LIGHT_TEXTURES,
 ];
 
 const V_POSITION = 'vPosition';
@@ -73,7 +74,7 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
   uniform float ${U_MODEL_ATTRIBUTES};
-  uniform samplerCube ${U_VISION_TEXTURE};
+  uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
 
   in vec3 ${V_POSITION};
   in vec3 ${V_NORMAL};
@@ -81,52 +82,60 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   void main() {
-    vec3 dist = ${V_POSITION} - ${U_CAMERA_POSITION};
-    vec3 dn = normalize(dist);
-    vec3 pn = normalize(
-        abs(dn.x) > abs(dn.y) && abs(dn.x) > abs(dn.z)
-            ? vec3(dn.x, 0, 0)
-            : abs(dn.y) > abs(dn.z)
-                ? vec3(0, dn.y, 0)
-                : vec3(0, 0, dn.z)
-    );
-    float d = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
-        / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * texture(${U_VISION_TEXTURE}, dn).x - 1.)
-            * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
-        ) * dot(dn, pn));
+
     float l = ${U_MODEL_ATTRIBUTES};
-    float n = dot(${V_NORMAL}, dn);
-    float bias = d*(1.01 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
-    if (length(dist) > d + bias) {
-      l = 0.;
-    } else {
-      if (l <= 0.) {
-        for (int i=0; i<${MAX_LIGHTS}; i++) {
-          if (${U_LIGHT_POSITIONS}[i].w > 0.) {
-            vec3 d = ${U_LIGHT_POSITIONS}[i].xyz - ${V_POSITION};
-            l += mix(
-                    max(0., dot(normalize(${V_NORMAL}), normalize(d))),
-                    1.,
-                    pow(max(0., (${MIN_LIGHT_THROW} - length(d))*${U_LIGHT_POSITIONS}[i].w), 2.)
-                )
-                * ${U_LIGHT_POSITIONS}[i].w
-                * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW}*${U_LIGHT_POSITIONS}[i].w - length(d))/${MAX_LIGHT_THROW}, 2.));
-          }
-        }  
-      }  
+    for (int i = ${MAX_LIGHTS}; i > 0;) {
+      i--;
+      if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
+        vec3 delta = ${V_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
+        vec3 deltan = normalize(delta);
+        vec3 pn = normalize(
+            abs(deltan.x) > abs(deltan.y) && abs(deltan.x) > abs(deltan.z)
+                ? vec3(deltan.x, 0, 0)
+                : abs(deltan.y) > abs(deltan.z)
+                    ? vec3(0, deltan.y, 0)
+                    : vec3(0, 0, deltan.z)
+        );
+        float n = dot(normalize(${V_NORMAL}), deltan);
+        // cannot index into samplers!
+        vec4 tex = i == 0
+            ? texture(${U_LIGHT_TEXTURES}[0], deltan)
+            : i == 1
+                ? texture(${U_LIGHT_TEXTURES}[1], deltan)
+                : i == 2
+                    ? texture(${U_LIGHT_TEXTURES}[2], deltan)
+                    : texture(${U_LIGHT_TEXTURES}[3], deltan);
+        // vec4 tex = texture(${U_LIGHT_TEXTURES}[0], deltan);
+    
+        float d = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+            / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * tex.x - 1.)
+                * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
+            ) * dot(deltan, pn));
+        float bias = d*(1.01 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+        if (length(delta) < d + bias && n < 0. || length(delta) < d) {
+          l += mix(
+                  max(0., -n),
+                  1.,
+                  pow(max(0., (${MIN_LIGHT_THROW} - length(delta))*${U_LIGHT_POSITIONS}[i].w), 2.)
+              )
+              * ${U_LIGHT_POSITIONS}[i].w
+              * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW}, 2.));
+        } else if (i == 0) {
+          l = 0.;
+        }
+      }
     }
     // vec3 c = vec3(
     //     length(dist) < d + bias ? 1. - d/9. : 0.,
     //     length(dist)/9.,
     //     length(dist) < d ? .2 : 0.
     // );
-    //vec3 c = texture(${U_VISION_TEXTURE}, normalize(${V_ORIGIN})).xyz;
     vec3 c = vec3(l);
     ${OUT_RESULT} = vec4(pow(c, vec3(.45)), 1.);
   }
 `;
 
-const gl = Z.getContext('webgl2');
+const gl = Z.getContext('webgl2'/* , {antialias: false}*/);
 if (FLAG_SHOW_GL_ERRORS && gl == null) {
   throw new Error('no webgl2');
 }
@@ -156,7 +165,7 @@ const [
   uniformProjectionMatrix,
   uniformCameraPosition,
   uniformLightPositions,
-  uniformVisionTexure,
+  uniformLightTexures,
 ] = UNIFORMS.map(uniform => gl.getUniformLocation(program, uniform));
 
 gl.useProgram(program);
@@ -164,7 +173,7 @@ gl.enable(gl.DEPTH_TEST);
 gl.enable(gl.CULL_FACE);
 gl.clearColor(0, 0, 0, 1);
 
-const [visionTexture] = new Array(2).fill(0).map((_, i) => {
+const [fakeTexture, ...lightTextures] = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
   const texture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + i);
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
@@ -238,6 +247,8 @@ const shapes = [
   SHAPE_SKELETON_FEMUR,
   SHAPE_SKELETON_SHIN,
   ...SHAPES_CLUBS,
+  SHAPE_TORCH_HANDLE,
+  SHAPE_TORCH_HEAD,
 ];
 const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
   const [positions, normals, indices] = shape.reduce<[Vector3[], Vector3[], number[]]>(
@@ -365,6 +376,23 @@ const clubs = PARTS_CLUBS.slice(0, 1).map((clubBody, i) => {
 });
 clubs.map(club => levelAddEntity(level, club));
 
+// torch
+const torch: Entity<TorchPartId> = {
+  id: id++,
+  body: PART_TORCH,
+  position: [.5, .5, 1.1],
+  dimensions: [TORCH_HANDLE_WIDTH + TORCH_HEAD_WIDTH, TORCH_HANDLE_WIDTH, TORCH_HANDLE_WIDTH],
+  collisionGroup: COLLISION_GROUP_ITEM,
+  collisionMask: COLLISION_GROUP_WALL,
+  rotation: [0, 0, 0],
+  velocity: [0, 0, 0],
+  joints: [{
+    rotation: [0, 0, 0],
+    light: .4,
+  }]
+};
+levelAddEntity(level, torch);
+
 // and a player
 const player: Entity<SkeletonPartId> = {
   id: id++,
@@ -381,19 +409,25 @@ const player: Entity<SkeletonPartId> = {
     rotation: [...rotation],
   }))  
 };
-player.joints[SKELETON_PART_ID_HEAD].light = .3;
+//player.joints[SKELETON_PART_ID_HEAD].light = .3;
 // player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
-let cameraOffset = 3;
+let cameraOffset = 2;
 let cameraOffsetTransform: Matrix4;
 let projection: Matrix4;
 const resizeCanvas = () => {
-  Z.width = innerWidth;
-  Z.height = innerHeight;
+  const aspectRatio = innerWidth / innerHeight;
+  if (!TARGET_HORIZONTAL_RESOLUTION || !TARGET_VERTICAL_RESOLUTION) {
+    Z.width = innerWidth;
+    Z.height = innerHeight;  
+  } else {
+    Z.width = Math.max(TARGET_HORIZONTAL_RESOLUTION, TARGET_VERTICAL_RESOLUTION * aspectRatio)
+    Z.height = Math.max(TARGET_VERTICAL_RESOLUTION, TARGET_HORIZONTAL_RESOLUTION / aspectRatio);
+  }
   //projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
-  projection = matrix4Multiply(matrix4Perspective(.8, Z.width/Z.height, .1, 99), baseCameraRotation);
+  projection = matrix4Multiply(matrix4Perspective(.8, aspectRatio, .1, 99), baseCameraRotation);
 }
 resizeCanvas();
 onresize = resizeCanvas;
@@ -418,33 +452,43 @@ let then = 0;
 let worldTime = 0;
 let updateCount = 0;
 let previousLights: Vector4[] = [];
+
 const update = (now: number) => {
   const delta = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
   worldTime += delta;
   then = now;
   updateCount++;
 
-  const playerCenter = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
-  previousLights.sort((a, b) => {
-    // a/b are vector 4, however subtract will use the first param as the length
-    return vectorNLength(vectorNSubtract(playerCenter, a as any)) - vectorNLength(vectorNSubtract(playerCenter, b as any));
-  });
+  if (FLAG_SHOW_FPS && fps) {
+    fps.innerText = `${Math.floor(updateCount*1000/worldTime)} FPS`;
+  }
 
-  // generate visibility cube map
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, visionTexture);
-  gl.viewport(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
-  gl.uniform1i(uniformVisionTexure, 1);
+  const playerMidPoint = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
+  // sort from furthest to closest
+  previousLights
+      .sort((a, b) => {
+        // a/b are vector 4, however subtract will use the first param as the length
+        return vectorNLength(vectorNSubtract(playerMidPoint, a as any)) - vectorNLength(vectorNSubtract(playerMidPoint, b as any));
+      });
 
-  if (updateCount % 6 == 0) {
+
+  if (previousLights.length > 0) {
+    const targetLightTextureIndex = updateCount % previousLights.length;
+    // generate light cube map
+    gl.activeTexture(gl.TEXTURE1 + targetLightTextureIndex);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lightTextures[0]);
+    gl.viewport(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
+    // set lights to empty texture
+    gl.uniform1iv(uniformLightTexures, CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES);
+
     CUBE_MAP_ROTATION_TRANSFORMS.forEach((rotationTransform, i) => {
       // write to the cube map
       gl.framebufferTexture2D(
           gl.FRAMEBUFFER,
           gl.DEPTH_ATTACHMENT,
           gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
-          visionTexture,
+          lightTextures[targetLightTextureIndex],
           0,
       );
   
@@ -459,12 +503,13 @@ const update = (now: number) => {
       const faceCameraTransform = matrix4Multiply(
           CUBE_MAP_PERPSECTIVE_TRANSFORM,
           rotationTransform,
-          // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
-          matrix4Translate(...vectorNScale(playerCenter, -1)),
+          matrix4Translate(...vectorNScale(
+              previousLights[targetLightTextureIndex].slice(0, 3) as Vector3, -1),
+          ),
       );
       updateAndRenderLevel(
           faceCameraTransform,
-          playerCenter,
+          playerMidPoint,
           // TODO player view distance?
           [0, 0, 0],
           level.dimensions,
@@ -478,13 +523,13 @@ const update = (now: number) => {
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, Z.width, Z.height);
-  gl.uniform1i(uniformVisionTexure, 0);
+  // TODO this will probably need to be dynamically generated
+  gl.uniform1iv(uniformLightTexures, CUBE_MAP_LIGHT_TEXTURE_INDICES);
 
   const targetCameraZRotation = targetCameraOrientation * Math.PI/2;  
   const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
   cameraZRotation += cameraZDelta * delta / 100;
   const cameraRotation = matrix4Rotate(cameraZRotation, 0, 0, 1);
-  const playerMidPoint = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
   const negatedPlayerMidPoint = vectorNScale(playerMidPoint, -1);
   const cameraPositionMatrix = matrix4Multiply(
       cameraOffsetTransform,
@@ -507,7 +552,7 @@ const update = (now: number) => {
 // );
   updateAndRenderLevel(
       cameraProjectionMatrix,
-      playerMidPoint,
+      cameraPosition,
       [0, 0, 0],
       level.dimensions,
       previousLights,
@@ -927,8 +972,8 @@ function updateAndRenderLevel(
       uniformLightPositions,
       lights
           .slice(0, MAX_LIGHTS)
-          .concat(...new Array(Math.max(0, MAX_LIGHTS - previousLights.length)).fill([0, 0, 0, 0]))
-          .flat(),
+          .flat()
+          .concat(...new Array(Math.max(0, MAX_LIGHTS - lights.length) * 4).fill(0)),
   );
   lights.splice(0, lights.length);  
 

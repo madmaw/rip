@@ -16,3 +16,5 @@ const MODEL_CLUB_2 = 14;
 const MODEL_CLUB_3 = 15;
 const MODEL_CLUB_4 = 16;
 const MODEL_CLUB_5 = 17;
+const MODEL_TORCH_HANDLE = 18;
+const MODEL_TORCH_HEAD = 19;

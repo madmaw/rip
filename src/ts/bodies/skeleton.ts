@@ -88,7 +88,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   ],
   anims: {
     [ACTION_ID_IDLE]: {
-      maxSpeed: .0001,
+      maxSpeed: .0006,
       sequences: [{
         [SKELETON_PART_ID_HIPS]: [[
           [0, 0, 0],
