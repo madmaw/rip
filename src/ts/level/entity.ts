@@ -145,12 +145,12 @@ type Joint = {
 };
 
 const entityIterateParts = <T extends number>(
-  f: (part: Part<T>, transform: Matrix4, joint?: Joint) => void,
+  f: (entity: Entity, part: Part<T>, transform: Matrix4, joint?: Joint) => void,
+  entity: Entity,
   part: Part<T>,
-  joints?: Record<T, Joint>,
   inheritedTransform?: Matrix4 | Falsey,
 ) => {
-  const joint = joints?.[part.id];
+  const joint = entity.joints?.[part.id];
   let rotationTransform = joint && matrix4RotateInOrder(...joint.rotation);
   const transform = matrix4Multiply(
       inheritedTransform,
@@ -158,15 +158,15 @@ const entityIterateParts = <T extends number>(
       rotationTransform,
       part.postRotationTransform,
   );
-  f(part, transform, joint)
+  f(entity, part, transform, joint)
   part.children?.forEach(child => {
-    entityIterateParts(f, child, joints, transform);
+    entityIterateParts(f, entity, child, transform);
   });
   if (joint?.attachedEntity) {
     entityIterateParts(
         f,
+        joint.attachedEntity,
         joint.attachedEntity.body,
-        joint.attachedEntity.joints,
         matrix4Multiply(
             transform,
             part.jointAttachmentHolderTransform,
