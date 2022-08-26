@@ -21,8 +21,8 @@ const vector2Rotate = (a: number, [x, y]: Vector2): Vector2 => {
   ];
 }
 
-const vector3TransformMatrix4 = (m: Matrix4, x: number, y: number, z: number): Vector3 => 
-    vector4TransformMatrix4(m, x, y, z).slice(0, 3) as Vector3;
+const vector3TransformMatrix4 = (m: Matrix4 | Falsey, x: number, y: number, z: number): Vector3 => 
+    m && vector4TransformMatrix4(m, x, y, z).slice(0, 3) as Vector3 || [x, y, z];
 
 const vector4TransformMatrix4 = (m: Matrix4, x: number, y: number, z: number): Vector4 => {
   let w = (m[3] * x + m[7] * y + m[11] * z + m[15]) || 1.;

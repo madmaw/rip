@@ -60,7 +60,7 @@ const planesCube = (
   ];
 };
 
-const planeFromPointAndNormal = (p: Vector3, n: Vector3, d: number): Plane => {
+const planeFromPointAndNormal = (p: Vector3, n: Vector3, d: number = 0): Plane => {
   const point = p.map((v, i) => v + n[i] * d) as Vector3;
   const cosAngle = vectorNDotProduct(VECTOR3_UP, n);
   const axis = Math.abs(cosAngle) < ONE_MINUS_EPSILON

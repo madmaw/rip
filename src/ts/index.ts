@@ -8,6 +8,7 @@
 ///<reference path="math/math.ts"/>
 ///<reference path="math/matrix.ts"/>
 ///<reference path="math/shape.ts"/>
+///<reference path="textures/textures.ts"/>
 ///<reference path="util/arrays.ts"/>
 ///<reference path="constants.ts"/>
 ///<reference path="flags.ts"/>
@@ -29,6 +30,8 @@ const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
 const U_LIGHT_POSITIONS = 'uLightPositions';
 const U_LIGHT_TEXTURES = 'uLightTextures';
+const U_TEXTURE_COLORS = 'uTextureColors';
+const U_TEXTURE_NORMALS = 'uTextureNormals';
 
 const UNIFORMS = [
   U_MODEL_VIEW_MATRIX,
@@ -37,6 +40,8 @@ const UNIFORMS = [
   U_CAMERA_POSITION,
   U_LIGHT_POSITIONS,
   U_LIGHT_TEXTURES,
+  U_TEXTURE_COLORS,
+  U_TEXTURE_NORMALS,
 ];
 
 const V_POSITION = 'vPosition';
@@ -70,11 +75,14 @@ const OUT_RESULT = 'result';
 
 const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
+  precision lowp sampler3D;
 
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
   uniform float ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
+  uniform sampler3D ${U_TEXTURE_COLORS};
+  uniform sampler3D ${U_TEXTURE_NORMALS};
 
   in vec3 ${V_POSITION};
   in vec3 ${V_NORMAL};
@@ -125,13 +133,9 @@ const FRAGMENT_SHADER = `#version 300 es
         }
       }
     }
-    // vec3 c = vec3(
-    //     length(dist) < d + bias ? 1. - d/9. : 0.,
-    //     length(dist)/9.,
-    //     length(dist) < d ? .2 : 0.
-    // );
-    vec3 c = vec3(l);
-    ${OUT_RESULT} = vec4(pow(c, vec3(.45)), 1.);
+    vec4 c = texture(${U_TEXTURE_COLORS}, ${V_ORIGIN} + 1. / 2.);
+    vec4 n = texture(${U_TEXTURE_NORMALS}, ${V_ORIGIN} + 1. / 2.);
+    ${OUT_RESULT} = vec4(pow(c.xyz * l, vec3(.45)), n.w);
   }
 `;
 
@@ -166,6 +170,8 @@ const [
   uniformCameraPosition,
   uniformLightPositions,
   uniformLightTexures,
+  uniformTextureColors,
+  uniformTextureNormals,
 ] = UNIFORMS.map(uniform => gl.getUniformLocation(program, uniform));
 
 gl.useProgram(program);
@@ -173,6 +179,44 @@ gl.enable(gl.DEPTH_TEST);
 gl.enable(gl.CULL_FACE);
 gl.clearColor(0, 0, 0, 1);
 
+// create the color/normal textures
+const textureData = texture3D.flat(2);
+const [colorTexture, normalTexture] = [uniformTextureColors, uniformTextureNormals].map((uniform, i) => {
+  const data = textureData.flatMap(v => v[i]);
+  const texture = gl.createTexture();
+  const textureIndex = TEXTURE_COLOR_INDEX + i;
+  gl.activeTexture(gl.TEXTURE0 + textureIndex);
+  gl.bindTexture(gl.TEXTURE_3D, texture);
+  // TODO how much of this can we get away without?
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_BASE_LEVEL, 0);
+  // TODO hard code log2 result
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAX_LEVEL, Math.log2(TEXTURE_SIZE));
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);  
+  }
+
+  gl.texImage3D(
+      gl.TEXTURE_3D,
+      0,
+      gl.RGBA,
+      TEXTURE_SIZE,
+      TEXTURE_SIZE,
+      TEXTURE_SIZE,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array(data),
+  )
+  gl.generateMipmap(gl.TEXTURE_3D);
+
+  gl.uniform1i(uniform, textureIndex);
+});
+
+// create the lighting textures
 const cubeTextures = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
   const texture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + i);
@@ -224,15 +268,12 @@ const cubeTextures = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
 });
 
 const visionFramebuffer = gl.createFramebuffer();
-// gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
-// gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
 
 const width = 9;
 const height = 9;
 const depth = 9;
 const dimensions: Vector3 = [width, height, depth];
-const tiles: Tile[][][] = array3New(...dimensions, () => ({}))
+const tiles: Tile[][][] = array3New(...dimensions, () => ({}));
 
 let playerRotation = 0;
 
