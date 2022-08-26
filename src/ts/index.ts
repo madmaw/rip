@@ -25,6 +25,8 @@ const ATTRIBUTES = [
 ];
 
 const U_MODEL_VIEW_MATRIX = 'uModelViewMatrix';
+// inverting in the shader has performance issues
+const U_MODEL_VIEW_MATRIX_INVERSE = 'uModelViewMatrixInverse';
 const U_MODEL_ATTRIBUTES = 'uModelAttributes';
 const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
@@ -35,6 +37,7 @@ const U_TEXTURE_NORMALS = 'uTextureNormals';
 
 const UNIFORMS = [
   U_MODEL_VIEW_MATRIX,
+  U_MODEL_VIEW_MATRIX_INVERSE,
   U_MODEL_ATTRIBUTES,
   U_PROJECTION_MATRIX,
   U_CAMERA_POSITION,
@@ -77,6 +80,8 @@ const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
   precision lowp sampler3D;
 
+  uniform mat4 ${U_MODEL_VIEW_MATRIX};
+  uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
   uniform float ${U_MODEL_ATTRIBUTES};
@@ -90,12 +95,52 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   void main() {
+    vec3 cameraDelta = ${V_POSITION} - ${U_CAMERA_POSITION};
+    vec3 textureCameraNormal = normalize(
+        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(cameraDelta, 1.) -
+        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
+    ).xyz;
+    float textureDelta = 0.;
+    vec3 texturePosition = ${V_ORIGIN};
+    vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
+    //float textureStepSize = ${TEXTURE_STEP_DELTA} / -dot(normalize(cameraDelta), normalize(${V_NORMAL}));
+    float textureStepSize = ${TEXTURE_STEP_DELTA};
+    for (int i=0; i<${TEXTURE_LOOP_STEPS} && textureNormal.w < 1.; i++) {
+      textureDelta += textureStepSize;
+      texturePosition = ${V_ORIGIN} + textureCameraNormal * textureDelta;
+      textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
+    }
+    if (
+        textureNormal.w < .9
+        || abs(texturePosition.x) > .5
+        || abs(texturePosition.y) > .5
+        || abs(texturePosition.z) > .5
+    ) {
+      discard;
+    }
+    vec3 normal = normalize(
+        textureDelta > 0.
+            ? (
+                ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.) -
+                ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+            ).xyz
+            : ${V_NORMAL}
+    );
+    float textureDepth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
+    vec4 color = texture(${U_TEXTURE_COLORS}, texturePosition + .5);
+    //color = vec4((normal + 1.) / 2., length(normal));
+    vec3 position = (${U_MODEL_VIEW_MATRIX} * vec4(texturePosition, 1.)).xyz;
+    //position = ${V_POSITION};
+    //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_ORIGIN}, 1.)).xyz;
+    //color = vec4(position / 3., 1.);
+    //color = vec4(vec3(position.x), 1.);
+    //color = vec4(texturePosition + .5, 0.);
 
-    float l = ${U_MODEL_ATTRIBUTES};
+    float l = ${U_MODEL_ATTRIBUTES} + color.w;
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        vec3 delta = ${V_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
+        vec3 delta = position - ${U_LIGHT_POSITIONS}[i].xyz;
         vec3 deltan = normalize(delta);
         vec3 pn = normalize(
             abs(deltan.x) > abs(deltan.y) && abs(deltan.x) > abs(deltan.z)
@@ -104,7 +149,8 @@ const FRAGMENT_SHADER = `#version 300 es
                     ? vec3(0, deltan.y, 0)
                     : vec3(0, 0, deltan.z)
         );
-        float n = dot(normalize(${V_NORMAL}), deltan);
+        float n = dot(normal, deltan);
+        //color = vec4(vec3(length(delta)/4.), 1.);
         // cannot index into samplers!
         vec4 tex = i == 0
             ? texture(${U_LIGHT_TEXTURES}[0], deltan)
@@ -118,7 +164,9 @@ const FRAGMENT_SHADER = `#version 300 es
         float d = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
             / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * tex.x - 1.)
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
-            ) * dot(deltan, pn));
+            ) * dot(deltan, pn))
+            // ensure bumps are not in own shadow
+            + textureDepth / dot(normalize(${V_NORMAL}), deltan);
         float bias = d*(1.01 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
           l += mix(
@@ -129,13 +177,11 @@ const FRAGMENT_SHADER = `#version 300 es
               * ${U_LIGHT_POSITIONS}[i].w
               * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
         } else if (i == 0) {
-          l = 0.;
+          //l = 0.;
         }
       }
     }
-    vec4 c = texture(${U_TEXTURE_COLORS}, ${V_ORIGIN} + 1. / 2.);
-    vec4 n = texture(${U_TEXTURE_NORMALS}, ${V_ORIGIN} + 1. / 2.);
-    ${OUT_RESULT} = vec4(pow(c.xyz * l, vec3(.45)), n.w);
+    ${OUT_RESULT} = vec4(pow(color.xyz * l, vec3(.45)), 1.);
   }
 `;
 
@@ -165,6 +211,7 @@ const [
 
 const [
   uniformModelViewMatrix,
+  uniformModelViewMatrixInverse,
   uniformModelAttributes,
   uniformProjectionMatrix,
   uniformCameraPosition,
@@ -191,8 +238,12 @@ const [colorTexture, normalTexture] = [uniformTextureColors, uniformTextureNorma
   gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_BASE_LEVEL, 0);
   // TODO hard code log2 result
   gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAX_LEVEL, Math.log2(TEXTURE_SIZE));
-  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  // defaults
+  // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+  // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
   if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -1101,6 +1152,8 @@ function updateAndRenderLevel(
               if (!ignoreRendering) {
                 const [vao, count] = models[part.modelId];
                 gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
+                // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
+                gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, matrix4Invert(transform) || matrix4Identity());
                 gl.uniform1f(uniformModelAttributes, joint?.light || 0);
                 gl.bindVertexArray(vao);
                 gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);

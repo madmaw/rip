@@ -48,7 +48,7 @@ const createShapedTextureNormalFactory = (
             && d > 0
             && (!acc || acc[0] > d)
         ) {
-          acc = [d, vectorNScale(normal, -1)];
+          acc = [d, normal];
         }
         return acc;
       }, 0);
@@ -65,8 +65,9 @@ const createShapedTextureNormalFactory = (
                   ? 0
                   : acc;
     }, 0);
+    
     return result
-        ? [...(result[1]).map(v => (v + 1) * 127 | 0) as Vector3, 255]
+        ? [...(result[1]).map(v => (1 - v) * 127.5 | 0) as Vector3, 255]
         : [0, 0, 0, 0];
   };
 };
