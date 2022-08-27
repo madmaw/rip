@@ -103,37 +103,56 @@ const FRAGMENT_SHADER = `#version 300 es
     float textureDelta = 0.;
     vec3 texturePosition = ${V_ORIGIN};
     vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
-    //float textureStepSize = ${TEXTURE_STEP_DELTA} / -dot(normalize(cameraDelta), normalize(${V_NORMAL}));
-    float textureStepSize = ${TEXTURE_STEP_DELTA};
-    for (int i=0; i<${TEXTURE_LOOP_STEPS} && textureNormal.w < 1.; i++) {
-      textureDelta += textureStepSize;
+    vec3 normal = normalize(${V_NORMAL});
+    bool foundTexture = false;
+    if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      textureDelta = 1.;
+      float minTextureDelta = 0.;
+      for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
+        //float test = (textureDelta + minTextureDelta)/2.;
+        float test = foundTexture
+            ? (textureDelta + minTextureDelta)/2.
+            : textureDelta - .1;
+        texturePosition = ${V_ORIGIN} + textureCameraNormal * test;
+        textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
+        if (
+            textureNormal.w > ${TEXTURE_ALPHA_THRESHOLD}
+            || abs(texturePosition.x) > .5
+            || abs(texturePosition.y) > .5
+            || abs(texturePosition.z) > .5
+            || !foundTexture
+        ) {
+          textureDelta = test;
+        } else {
+          minTextureDelta = test;
+        }
+        if (textureNormal.w > ${TEXTURE_ALPHA_THRESHOLD}) {
+          foundTexture = true;
+        }
+      }
       texturePosition = ${V_ORIGIN} + textureCameraNormal * textureDelta;
       textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
+      // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      //   discard;
+      // }
+      normal = normalize((
+          ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.) -
+          ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+      )).xyz;
     }
-    if (
-        textureNormal.w < .9
-        || abs(texturePosition.x) > .5
-        || abs(texturePosition.y) > .5
-        || abs(texturePosition.z) > .5
-    ) {
-      discard;
-    }
-    vec3 normal = normalize(
-        textureDelta > 0.
-            ? (
-                ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.) -
-                ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
-            ).xyz
-            : ${V_NORMAL}
-    );
+
     float textureDepth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
     vec4 color = texture(${U_TEXTURE_COLORS}, texturePosition + .5);
+    if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      color = vec4(vec3(1., 0., 0.), 1.);
+    }
+
     //color = vec4((normal + 1.) / 2., length(normal));
     vec3 position = (${U_MODEL_VIEW_MATRIX} * vec4(texturePosition, 1.)).xyz;
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_ORIGIN}, 1.)).xyz;
     //color = vec4(position / 3., 1.);
-    //color = vec4(vec3(position.x), 1.);
+    //color = vec4(vec3(.5 + textureDelta * 2.), 1.);
     //color = vec4(texturePosition + .5, 0.);
 
     float l = ${U_MODEL_ATTRIBUTES} + color.w;
@@ -165,9 +184,9 @@ const FRAGMENT_SHADER = `#version 300 es
             / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * tex.x - 1.)
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
-            // ensure bumps are not in own shadow
+            // ensure bumps are not in shadow
             + textureDepth / dot(normalize(${V_NORMAL}), deltan);
-        float bias = d*(1.01 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+        float bias = d*(1.1 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
           l += mix(
                   max(0., -n),
@@ -177,7 +196,7 @@ const FRAGMENT_SHADER = `#version 300 es
               * ${U_LIGHT_POSITIONS}[i].w
               * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
         } else if (i == 0) {
-          //l = 0.;
+          l = 0.;
         }
       }
     }
@@ -224,7 +243,7 @@ const [
 gl.useProgram(program);
 gl.enable(gl.DEPTH_TEST);
 gl.enable(gl.CULL_FACE);
-gl.clearColor(0, 0, 0, 1);
+gl.clearColor(1, 1, 1, 1);
 
 // create the color/normal textures
 const textureData = texture3D.flat(2);
@@ -241,8 +260,10 @@ const [colorTexture, normalTexture] = [uniformTextureColors, uniformTextureNorma
   // defaults
   // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
   // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  if (FLAG_TEXTURE_SCALE_NEAREST) {
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  
+  }
 
   if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);

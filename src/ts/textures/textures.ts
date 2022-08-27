@@ -6,12 +6,12 @@
 
 const redTextureFactory = createSolidTextureColorFactory([255, 0, 0, 1]);
 const blueTextureFactory = createSolidTextureColorFactory([128, 128, 255, 1]);
-const checkeredTextureFactory = createCheckeredTextureFactory([128, 128, 180, 1], [255, 255, 255, 1], 4);
+const checkeredTextureFactory = createCheckeredTextureFactory([128, 128, 180, 1], [255, 255, 255, 1], 8);
 const gradientTextureFactory = createLinearGradientTextureFactory(
-    [255, 0, 0, 1],
-    [0, 0, -.5],
+    [0, 0, 255, 1],
+    [-.5, -.5, 0],
     [0, 255, 0, 1],
-    [0, 0, .5],
+    [.5, .5, .0],
 )
 
 const shapedTextureNormalFactory = createShapedTextureNormalFactory([{
@@ -19,8 +19,12 @@ const shapedTextureNormalFactory = createShapedTextureNormalFactory([{
   //transform: matrix4Translate(0, 0, 0),
   type: SHAPED_RULE_TYPE_ADDITION,
 }, {
-  shape: shapeFromPlanes(planesCube(.5, .5, .3)),
+  shape: shapeFromPlanes(planesCube(.4, .4, .2)),
   transform: matrix4Translate(0, 0, .5),
+  type: SHAPED_RULE_TYPE_SUBTRACTION,
+}, {
+  shape: shapeFromPlanes(planesCube(.2, .4, .4)),
+  transform: matrix4Translate(-.5, 0, 0),
   type: SHAPED_RULE_TYPE_SUBTRACTION,
 }]);
 
