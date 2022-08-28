@@ -15,10 +15,10 @@ body::after {
   left: 0;
   bottom: 0;
   right: 0;
-  background:
+  /* background:
       linear-gradient(rgba(9, 9, 9, 0) 50%, rgba(0, 0, 0, .2) 50%),
       linear-gradient(90deg, rgba(255, 0, 0, .1), rgba(0, 255, 0, .05), rgba(0, 0, 255, .1));
   background-size:
       100% 4px,
-      6px 100%;
+      6px 100%; */
 }

@@ -18,10 +18,12 @@
 
 const A_VERTEX_POSIITON = 'aVertexPosition';
 const A_VERTEX_NORMAL = 'aVertexNormal';
+const A_TEXTURE_POSITION = 'aTexturePosition';
 
 const ATTRIBUTES = [
   A_VERTEX_POSIITON,
   A_VERTEX_NORMAL,
+  A_TEXTURE_POSITION,
 ];
 
 const U_MODEL_VIEW_MATRIX = 'uModelViewMatrix';
@@ -49,7 +51,8 @@ const UNIFORMS = [
 
 const V_POSITION = 'vPosition';
 const V_NORMAL = 'vNormal';
-const V_ORIGIN = 'vOrigin';
+const V_MODEL_POSITION = 'vModelPosition';
+const V_TEXTURE_POSITION = 'vTextureCoords';
 
 const VERTEX_SHADER = `#version 300 es
   precision lowp float;
@@ -59,16 +62,20 @@ const VERTEX_SHADER = `#version 300 es
 
   in vec4 ${A_VERTEX_POSIITON};
   in vec3 ${A_VERTEX_NORMAL};
+  in vec3 ${A_TEXTURE_POSITION};
   out vec3 ${V_POSITION};
+  out vec3 ${V_MODEL_POSITION};
   out vec3 ${V_NORMAL};
-  out vec3 ${V_ORIGIN};
+  out vec3 ${V_TEXTURE_POSITION};
 
   void main() {
-    ${V_ORIGIN} = ${A_VERTEX_POSIITON}.xyz;
+    ${V_MODEL_POSITION} = ${A_VERTEX_POSIITON}.xyz;
+    ${V_TEXTURE_POSITION} = ${A_TEXTURE_POSITION};
     vec4 position = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
     ${V_POSITION} = position.xyz;
     ${V_NORMAL} = normalize(
-        ${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.) - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+        ${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.)
+        - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
     ).xyz;
     gl_Position = ${U_PROJECTION_MATRIX} * position;
   }
@@ -84,15 +91,21 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
-  uniform float ${U_MODEL_ATTRIBUTES};
+  uniform vec2 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
   uniform sampler3D ${U_TEXTURE_COLORS};
   uniform sampler3D ${U_TEXTURE_NORMALS};
 
   in vec3 ${V_POSITION};
+  in vec3 ${V_MODEL_POSITION};
   in vec3 ${V_NORMAL};
-  in vec3 ${V_ORIGIN};
+  in vec3 ${V_TEXTURE_POSITION};
   out vec4 ${OUT_RESULT};
+
+  vec3 tx(vec3 p) {
+    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + p * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_1}, 1., 1.) + .5)
+        / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
+  }
 
   void main() {
     vec3 cameraDelta = ${V_POSITION} - ${U_CAMERA_POSITION};
@@ -101,20 +114,20 @@ const FRAGMENT_SHADER = `#version 300 es
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
     ).xyz;
     float textureDelta = 0.;
-    vec3 texturePosition = ${V_ORIGIN};
-    vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
+    vec3 texturePosition = ${V_TEXTURE_POSITION};
+    vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
     vec3 normal = normalize(${V_NORMAL});
-    bool foundTexture = false;
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       textureDelta = 1.;
+      bool foundTexture = false;
       float minTextureDelta = 0.;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
         //float test = (textureDelta + minTextureDelta)/2.;
         float test = foundTexture
             ? (textureDelta + minTextureDelta)/2.
-            : textureDelta - .1;
-        texturePosition = ${V_ORIGIN} + textureCameraNormal * test;
-        textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
+            : textureDelta - ${TEXTURE_LOOP_STEP_SIZE};
+        texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * test;
+        textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
         if (
             textureNormal.w > ${TEXTURE_ALPHA_THRESHOLD}
             || abs(texturePosition.x) > .5
@@ -130,32 +143,35 @@ const FRAGMENT_SHADER = `#version 300 es
           foundTexture = true;
         }
       }
-      texturePosition = ${V_ORIGIN} + textureCameraNormal * textureDelta;
-      textureNormal = texture(${U_TEXTURE_NORMALS}, texturePosition + .5);
-      // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-      //   discard;
-      // }
+      texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * textureDelta;
+      textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
+      if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+        discard;
+      }
       normal = normalize((
-          ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.) -
-          ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+          ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
+          - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
       )).xyz;
     }
 
     float textureDepth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
-    vec4 color = texture(${U_TEXTURE_COLORS}, texturePosition + .5);
-    if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-      color = vec4(vec3(1., 0., 0.), 1.);
-    }
-
+    vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
     //color = vec4((normal + 1.) / 2., length(normal));
-    vec3 position = (${U_MODEL_VIEW_MATRIX} * vec4(texturePosition, 1.)).xyz;
+    // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+    //   color = vec4(vec3(1., 0., 0.), 1.);
+    // }
+
+    vec3 position = (
+        ${U_MODEL_VIEW_MATRIX}
+        * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
+    ).xyz;
     //position = ${V_POSITION};
-    //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_ORIGIN}, 1.)).xyz;
+    //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
     //color = vec4(position / 3., 1.);
     //color = vec4(vec3(.5 + textureDelta * 2.), 1.);
     //color = vec4(texturePosition + .5, 0.);
 
-    float l = ${U_MODEL_ATTRIBUTES} + color.w;
+    float l = (color.w > .5 ? (color.w -.5) * 2. : .0);
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
@@ -185,8 +201,8 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
-            + textureDepth / dot(normalize(${V_NORMAL}), deltan);
-        float bias = d*(1.1 + n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+            + textureDepth * 1.5 / dot(normalize(${V_NORMAL}), deltan);
+        float bias = d*(3. - n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
           l += mix(
                   max(0., -n),
@@ -226,6 +242,7 @@ if (FLAG_SHOW_GL_ERRORS && !gl.getProgramParameter(program, gl.LINK_STATUS)) {
 const [
   attributeVertexPosition,
   attributeVertexNormal,
+  attributeTexturePosition,
 ] = ATTRIBUTES.map(attribute => gl.getAttribLocation(program, attribute));
 
 const [
@@ -243,7 +260,7 @@ const [
 gl.useProgram(program);
 gl.enable(gl.DEPTH_TEST);
 gl.enable(gl.CULL_FACE);
-gl.clearColor(1, 1, 1, 1);
+gl.clearColor(0, 0, 0, 1);
 
 // create the color/normal textures
 const textureData = texture3D.flat(2);
@@ -275,7 +292,7 @@ const [colorTexture, normalTexture] = [uniformTextureColors, uniformTextureNorma
       gl.TEXTURE_3D,
       0,
       gl.RGBA,
-      TEXTURE_SIZE,
+      TEXTURE_SIZE_PLUS_1 * TEXTURE_FACTORIES.length,
       TEXTURE_SIZE,
       TEXTURE_SIZE,
       0,
@@ -347,8 +364,6 @@ const depth = 9;
 const dimensions: Vector3 = [width, height, depth];
 const tiles: Tile[][][] = array3New(...dimensions, () => ({}));
 
-let playerRotation = 0;
-
 const shapes = [
   SHAPE_WALL,
   ...SHAPE_STEPS,
@@ -364,26 +379,34 @@ const shapes = [
   SHAPE_TORCH_HEAD,
 ];
 const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
-  const [positions, normals, indices] = shape.reduce<[Vector3[], Vector3[], number[]]>(
-      ([positions, normals, indices], face) => {
+  const [positions, normals, texturePositions, indices] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[]]>(
+      ([positions, normals, texturePositions, indices], face) => {
         const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
         const surfaceIndices = face.perimeter.slice(2).flatMap(
             (_, i) => [positions.length, positions.length + i + 1, positions.length + i + 2]
         );
         indices.push(...surfaceIndices);
-        positions.push(
-            ...points.map(p =>
-                vectorNToPrecision(
-                    vector3TransformMatrix4(face.transformFromCoordinateSpace, ...p, 0),
-                ),
+        const vertexPositions = points.map(p =>
+            vectorNToPrecision(
+                vector3TransformMatrix4(face.transformFromCoordinateSpace, ...p, 0),
             ),
         );
+        positions.push(...vertexPositions);
+        //texturePositions.push(...vertexPositions);
+        texturePositions.push(...vertexPositions.map(p => {
+          const divisor = Math.abs(p[0]) > Math.abs(p[1]) && Math.abs(p[0]) > Math.abs(p[2])
+              ? p[0]
+              : Math.abs(p[1]) > Math.abs(p[2])
+                  ? p[1]
+                  : p[2] || 1;
+            return p.map(v => v * .5/Math.abs(divisor)) as Vector3;
+          }));
         normals.push(
             ...new Array<Vector3>(points.length).fill(face.plane.normal),
         )
-        return [positions, normals, indices];
+        return [positions, normals, texturePositions, indices];
       },
-      [[], [], []],
+      [[], [], [], []],
   );
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -391,6 +414,7 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
   ([
     [attributeVertexPosition, positions],
     [attributeVertexNormal, normals],
+    [attributeTexturePosition, texturePositions],
   ] as const).forEach(
       ([attribute, vectors]) => {
         const buffer = gl.createBuffer();
@@ -530,7 +554,7 @@ player.joints[SKELETON_PART_ID_HEAD].light = .2;
 levelAddEntity(level, player);
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
-let cameraOffset = 2;
+let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2;
 let cameraOffsetTransform: Matrix4;
 let projection: Matrix4;
 const resizeCanvas = () => {
@@ -547,22 +571,19 @@ const resizeCanvas = () => {
 }
 resizeCanvas();
 onresize = resizeCanvas;
-const zoom = (e?: WheelEvent) => {
-  cameraOffset = Math.min(10, Math.max(1, cameraOffset + (e?.deltaY || 0)/9));
+if (FLAG_ALLOW_ZOOM) {
+  const zoom = (e?: WheelEvent) => {
+    cameraOffset = Math.min(6, Math.max(1, cameraOffset + (e?.deltaY || 0)/99));
+    cameraOffsetTransform = matrix4Translate(0, Math.pow(2, cameraOffset)/8, -cameraOffset/8);
+  };
+  onwheel = zoom;
+  zoom();  
+} else {
   cameraOffsetTransform = matrix4Translate(0, cameraOffset, -.5);
-};
-onwheel = zoom;
-zoom();
+}
 
 let targetCameraOrientation: Orientation = ORIENTATION_EAST;
 let cameraZRotation = 0;
-
-onkeydown = (e: KeyboardEvent) => {
-  keySet(e.keyCode as KeyCode, then, 1);
-  e.preventDefault();
-};
-
-onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);
 
 let then = 0;
 let worldTime = 0;
@@ -781,6 +802,7 @@ const update = (now: number) => {
 
             let running = 0;
             let interact = 0;
+            let moving = 0;
             // running and interact share keys, so we want to avoid collisions
             if (down) {
               interact = inputRead(INPUT_INTERACT, now);
@@ -801,10 +823,12 @@ const update = (now: number) => {
             }
             if (canWalk && (left || right) && probablyOnGround) {
               action = ACTION_ID_WALK;
+              moving = 1;
             }
-            if (canRun && up && probablyOnGround) {
+            if (canRun && running && (left || right) && probablyOnGround) {
               action = ACTION_ID_RUN;
-            }
+            }  
+
             if (canJump && up && probablyOnGround) {
               action = ACTION_ID_JUMP;
               entity.velocity[2] += .003;
@@ -866,6 +890,7 @@ const update = (now: number) => {
                     || (entity.orientation + 2) % 4 == targetCameraOrientation && right
                 )
                 && canTurn
+                && moving
             ) {
               entity.orientation =left || cameraDelta && entity.lastCameraOrientation != entity.orientation
                       ? (targetCameraOrientation + 2) % 4 as Orientation
@@ -877,11 +902,11 @@ const update = (now: number) => {
                   worldTime,
                   player.rotation,
                   to,
-                  499,
+                  199,
                   EASE_IN_OUT_QUAD,
                   1,
               );
-              action = ACTION_ID_TURN;
+              // action = ACTION_ID_TURN;
             }
           }
 
@@ -1175,7 +1200,8 @@ function updateAndRenderLevel(
                 gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
                 gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, matrix4Invert(transform) || matrix4Identity());
-                gl.uniform1f(uniformModelAttributes, joint?.light || 0);
+                // light is not used here
+                gl.uniform2f(uniformModelAttributes, joint?.light || 0, part.textureId || 0);
                 gl.bindVertexArray(vao);
                 gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
               }

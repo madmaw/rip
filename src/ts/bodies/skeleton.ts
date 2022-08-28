@@ -4,6 +4,7 @@
 ///<reference path="../math/matrix.ts"/>
 ///<reference path="../math/shape.ts"/>
 ///<reference path="../math/vector.ts"/>
+///<reference path="../textures/textures.ts"/>
 ///<reference path="models.ts"/>
 
 const SKELETON_DIMENSION = .19;
@@ -14,8 +15,8 @@ const SKELETON_RIBCAGE_HEIGHT = .2;
 const SKELETON_RIBCAGE_DEPTH = .15;
 
 const SKELETON_HEAD_WIDTH = .14;
-const SKELETON_HEAD_HEIGHT = .12;
-const SKELETON_HEAD_DEPTH = .15;
+const SKELETON_HEAD_HEIGHT = .1;
+const SKELETON_HEAD_DEPTH = .1;
 
 const SKELETON_HUMERUS_LENGTH = .1;
 const SKELETON_HUMERUS_RADIUS = .02;
@@ -48,6 +49,34 @@ const SKELETON_PART_ID_FEMUR_RIGHT = 7;
 const SKELETON_PART_ID_FEMUR_LEFT = 8;
 const SKELETON_PART_ID_SHIN_RIGHT = 9;
 const SKELETON_PART_ID_SHIN_LEFT = 10;
+
+const SKELETON_WALK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>>[] = [{
+  [SKELETON_PART_ID_HIPS]: [[
+    [0, 0, 0],
+  ]],
+  [SKELETON_PART_ID_FEMUR_LEFT]: [[
+    [0, Math.PI/1.5, 0],
+    [0, 0, 0],
+  ]],
+  [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+    [0, 0, 0],
+    [0, Math.PI/1.5, 0],
+  ]],
+  [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+    [0, 0, 0],
+    [0, Math.PI/2, 0],
+  ]],
+  [SKELETON_PART_ID_SHIN_LEFT]: [[
+    [0, Math.PI*3/10, 0],
+  ]],
+  [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+    [0, Math.PI/2, 0],
+    [0, 0, 0],
+  ]],
+  [SKELETON_PART_ID_SHIN_RIGHT]: [[
+    [0, Math.PI*3/10, 0],
+  ]],
+}];
 
 type SkeletonPartId = typeof SKELETON_PART_ID_RIBCAGE
     | typeof SKELETON_PART_ID_HEAD
@@ -111,34 +140,12 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       }]
     },
     [ACTION_ID_WALK]: {
-      maxSpeed: .002,
-      sequences: [{
-        [SKELETON_PART_ID_HIPS]: [[
-          [0, 0, 0],
-        ]],
-        [SKELETON_PART_ID_FEMUR_LEFT]: [[
-          [0, Math.PI/1.5, 0],
-          [0, 0, 0],
-        ]],
-        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-          [0, 0, 0],
-          [0, Math.PI/1.5, 0],
-        ]],
-        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-          [0, 0, 0],
-          [0, Math.PI/2, 0],
-        ]],
-        [SKELETON_PART_ID_SHIN_LEFT]: [[
-          [0, Math.PI*3/10, 0],
-        ]],
-        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-          [0, Math.PI/2, 0],
-          [0, 0, 0],
-        ]],
-        [SKELETON_PART_ID_SHIN_RIGHT]: [[
-          [0, Math.PI*3/10, 0],
-        ]],
-      }]
+      maxSpeed: .003,
+      sequences: SKELETON_WALK_SEQUENCE,
+    },
+    [ACTION_ID_RUN]: {
+      maxSpeed: .005,
+      sequences: SKELETON_WALK_SEQUENCE,
     },
     [ACTION_ID_JUMP]: {
       maxSpeed: .01,
@@ -267,6 +274,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HEAD,
           modelId: MODEL_SKELETON_HEAD,
+          textureId: TEXTURE_ID_SKELETON_HEAD,
           preRotationTransform: matrix4Translate(
               0,
               0,
@@ -463,12 +471,22 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
   ...planeFlipAndDuplicateOnAxis([
     // under jaw
     {
-      d: .045,
+      d: .03,
       normal: vectorNNormalize([-1, 0, -2]),
     },
     // back of head
     {
-      d: .07,
+      d: .05,
+      normal: vectorNNormalize([-1, 0, 0]),
+    },
+    // front of face
+    {
+      d: .05,
+      normal: vectorNNormalize([1, 0, 0]),
+    },
+    // top of back of head
+    {
+      d: .05,
       normal: vectorNNormalize([-1, 0, 1.5]),
     },
     // side of face
@@ -478,22 +496,22 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
     },
     // forehead
     {
-      d: .07,
+      d: .05,
       normal: vectorNNormalize([1, 0, 1]),
     },
     // right jaw narrowing
     {
-      d: .08,
+      d: .05,
       normal: vectorNNormalize([1, 2, -1])
     },
     // right cranium rounding
     {
-      d: 0.07,
+      d: .05,
       normal: vectorNNormalize([0, 1, 1])
     },
     // right back of head rounding
     {
-      d: 0.05,
+      d: .04,
       normal: vectorNNormalize([-1, 1, 0])
     }
   ], 1),

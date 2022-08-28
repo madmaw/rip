@@ -9,9 +9,8 @@ const STEP_WIDTH = STEP_DEPTH;
 
 const PART_ORIENTATION_STEPS = ORIENTATIONS.map(o => {
   return new Array(NUM_STEPS).fill(0).map<Part<StepPartId>>((_, i) => {
-    const d = 1 - STEP_WIDTH * i;
     return {
-      modelId: MODEL_STEP_1 + i,
+      modelId: MODEL_STEP_1 + i as ModelId,
       preRotationTransform: matrix4Rotate(o * Math.PI/2, 0, 0, 1),
     };
   });

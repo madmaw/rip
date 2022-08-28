@@ -6,13 +6,22 @@ const KEY_UP = 38;
 const KEY_RIGHT = 39;
 const KEY_DOWN = 40;
 const KEY_A = 65;
+const KEY_C = 67;
 const KEY_D = 68;
 const KEY_E = 69;
+const KEY_F = 70;
+const KEY_G = 71;
+const KEY_I = 73;
+const KEY_J = 74;
+const KEY_K = 75;
+const KEY_M = 77;
 const KEY_Q = 81;
 const KEY_S = 83;
 const KEY_W = 87;
 const KEY_X = 88;
 const KEY_Z = 90;
+const KEY_LESS_THAN = 188;
+const KEY_GREATER_THAN = 190;
 
 type KeyCode =
     | typeof KEY_SHIFT
@@ -23,13 +32,22 @@ type KeyCode =
     | typeof KEY_RIGHT
     | typeof KEY_DOWN
     | typeof KEY_A
+    | typeof KEY_C
     | typeof KEY_D
     | typeof KEY_E
+    | typeof KEY_F
+    | typeof KEY_G
+    | typeof KEY_J
+    | typeof KEY_K
+    | typeof KEY_M
+    | typeof KEY_I
     | typeof KEY_Q
     | typeof KEY_S
     | typeof KEY_W
     | typeof KEY_X
     | typeof KEY_Z
+    | typeof KEY_LESS_THAN
+    | typeof KEY_GREATER_THAN
     ;
 
 const INPUT_LEFT = 0;
@@ -65,17 +83,33 @@ type KeyState = [
   number,
 ];
 
+// CC should remove if unused
+const GAMEPAD_INPUT_BUTTON_INDICES: Partial<Record<Input, number>> = {
+  [INPUT_LEFT]: 14,
+  [INPUT_RIGHT]: 15,
+  [INPUT_UP]: 12,
+  [INPUT_DOWN]: 13,
+  [INPUT_RUN]: 0,
+  [INPUT_INTERACT]: 1,
+  [INPUT_ROTATE_CAMERA_LEFT]: 4,
+  [INPUT_ROTATE_CAMERA_RIGHT]: 5,
+};
+
 const inputKeyStates: Partial<Record<KeyCode, KeyState>> = {};
 
+// if readtimestamp is supplied, we only read the value once
 const inputRead = (input: Input, readTimestamp?: number, ignoreTimestamp?: Booleanish): number => {
   const keys = INPUT_KEYS[input];
   return keys.reduce((intensity, keyCode) => {
     const keyState = inputKeyStates[keyCode];
     if (keyState) {
       const [keyIntensity, keyWorldTimeSet, keyWorldTimeRead] = keyState;
-      if (keyIntensity > 0 && (readTimestamp && keyWorldTimeRead < keyWorldTimeSet || ignoreTimestamp || !readTimestamp)) {
+      if (
+          readTimestamp && keyWorldTimeRead < keyWorldTimeSet 
+          || keyIntensity && (readTimestamp && ignoreTimestamp || !readTimestamp)
+      ) {
         keyState[2] = readTimestamp || 0;
-        return Math.max(intensity, keyIntensity);
+        return Math.max(intensity, keyIntensity || 1);
       }
     }
     return intensity;
@@ -84,30 +118,37 @@ const inputRead = (input: Input, readTimestamp?: number, ignoreTimestamp?: Boole
 
 const keySet = (keyCode: KeyCode, now: number, intensity: number) => {
   const keyState = inputKeyStates[keyCode] || (inputKeyStates[keyCode] = [0, 0, 0]);
-  if (keyState[0] != (keyState[0] = intensity)) {
+  if (keyState[0] != (keyState[0] = intensity) && intensity) {
     keyState[1] = now;
   }
 };
 
 const INPUT_KEYS: Record<Input, KeyCode[]> & KeyCode[][] = [
   // LEFT
-  [KEY_LEFT], 
+  FLAG_GAMEPAD_SUPPORT ? [KEY_LEFT, KEY_E] : [KEY_LEFT], 
   // RIGHT
-  [KEY_RIGHT],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_RIGHT, KEY_F] : [KEY_RIGHT],
   // UP
-  [KEY_UP, KEY_SPACE],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_UP, KEY_SPACE, KEY_C] : [KEY_UP, KEY_SPACE],
   // DOWN
-  [KEY_DOWN],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_DOWN, KEY_D] : [KEY_DOWN],
   // RUN
-  [KEY_SHIFT, KEY_CAPS_LOCK, KEY_D],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_SHIFT, KEY_CAPS_LOCK, KEY_G] : [KEY_SHIFT, KEY_CAPS_LOCK],
   // ROTATE_CAMERA_LEFT
-  [KEY_Q],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_Z, KEY_K] : [KEY_Z],
   // ROTATE_CAMERA_RIGHT
-  [KEY_E],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_X, KEY_M] : [KEY_X],
   // INTERACT
-  [KEY_D],
+  [KEY_G],
   // ATTACK LIGHT
-  [KEY_A],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_J, KEY_A] : [KEY_A],
   // ATTACK HEAVY
-  [KEY_S],
+  FLAG_GAMEPAD_SUPPORT ? [KEY_I, KEY_S]: [KEY_S],
 ]
+
+onkeydown = (e: KeyboardEvent) => {
+  keySet(e.keyCode as KeyCode, then, 1);
+  e.preventDefault();
+};
+
+onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);

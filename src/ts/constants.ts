@@ -39,15 +39,17 @@ const CUBE_MAP_ROTATION_TRANSFORMS: Matrix4[] = ([
   // -ve Z
   [Math.PI, Math.PI, 0],
 ] as Vector3[]).map(v => matrix4RotateInOrder(...v));
-const CUBE_MAP_DIMENSION = 256;
+const CUBE_MAP_DIMENSION = 128;
 const CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES: number[] = new Array(MAX_LIGHTS).fill(MAX_LIGHTS);
 const CUBE_MAP_LIGHTS_FAKE: number[] = new Array(MAX_LIGHTS * 4).fill(0);
 const CUBE_MAP_LIGHTS_TEXTURE_INDICES: number[] = CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES.map((_, i) => i);
 const TEXTURE_COLOR_INDEX = MAX_LIGHTS + 2;
 const TEXTURE_NORMAL_INDEX = TEXTURE_COLOR_INDEX + 1;
-const TEXTURE_SIZE = 32;
+const TEXTURE_SIZE = 8;
+const TEXTURE_SIZE_PLUS_1 = TEXTURE_SIZE + 1;
 
-const TEXTURE_LOOP_STEPS = 16;
+const TEXTURE_LOOP_STEPS = 20;
+const TEXTURE_LOOP_STEP_SIZE = `.05`;
 const TEXTURE_ALPHA_THRESHOLD = `.9`;
 
 const TARGET_HORIZONTAL_RESOLUTION = 640;

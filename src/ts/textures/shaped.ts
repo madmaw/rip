@@ -60,14 +60,18 @@ const createShapedTextureNormalFactory = (
                   ? result[0] < acc[0]
                       ? result
                       : acc
-                  : result
-              : ruleType == SHAPED_RULE_TYPE_SUBTRACTION
+                  : ruleType // == SHAPED_RULE_TYPE_SUBTRACTION
+                      ? 0
+                      : result
+              : ruleType // == SHAPED_RULE_TYPE_SUBTRACTION
                   ? 0
                   : acc;
     }, 0);
     
+    console.log(x * 8 + 3.5, y * 8 + 3.5, z * 8 + 3.5, result ? result[1] : 0);
+
     return result
         ? [...(result[1]).map(v => (1 - v) * 127.5 | 0) as Vector3, 255]
-        : [0, 0, 0, 0];
+        : [1, 0, 0, 0];
   };
 };

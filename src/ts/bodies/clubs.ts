@@ -15,7 +15,7 @@ type ClubPartId = never;
 const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((_, i) => {
   const clubWidth = BASE_CLUB_WIDTH + i * CLUB_WIDTH_FACTOR;
   return {
-    modelId: MODEL_CLUB_1 + i,
+    modelId: MODEL_CLUB_1 + i as ModelId,
     jointAttachmentHeldTransform: matrix4Translate(clubWidth/3, 0, 0),
     jointAttachmentHolderPartId: SKELETON_PART_ID_FOREARM_RIGHT,
     jointAttachmentHolderAnims: {

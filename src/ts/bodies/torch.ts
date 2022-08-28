@@ -21,6 +21,7 @@ const PART_TORCH: EntityBody<TorchPartId> = {
     id: TORCH_PART_ID_HEAD,
     preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH/2, 0, 0),
     modelId: MODEL_TORCH_HEAD,
+    textureId: TEXTURE_ID_INCANDESENT,
   }]
 };
 

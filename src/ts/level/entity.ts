@@ -121,7 +121,8 @@ type Part<ID extends number> = {
   readonly id?: ID,
   readonly preRotationTransform?: Matrix4 | Falsey,
   readonly postRotationTransform?: Matrix4 | Falsey,
-  readonly modelId: number,
+  readonly modelId: ModelId,
+  readonly textureId?: TextureID,
   readonly children?: readonly Part<ID>[],
   // and where is this part held when carried
   readonly jointAttachmentHeldTransform?: Matrix4 | Falsey,
