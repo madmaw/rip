@@ -147,7 +147,7 @@ type Joint = {
   light?: number,
   // the transform used for the related body part when last rendered against the light from
   // a given entity (for shadows)
-  entityLightTransforms?: Record<EntityId, Matrix4>,
+  entityLightTransforms?: Record<EntityId, Vector3>,
 };
 
 const entityIterateParts = <PartId extends number, EntityType extends PartialEntity<PartId>>(

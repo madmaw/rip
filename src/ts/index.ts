@@ -34,7 +34,6 @@ const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
 const U_LIGHT_POSITIONS = 'uLightPositions';
 const U_LIGHT_TEXTURES = 'uLightTextures';
-const U_RELATIVE_LIGHT_TRANSFORMS = 'uRelativeLightTransforms';
 const U_TEXTURE_COLORS = 'uTextureColors';
 const U_TEXTURE_NORMALS = 'uTextureNormals';
 
@@ -46,7 +45,6 @@ const UNIFORMS = [
   U_CAMERA_POSITION,
   U_LIGHT_POSITIONS,
   U_LIGHT_TEXTURES,
-  U_RELATIVE_LIGHT_TRANSFORMS,
   U_TEXTURE_COLORS,
   U_TEXTURE_NORMALS,
 ];
@@ -93,7 +91,6 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
-  uniform mat4 ${U_RELATIVE_LIGHT_TRANSFORMS}[${MAX_LIGHTS}];
   uniform vec2 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
   uniform sampler3D ${U_TEXTURE_COLORS};
@@ -164,25 +161,22 @@ const FRAGMENT_SHADER = `#version 300 es
     //   color = vec4(vec3(1., 0., 0.), 1.);
     // }
 
+    vec3 position = (
+        ${U_MODEL_VIEW_MATRIX}
+        * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
+    ).xyz;
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
     //color = vec4(position / 3., 1.);
     //color = vec4(vec3(.5 + textureDelta * 2.), 1.);
     //color = vec4(texturePosition + .5, 0.);
 
+
     float l = (color.w > .5 ? (color.w -.5) * 2. : .0);
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        // vec3 position = (
-        //     ${U_RELATIVE_LIGHT_TRANSFORMS}[i]
-        //     * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
-        // ).xyz;  
-        // vec3 delta = position - ${U_LIGHT_POSITIONS}[i].xyz;
-        vec3 delta = (
-            ${U_RELATIVE_LIGHT_TRANSFORMS}[i]
-            * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
-        ).xyz;
+        vec3 delta = position - ${U_LIGHT_POSITIONS}[i].xyz;
         vec3 deltan = normalize(delta);
         vec3 pn = normalize(
             abs(deltan.x) > abs(deltan.y) && abs(deltan.x) > abs(deltan.z)
@@ -209,7 +203,7 @@ const FRAGMENT_SHADER = `#version 300 es
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
             + textureDepth * 1.5 / dot(normalize(${V_NORMAL}), deltan);
-        float bias = d*(3. - n)/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+        float bias = pow(d, 2.) * (1.01 - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
           l += mix(
                   max(0., -n),
@@ -260,7 +254,6 @@ const [
   uniformCameraPosition,
   uniformLightPositions,
   uniformLightTexures,
-  uniformRelativeLightTransforms,
   uniformTextureColors,
   uniformTextureNormals,
 ] = UNIFORMS.map(uniform => gl.getUniformLocation(program, uniform));
@@ -629,7 +622,7 @@ const update = (now: number) => {
       });
   // find the oldest texture
   let light: Light | undefined;
-  const lightRender = previousLights.length > 0
+  const lightRender: [number, number, number, Vector3] | 0 = previousLights.length > 0
       && (
           !FLAG_THROTTLE_LIGHT_RENDERING
               || !(updateCount % Math.max(1, MAX_LIGHTS - Math.min(previousLights.length, MAX_LIGHTS)))
@@ -731,23 +724,16 @@ const update = (now: number) => {
 //     // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
 //     matrix4Translate(...vectorNScale(playerCenter, -1)),
 // );
-  const [lights, lightTextureIndices] = previousLights.reduce<[number[], number[]]>((acc, l) => {
-    const render = lightRenders[l.entityId];
-    const [lights, lightTextureIndices] = acc;
-    if (render && lightTextureIndices.length < MAX_LIGHTS) {
-      lights.push(...render[2], l.luminosity);
-      lightTextureIndices.push(render[0]);
-    }
-    return acc;
-  }, [[], []]);
-  const missingLights = MAX_LIGHTS - lightTextureIndices.length;
-  gl.uniform4fv(
-      uniformLightPositions,
-      lights.concat(...new Array(missingLights * 4).fill(0)),
-  );
+  previousLights = previousLights
+      .filter(l => lightRenders[l.entityId])
+      .slice(0, MAX_LIGHTS);
   gl.uniform1iv(
       uniformLightTexures,
-      lightTextureIndices.concat(...new Array(missingLights).fill(MAX_LIGHTS)),
+      previousLights.map<number>(l => {
+        return lightRenders[l.entityId][0];
+      }).concat(
+          ...new Array(MAX_LIGHTS - previousLights.length).fill(MAX_LIGHTS),
+      ),
   );
 
   previousLights = updateAndRenderLevel(
@@ -755,7 +741,7 @@ const update = (now: number) => {
       cameraPosition,
       [0, 0, 0],
       level.dimensions,
-      previousLights.slice(0, MAX_LIGHTS),
+      previousLights,
       (entity: Entity, carrier?: Entity) => {
         // update animations
         if (!entity.joints && entity.body.defaultJointRotations) {
@@ -1193,38 +1179,44 @@ function updateAndRenderLevel(
         if (shouldRender) {
           entityIterateParts(
             (entity, part, transform, joint) => {
+              const partPosition = vector3TransformMatrix4(transform, 0, 0, 0);
               if (light) {
                 joint.entityLightTransforms = joint.entityLightTransforms || {};
-                joint.entityLightTransforms[light.entityId] = matrix4Multiply(
-                    matrix4Translate(...vectorNScale(light.pos, -1)),
-                    transform,
-                );
+                // joint.entityLightTransforms[light.entityId] = matrix4Multiply(
+                //     matrix4Translate(...vectorNScale(light.pos, -1)),
+                //     transform,
+                // );
+                joint.entityLightTransforms[light.entityId] = partPosition;
               }
       
               if (joint.light) {
-                const pos = vector3TransformMatrix4(transform, 0, 0, 0);
                 lights.push({
-                  pos,
+                  pos: partPosition,
                   entityId: entity.id,
                   luminosity: joint.light,
                 });
               }
               if (!ignoreRendering) {
-                const lightTransforms = previousLights.map(l => {
-                  return joint.entityLightTransforms?.[l.entityId] ||
-                      matrix4Multiply(
-                          matrix4Translate(...vectorNScale(light.pos, -1)),
-                          transform,
-                      );
-                }).concat(new Array(MAX_LIGHTS - previousLights.length).fill(MATRIX_EMPTY));
-                const [vao, count] = models[part.modelId];
+                const lightPositions = previousLights.map(l => {
+                  const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
+                  const render = lightRenders[l.entityId];
+                  const position = partPositionAtLightRenderTime
+                      ? vectorNSubtract(render[2], vectorNSubtract(partPositionAtLightRenderTime, partPosition))
+                      : l.pos;
+                  return [...position, l.luminosity];
+                });
+                gl.uniform4fv(
+                    uniformLightPositions,
+                    lightPositions.flat(2).concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)),
+                );
+
                 gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
                 gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, matrix4Invert(transform) || matrix4Identity());
                 // light is not used here
                 gl.uniform2f(uniformModelAttributes, joint.light || 0, part.textureId || 0);
-                
-                gl.uniformMatrix4fv(uniformRelativeLightTransforms, false, lightTransforms.flat());
+            
+                const [vao, count] = models[part.modelId];
                 gl.bindVertexArray(vao);
                 gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
               }

@@ -6,6 +6,8 @@ type Rect3 = [Vector3, Vector3];
 
 type Vector4 = [number, number, number, number];
 
+const VECTOR3_EMPTY: Vector3 = [0, 0, 0];
+
 const vector2AngleAndDistance = ([x1, y1]: Vector2, [x2, y2]: Vector2) => {
   const dx = x2 - x1;
   const dy = y2 - y1;
