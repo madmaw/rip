@@ -14,6 +14,8 @@ const MATRIX4_IDENTITY: Matrix4 = [
   0, 0, 0, 1
 ];
 
+const MATRIX_EMPTY = new Array<number>(16).fill(0) as Matrix4;
+
 const matrix4Identity = (): Matrix4 => {
   return [
     1, 0, 0, 0,

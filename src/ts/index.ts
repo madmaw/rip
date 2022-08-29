@@ -34,6 +34,7 @@ const U_PROJECTION_MATRIX = 'uProjectionMatrix';
 const U_CAMERA_POSITION = 'uCameraPosition';
 const U_LIGHT_POSITIONS = 'uLightPositions';
 const U_LIGHT_TEXTURES = 'uLightTextures';
+const U_RELATIVE_LIGHT_TRANSFORMS = 'uRelativeLightTransforms';
 const U_TEXTURE_COLORS = 'uTextureColors';
 const U_TEXTURE_NORMALS = 'uTextureNormals';
 
@@ -45,6 +46,7 @@ const UNIFORMS = [
   U_CAMERA_POSITION,
   U_LIGHT_POSITIONS,
   U_LIGHT_TEXTURES,
+  U_RELATIVE_LIGHT_TRANSFORMS,
   U_TEXTURE_COLORS,
   U_TEXTURE_NORMALS,
 ];
@@ -91,6 +93,7 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
+  uniform mat4 ${U_RELATIVE_LIGHT_TRANSFORMS}[${MAX_LIGHTS}];
   uniform vec2 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
   uniform sampler3D ${U_TEXTURE_COLORS};
@@ -161,10 +164,6 @@ const FRAGMENT_SHADER = `#version 300 es
     //   color = vec4(vec3(1., 0., 0.), 1.);
     // }
 
-    vec3 position = (
-        ${U_MODEL_VIEW_MATRIX}
-        * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
-    ).xyz;
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
     //color = vec4(position / 3., 1.);
@@ -175,7 +174,15 @@ const FRAGMENT_SHADER = `#version 300 es
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        vec3 delta = position - ${U_LIGHT_POSITIONS}[i].xyz;
+        // vec3 position = (
+        //     ${U_RELATIVE_LIGHT_TRANSFORMS}[i]
+        //     * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
+        // ).xyz;  
+        // vec3 delta = position - ${U_LIGHT_POSITIONS}[i].xyz;
+        vec3 delta = (
+            ${U_RELATIVE_LIGHT_TRANSFORMS}[i]
+            * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
+        ).xyz;
         vec3 deltan = normalize(delta);
         vec3 pn = normalize(
             abs(deltan.x) > abs(deltan.y) && abs(deltan.x) > abs(deltan.z)
@@ -253,6 +260,7 @@ const [
   uniformCameraPosition,
   uniformLightPositions,
   uniformLightTexures,
+  uniformRelativeLightTransforms,
   uniformTextureColors,
   uniformTextureNormals,
 ] = UNIFORMS.map(uniform => gl.getUniformLocation(program, uniform));
@@ -441,29 +449,25 @@ const level: Level = {
   tiles,
 };
 
-let id = 0;
-
 // populate with a floor
 for (let x=0; x<width; x++) {
   for (let y=0; y<height; y++) {
-    const floor: Entity<WallPartId> = {
-      id: id++,
+    const floor: Entity<WallPartId> = entityCreate({
       position: [x, y, 0],
       dimensions: [1, 1, 1],
       rotation: [0, 0, 0],
       body: PART_WALL,
       collisionGroup: COLLISION_GROUP_WALL,
-    };
+    });
     levelAddEntity(level, floor);
     if ((y > Math.floor(height/2) && x != Math.floor(width/2) || x >= width - 3)) {
-      const wall: Entity<WallPartId> = {
-        id: id++,
+      const wall: Entity<WallPartId> = entityCreate({
         position: [x, y, 1],
         dimensions: [1, 1, 1],
         rotation: [0, 0, 0],
         body: PART_WALL,
         collisionGroup: COLLISION_GROUP_WALL,
-      }
+      });
       levelAddEntity(level, wall);
     }
   }
@@ -482,14 +486,13 @@ const transform = matrix4Multiply(
 stepParts.reduce((z, stepPart, i) => {
   const t = matrix4Multiply(transform, matrix4Translate(-STEP_WIDTH/2 * i, 0, z + STEP_DEPTH/2));
   const [position, dimensions] = shapeBounds(SHAPE_STEPS[i], t);
-  const step: Immovable & Entity = {
-    id: id++,
+  const step: Entity = entityCreate({
     position,
     dimensions,
     rotation: [0, 0, 0],
     body: stepPart,
     collisionGroup: COLLISION_GROUP_WALL,
-  };
+  });
   levelAddEntity(level, step);
   return z + dimensions[2];
 }, 0);  
@@ -499,8 +502,7 @@ const clubs = PARTS_CLUBS.slice(0, 1).map((clubBody, i) => {
   const clubShape = shapes[clubBody.modelId];
   const t = matrix4Multiply(matrix4Translate(i + .5, 2.5, 1.2)/*, matrix4Rotate(Math.PI/2, 0, 1, 0)*/);
   const [position, dimensions] = shapeBounds(clubShape, t);
-  const club: Entity<ClubPartId> = {
-    id: id++,
+  const club: Entity<ClubPartId> = entityCreate({
     body: clubBody,
     dimensions,
     position,
@@ -508,15 +510,14 @@ const clubs = PARTS_CLUBS.slice(0, 1).map((clubBody, i) => {
     velocity: [0, 0, 0],
     collisionGroup: COLLISION_GROUP_ITEM,
     collisionMask: COLLISION_GROUP_WALL,
-  };
+  });
   return club;
 });
 clubs.map(club => levelAddEntity(level, club));
 
 // torch
 for (let i=0; i<MAX_LIGHTS; i++) {
-  const torch: Entity<TorchPartId> = {
-    id: id++,
+  const torch: Entity<TorchPartId> = entityCreate({
     body: PART_TORCH,
     position: [i + .5, .5, 1.1],
     dimensions: [TORCH_HANDLE_WIDTH + TORCH_HEAD_WIDTH, TORCH_HANDLE_WIDTH, TORCH_HANDLE_WIDTH],
@@ -526,16 +527,17 @@ for (let i=0; i<MAX_LIGHTS; i++) {
     velocity: [0, 0, 0],
     joints: [{
       rotation: [0, 0, 0],
+    }, {
+      rotation: [0, 0, 0],
       light: .4,
     }]
-  };
+  });
   levelAddEntity(level, torch);  
 }
 
 
 // and a player
-const player: Entity<SkeletonPartId> = {
-  id: id++,
+const player: Entity<SkeletonPartId> = entityCreate({
   position: [(width - SKELETON_DIMENSION)/2, (height - SKELETON_DIMENSION)/2, 1.1],
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
@@ -544,11 +546,7 @@ const player: Entity<SkeletonPartId> = {
   rotation: [0, 0, 0],
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-  // TODO remove this
-  joints: PART_SKELETON_BODY.defaultJointRotations.map(rotation => ({
-    rotation: [...rotation],
-  }))  
-};
+});
 player.joints[SKELETON_PART_ID_HEAD].light = .2;
 // player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
@@ -630,9 +628,10 @@ const update = (now: number) => {
         return d1 - d2;
       });
   // find the oldest texture
+  let light: Light | undefined;
   const lightRender = previousLights.length > 0
       && (
-          !FLAG_EVEN_LIGHT_RENDERING
+          !FLAG_THROTTLE_LIGHT_RENDERING
               || !(updateCount % Math.max(1, MAX_LIGHTS - Math.min(previousLights.length, MAX_LIGHTS)))
       )
       && previousLights.slice(0, MAX_LIGHTS).reduce<[number, number, number, Vector3] | 0>((acc, l, i) => {
@@ -669,7 +668,7 @@ const update = (now: number) => {
   
   if (lightRender) {
     const [lightIndex, targetLightTextureIndex] = lightRender;
-    const light = previousLights[lightIndex];
+    light = previousLights[lightIndex];
     lightRenders[light.entityId] = [targetLightTextureIndex, worldTime, light.pos];
     // generate light cube map
     gl.activeTexture(gl.TEXTURE0 + targetLightTextureIndex);
@@ -714,6 +713,7 @@ const update = (now: number) => {
           light.pos,
           lightBoundsPosition,
           lightBoundsDimensions,
+          [],
           // only occlude on scenery for player (first index), not monsters or items
           // for everything else, just exclude the actual lit object
           e => !lightIndex && e.velocity != null || e.id == light.entityId,
@@ -755,6 +755,7 @@ const update = (now: number) => {
       cameraPosition,
       [0, 0, 0],
       level.dimensions,
+      previousLights.slice(0, MAX_LIGHTS),
       (entity: Entity, carrier?: Entity) => {
         // update animations
         if (!entity.joints && entity.body.defaultJointRotations) {
@@ -1146,6 +1147,7 @@ const update = (now: number) => {
         const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityMidpoint);
         return cy < 0 && cz > 0;
       },
+      light,
   );
 
   requestAnimationFrame(update);
@@ -1157,8 +1159,11 @@ function updateAndRenderLevel(
     cameraPosition: Vector3,
     position: Vector3,
     dimensions: Vector3,
-    // returb false if want to render
+    previousLights: Light[],
+    // return false if want to render
     updateEntity: (e: Entity, carrier?: Entity) => Booleanish,
+    // the light we just rendered that we want to store the offsets for
+    light?: Light,
 ): Light[] {
   const lights = [];
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1184,10 +1189,19 @@ function updateAndRenderLevel(
                 && !updateEntity(j.attachedEntity, entity)
                 && j.attachedEntity.joints?.some(predicate);
         const shouldRender = !ignoreRendering || entity.joints?.some(predicate); 
+
         if (shouldRender) {
           entityIterateParts(
             (entity, part, transform, joint) => {
-              if (joint?.light) {
+              if (light) {
+                joint.entityLightTransforms = joint.entityLightTransforms || {};
+                joint.entityLightTransforms[light.entityId] = matrix4Multiply(
+                    matrix4Translate(...vectorNScale(light.pos, -1)),
+                    transform,
+                );
+              }
+      
+              if (joint.light) {
                 const pos = vector3TransformMatrix4(transform, 0, 0, 0);
                 lights.push({
                   pos,
@@ -1196,12 +1210,21 @@ function updateAndRenderLevel(
                 });
               }
               if (!ignoreRendering) {
+                const lightTransforms = previousLights.map(l => {
+                  return joint.entityLightTransforms?.[l.entityId] ||
+                      matrix4Multiply(
+                          matrix4Translate(...vectorNScale(light.pos, -1)),
+                          transform,
+                      );
+                }).concat(new Array(MAX_LIGHTS - previousLights.length).fill(MATRIX_EMPTY));
                 const [vao, count] = models[part.modelId];
                 gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
                 gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, matrix4Invert(transform) || matrix4Identity());
                 // light is not used here
-                gl.uniform2f(uniformModelAttributes, joint?.light || 0, part.textureId || 0);
+                gl.uniform2f(uniformModelAttributes, joint.light || 0, part.textureId || 0);
+                
+                gl.uniformMatrix4fv(uniformRelativeLightTransforms, false, lightTransforms.flat());
                 gl.bindVertexArray(vao);
                 gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
               }

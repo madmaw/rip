@@ -43,6 +43,8 @@ type EntityId = number;
 
 type Entity<T extends number = number> = EntityBase<T> & (Immovable | Moveable) & (Active | Inactive);
 
+type PartialEntity<T extends number> = Omit<Entity<T>, 'id' | 'joints'> & { joints?: Joint[] };
+
 type CollisionGroup =
     | typeof COLLISION_GROUP_WALL
     | typeof COLLISION_GROUP_MONSTER
@@ -60,7 +62,7 @@ type EntityBase<T extends number> = {
   offsetAnim?: Anim | Falsey,
   readonly dimensions: Vector3,
   readonly body: EntityBody<T>,
-  joints?: Joint[],
+  joints: Joint[],
   previousCollision?: {
     maxIntersectionArea: number,
     maxOverlapIndex: number,
@@ -71,7 +73,7 @@ type EntityBase<T extends number> = {
   lastCameraOrientation?: Orientation,
   collisionGroup: CollisionGroup,
   collisionMask?: number,
-} & Joint;
+} & Pick<Joint, 'rotation' | 'anim' | 'animAction'>;
 
 type Immovable = {
   velocity?: never,
@@ -118,7 +120,7 @@ type EntityBody<ID extends number> = Part<ID> & {
 }
 
 type Part<ID extends number> = {
-  readonly id?: ID,
+  readonly id: ID,
   readonly preRotationTransform?: Matrix4 | Falsey,
   readonly postRotationTransform?: Matrix4 | Falsey,
   readonly modelId: ModelId,
@@ -143,12 +145,15 @@ type Joint = {
   animActionIndex?: number,
   // how much light the associated part emits (default to none)
   light?: number,
+  // the transform used for the related body part when last rendered against the light from
+  // a given entity (for shadows)
+  entityLightTransforms?: Record<EntityId, Matrix4>,
 };
 
-const entityIterateParts = <T extends number>(
-  f: (entity: Entity, part: Part<T>, transform: Matrix4, joint?: Joint) => void,
-  entity: Entity,
-  part: Part<T>,
+const entityIterateParts = <PartId extends number, EntityType extends PartialEntity<PartId>>(
+  f: (entity: EntityType, part: Part<PartId>, transform: Matrix4, joint?: Joint) => void,
+  entity: EntityType,
+  part: Part<PartId>,
   inheritedTransform?: Matrix4 | Falsey,
 ) => {
   const joint = entity.joints?.[part.id];
@@ -166,7 +171,7 @@ const entityIterateParts = <T extends number>(
   if (joint?.attachedEntity) {
     entityIterateParts(
         f,
-        joint.attachedEntity,
+        joint.attachedEntity as any,
         joint.attachedEntity.body,
         matrix4Multiply(
             transform,
@@ -211,3 +216,19 @@ const entityAvailableActions = <T extends number>(entity: Entity<T>): number => 
   // }
   // return -1;
 }
+
+let entityId = 1;
+
+const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType): Entity<T> => {
+  const joints: Joint[] = [];
+  entityIterateParts((e, part) => {
+    joints[part.id] = entity.joints?.[part.id] || {
+      rotation: entity.body.defaultJointRotations?.[part.id] || [0, 0, 0],
+    };
+  }, entity, entity.body);
+  return {
+    id: entityId++,
+    ...entity,
+    joints,
+  } as Entity<T>;
+};

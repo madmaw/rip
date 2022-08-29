@@ -7,11 +7,16 @@ const TORCH_HANDLE_RADIUS = .01;
 const TORCH_HEAD_WIDTH = .02;
 const TORCH_HEAD_RADIUS = .02;
 
-const TORCH_PART_ID_HEAD = 0;
+const TORCH_PART_ID_BODY = 0;
+const TORCH_PART_ID_HEAD = 1;
 
-type TorchPartId = typeof TORCH_PART_ID_HEAD;
+type TorchPartId = 
+    | typeof TORCH_PART_ID_BODY
+    | typeof TORCH_PART_ID_HEAD
+    ;
 
 const PART_TORCH: EntityBody<TorchPartId> = {
+  id: TORCH_PART_ID_BODY,
   modelId: MODEL_TORCH_HANDLE,
   // preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH, 0, 0),
   jointAttachmentHeldTransform: matrix4Translate(TORCH_HANDLE_WIDTH/3, 0, 0),

@@ -1,10 +1,13 @@
 ///<reference path="models.ts"/>
 ///<reference path="../textures/textures.ts"/>
 
-type WallPartId = never;
+const WALL_PART_ID_BODY = 0;
+
+type WallPartId = typeof WALL_PART_ID_BODY;
 
 const PART_WALL: Part<WallPartId> = {
   modelId: MODEL_WALL,
+  id: WALL_PART_ID_BODY,
   textureId: TEXTURE_ID_BRICKS,
 };
 

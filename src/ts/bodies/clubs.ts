@@ -10,11 +10,14 @@ const CLUB_RADIUS_LEFT = .015;
 const BASE_CLUB_RADIUS_RIGHT = .02;
 const CLUB_RADIUS_RIGHT_FACTOR = .005;
 
-type ClubPartId = never;
+const CLUB_PART_ID_BODY = 0;
+
+type ClubPartId = typeof CLUB_PART_ID_BODY;
 
 const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((_, i) => {
   const clubWidth = BASE_CLUB_WIDTH + i * CLUB_WIDTH_FACTOR;
   return {
+    id: CLUB_PART_ID_BODY,
     modelId: MODEL_CLUB_1 + i as ModelId,
     jointAttachmentHeldTransform: matrix4Translate(clubWidth/3, 0, 0),
     jointAttachmentHolderPartId: SKELETON_PART_ID_FOREARM_RIGHT,
