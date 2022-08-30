@@ -5,7 +5,7 @@
 ///<reference path="texture.ts"/>
 
 const whiteTextureFactory = createSolidTextureColorFactory([255, 255, 255, 127]);
-const boneTextureFactory = createSolidTextureColorFactory([255, 255, 240, 127]);
+const boneTextureFactory = createSolidTextureColorFactory([255, 255, 200, 50]);
 const redTextureFactory = createSolidTextureColorFactory([255, 0, 0, 127]);
 const blueTextureFactory = createSolidTextureColorFactory([128, 128, 255, 127]);
 const cyanTextureFactory = createSolidTextureColorFactory([128, 255, 255, 127]);
@@ -43,7 +43,9 @@ const TEXTURE_ID_WHITE = 0;
 const TEXTURE_ID_INCANDESENT = 1;
 const TEXTURE_ID_BRICKS = 2;
 const TEXTURE_ID_SKULL = 3;
-const TEXTURE_ID_BONE = 4;
+const TEXTURE_ID_BONE = 4
+const TEXTURE_ID_HIPS = 5;
+const TEXTURE_ID_RIBCAGE = 6;
 
 type TextureID = 
     | typeof TEXTURE_ID_WHITE
@@ -51,6 +53,8 @@ type TextureID =
     | typeof TEXTURE_ID_BRICKS
     | typeof TEXTURE_ID_SKULL
     | typeof TEXTURE_ID_BONE
+    | typeof TEXTURE_ID_HIPS
+    | typeof TEXTURE_ID_RIBCAGE
     ;
 
 const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
@@ -61,13 +65,11 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   // TEXTURE_ID_BRICKS
   [checkeredTextureFactory, solidTextureNormalFactory],
   // TEXTURE_ID_SKULL
-  [magentaTextureFactory, solidTextureNormalFactory],
-  /*
   [
     createRadialGradientTextureFactory(
         [128, 0, 0, 255],
         [0, 0, 0],
-        [255, 255, 220, 127],
+        [255, 255, 200, 130],
         .4,
     ),
     createShapedTextureNormalFactory([{
@@ -110,25 +112,100 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
       type: SHAPED_RULE_TYPE_SUBTRACTION,
     }]),
   ],
-  */
+  // bone
   [
-    //boneTextureFactory,
-    gradientTextureFactory,
+    boneTextureFactory,
+    //gradientTextureFactory,
     createShapedTextureNormalFactory([{
       shape: shapeFromPlanes(planesCube(1, .3, 1)),
       //type: SHAPED_RULE_TYPE_ADDITION,
     },
     {
-      shape: shapeFromPlanes(planesCapsule(3, .2, .2)),
-      transform: matrix4Multiply(matrix4Translate(.85, 0, 0), matrix4Rotate(Math.PI/2, 0, 1, 0), matrix4Rotate(Math.PI/2, 0, 0, 1)),
+      shape: shapeFromPlanes(planesCapsule(4, .2, .2)),
+      transform: matrix4Multiply(matrix4Translate(1, 0, 0), matrix4Rotate(Math.PI/2, 0, 1, 0), matrix4Rotate(Math.PI/2, 0, 0, 1)),
       type: SHAPED_RULE_TYPE_SUBTRACTION,
     },
     ...new Array(8).fill(0).map<ShapedRule>((_, i) => ({
-      shape: shapeFromPlanes(planesCapsule(6, .4, .4)),
+      shape: shapeFromPlanes(planesCapsule(6, .4, .35)),
       transform: matrix4Multiply(matrix4Rotate(i * Math.PI/4, 1, 0, 0), matrix4Translate(0, 0, .5)),
       type: SHAPED_RULE_TYPE_SUBTRACTION,
     }))]),
-  ]
+  ],
+  // TEXTURE_ID_HIPS
+  [
+    boneTextureFactory,
+    //gradientTextureFactory,
+    createShapedTextureNormalFactory([{
+      shape: shapeFromPlanes(planesCube(1, 1, 1)),
+      //type: SHAPED_RULE_TYPE_ADDITION,
+    },
+    {
+      shape: shapeFromPlanes(planesCapsule(3, 1, .15)),
+      type: SHAPED_RULE_TYPE_SUBTRACTION,
+    }]),
+  ],
+  // TEXTURE_ID_RIBCAGE
+  [
+    boneTextureFactory,
+    //gradientTextureFactory,
+    createShapedTextureNormalFactory([
+      {
+        shape: shapeFromPlanes(planesCapsule(6, .5, .05)),
+        transform: matrix4Multiply(
+          matrix4Translate(-.2, 0, 0),
+          matrix4Rotate(Math.PI/2, 0, 1, 0),
+        ),
+        //type: SHAPED_RULE_TYPE_ADDITION,
+      },
+      ...new Array(4).fill(0).flatMap<ShapedRule>((_, i) => {
+        const RIB_RADIUS = .05;
+        const RIB_WIDTH = .49;
+        const CHEST_OFFSET = .3;
+        const rib = shapeFromPlanes(planesCapsule(6, RIB_WIDTH, RIB_RADIUS));
+        //const rib = shapeFromPlanes(planesCube(RIB_WIDTH, RIB_RADIUS, RIB_RADIUS));
+        const z = .4 - i * .11;
+        const yAngle = i * -Math.PI/16;
+        return [{
+          shape: rib,
+          transform: matrix4Multiply(
+            matrix4Translate(CHEST_OFFSET, 0, z),
+            matrix4Rotate(Math.PI/1.7, 0, 0, 1),
+            matrix4Rotate(-yAngle, 0, 1, 0),
+            matrix4Translate(RIB_WIDTH/2, 0, 0),
+          ),
+          //type: SHAPED_RULE_TYPE_ADDITION,
+        }, {
+          shape: rib,
+          transform: matrix4Multiply(
+            matrix4Translate(CHEST_OFFSET, 0, z),
+            matrix4Rotate(-Math.PI/1.7, 0, 0, 1),
+            matrix4Rotate(-yAngle, 0, 1, 0),
+            matrix4Translate(RIB_WIDTH/2, 0, 0),
+          ),
+          //type: SHAPED_RULE_TYPE_ADDITION,
+        }, {
+          shape: rib,
+          transform: matrix4Multiply(
+            matrix4Translate(-CHEST_OFFSET, 0, z),
+            matrix4Rotate(Math.PI/1.5, 0, 0, 1),
+            matrix4Rotate(yAngle, 0, 1, 0),
+            matrix4Translate(-RIB_WIDTH/2, 0, 0),
+          ),
+          //type: SHAPED_RULE_TYPE_ADDITION,
+        }, {
+          shape: rib,
+          transform: matrix4Multiply(
+            matrix4Translate(-CHEST_OFFSET, 0, z),
+            matrix4Rotate(-Math.PI/1.5, 0, 0, 1),
+            matrix4Rotate(yAngle, 0, 1, 0),
+            matrix4Translate(-RIB_WIDTH/2, 0, 0),
+          ),
+          //type: SHAPED_RULE_TYPE_ADDITION,
+        }]
+      }),
+    ]),
+  ],
+
 ];
 
 const texture3D = createTextures(

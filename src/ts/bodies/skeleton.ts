@@ -10,7 +10,7 @@
 const SKELETON_DIMENSION = .19;
 const SKELETON_DEPTH = .4;
 
-const SKELETON_RIBCAGE_WIDTH = .15;
+const SKELETON_RIBCAGE_WIDTH = .1;
 const SKELETON_RIBCAGE_HEIGHT = .2;
 const SKELETON_RIBCAGE_DEPTH = .15;
 
@@ -24,16 +24,18 @@ const SKELETON_HUMERUS_RADIUS = .02;
 const SKELETON_FOREARM_WIDTH = .08;
 const SKELETON_FOREARM_RADIUS = .02;
 
-const SKELETON_HIPS_WIDTH = .06;
+const SKELETON_WRIST_RADIUS = .01;
+
+const SKELETON_HIPS_WIDTH = .04;
 const SKELETON_HIPS_HEIGHT = .1;
-const SKELETON_HIPS_DEPTH = .1;
+const SKELETON_HIPS_DEPTH = .08;
 
 const SKELETON_FEMUR_LENGTH = .1;
 const SKELETON_FEMUR_RADIUS = .02;
 
 const SKELETON_SHIN_LENGTH = .1;
 const SKELETON_SHIN_RADIUS = .02;
-const SKELETON_ANKLE_RADIUS = .02;
+const SKELETON_ANKLE_RADIUS = .01;
 
 const SKELETON_NECK_DIMENSION = .05;
 
@@ -77,7 +79,8 @@ const SKELETON_WALK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnima
   ]],
 }];
 
-type SkeletonPartId = typeof SKELETON_PART_ID_RIBCAGE
+type SkeletonPartId = 
+    | typeof SKELETON_PART_ID_RIBCAGE
     | typeof SKELETON_PART_ID_HEAD
     | typeof SKELETON_PART_ID_HIPS
     | typeof SKELETON_PART_ID_HUMERUS_RIGHT
@@ -247,6 +250,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   },
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,
+  textureId: TEXTURE_ID_HIPS,
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
       0,
@@ -262,6 +266,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     {
       id: SKELETON_PART_ID_RIBCAGE,
       modelId: MODEL_SKELETON_TORSO,
+      textureId: TEXTURE_ID_RIBCAGE,
       preRotationTransform: matrix4Translate(
           0,
           0,
@@ -379,7 +384,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         modelId: MODEL_SKELETON_SHIN,
         textureId: TEXTURE_ID_BONE,
         preRotationTransform: matrix4Translate(
-            SKELETON_FEMUR_LENGTH + SKELETON_FEMUR_RADIUS,
+            SKELETON_FEMUR_LENGTH,
             0,
             0,
         ),
@@ -412,7 +417,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         textureId: TEXTURE_ID_BONE,
         // TODO flip model
         preRotationTransform: matrix4Translate(
-            SKELETON_FEMUR_LENGTH + SKELETON_FEMUR_RADIUS,
+            SKELETON_FEMUR_LENGTH,
             0,
             0,
         ),
@@ -537,7 +542,7 @@ const SHAPE_SKELETON_HIPS = shapeFromPlanes([
   ),
   ...planeFlipAndDuplicateOnAxis([
     {
-      d: .05,
+      d: .04,
       normal: vectorNNormalize([0, 2, -1])
     }
   ], 1)
@@ -549,7 +554,7 @@ const SHAPE_SKELETON_HUMERUS = shapeFromPlanes(
 );
 
 const SHAPE_SKELETON_FOREARM = shapeFromPlanes(
-  planesCapsule(6, SKELETON_FOREARM_WIDTH, SKELETON_FOREARM_RADIUS),
+  planesCapsule(6, SKELETON_FOREARM_WIDTH, SKELETON_FOREARM_RADIUS, SKELETON_WRIST_RADIUS),
 )
 
 const SHAPE_SKELETON_FEMUR = shapeFromPlanes(

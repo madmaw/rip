@@ -103,7 +103,8 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   vec3 tx(vec3 p) {
-    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + p * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
+    
+    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + clamp(p, vec3(-.5), vec3(.5)) * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
         / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
   }
 
@@ -120,35 +121,32 @@ const FRAGMENT_SHADER = `#version 300 es
     float textureScale = max(.1, length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION}));
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
-      textureDelta = 1.8;
       bool foundTexture = false;
       float minTextureDelta = 0.;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
         float test = foundTexture
             ? (textureDelta + minTextureDelta)/2.
-            : textureDelta - ${TEXTURE_LOOP_STEP_SIZE};
+            : textureDelta + ${TEXTURE_LOOP_STEP_SIZE};
         texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * test;
         textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
         if (
             textureNormal.w > ${TEXTURE_ALPHA_THRESHOLD}
-            || abs(texturePosition.x) > .5
-            || abs(texturePosition.y) > .5
-            || abs(texturePosition.z) > .5
-            || !foundTexture
         ) {
+          foundTexture = true;
           textureDelta = test;
         } else {
-          minTextureDelta = test;
-        }
-        if (textureNormal.w > ${TEXTURE_ALPHA_THRESHOLD}) {
-          foundTexture = true;
-        }
+          if (foundTexture) {
+            minTextureDelta = test;
+          } else {
+            textureDelta = test;
+          }
+        }  
       }
       texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * textureDelta;
       textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-      // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-      //   discard;
-      // }
+      if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+        discard;
+      }
       normal = normalize((
           ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
           - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
@@ -158,9 +156,9 @@ const FRAGMENT_SHADER = `#version 300 es
     float textureDepth = textureDelta * textureScale * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
     vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
     //color = vec4((normal + 1.) / 2., length(normal));
-    if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-      color = vec4(vec3(textureDelta, 0., 0.), 1.);
-    }
+    // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+    //   color = vec4(vec3(textureDelta, 0., 0.), 1.);
+    // }
 
     vec3 position = (
         ${U_MODEL_VIEW_MATRIX}
@@ -173,7 +171,7 @@ const FRAGMENT_SHADER = `#version 300 es
     //color = vec4(texturePosition + .5, 0.);
 
 
-    float l = (color.w > .5 ? (color.w -.5) * 2. : .0);
+    float l = (color.w > .5 ? (color.w -.5) * 2. : textureDepth * (color.w - .5) * 2.);
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
