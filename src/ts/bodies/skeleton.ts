@@ -26,7 +26,7 @@ const SKELETON_FOREARM_RADIUS = .02;
 
 const SKELETON_WRIST_RADIUS = .01;
 
-const SKELETON_HIPS_WIDTH = .04;
+const SKELETON_HIPS_WIDTH = .06;
 const SKELETON_HIPS_HEIGHT = .1;
 const SKELETON_HIPS_DEPTH = .08;
 
@@ -540,12 +540,12 @@ const SHAPE_SKELETON_HIPS = shapeFromPlanes([
       SKELETON_HIPS_HEIGHT,
       SKELETON_HIPS_DEPTH,
   ),
-  ...planeFlipAndDuplicateOnAxis([
-    {
-      d: .04,
-      normal: vectorNNormalize([0, 2, -1])
-    }
-  ], 1)
+  // ...planeFlipAndDuplicateOnAxis([
+  //   {
+  //     d: .04,
+  //     normal: vectorNNormalize([0, 2, -1])
+  //   }
+  // ], 1)
 ]);
 
 const SHAPE_SKELETON_HUMERUS = shapeFromPlanes(

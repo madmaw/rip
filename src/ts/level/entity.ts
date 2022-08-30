@@ -232,3 +232,9 @@ const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(ent
     joints,
   } as Entity<T>;
 };
+
+const entityMidpoint = (entity: Entity): Vector3 => {
+  return entity.position.map((v, i) => {
+    return v + entity.dimensions[i]/2;
+  }) as Vector3;
+};

@@ -134,15 +134,37 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   // TEXTURE_ID_HIPS
   [
     boneTextureFactory,
-    //gradientTextureFactory,
     createShapedTextureNormalFactory([{
-      shape: shapeFromPlanes(planesCube(1, 1, 1)),
+      shape: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
+      transform: matrix4Multiply(
+        matrix4Translate(0, .3, 0),
+        matrix4Rotate(-Math.PI/12, 1, 0, 0),
+        matrix4Rotate(Math.PI/2, 0, 1, 0),
+      ),
       //type: SHAPED_RULE_TYPE_ADDITION,
-    },
-    {
-      shape: shapeFromPlanes(planesCapsule(3, 1, .15)),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
-    }]),
+    }, {
+      shape: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
+      transform: matrix4Multiply(
+        matrix4Translate(0, -.3, 0),
+        matrix4Rotate(Math.PI/12, 1, 0, 0),
+        matrix4Rotate(Math.PI/2, 0, 1, 0),
+      ),
+      //type: SHAPED_RULE_TYPE_ADDITION,
+    }, {
+      shape: shapeFromPlanes(planesCapsule(6, .6, .15)),
+      transform: matrix4Multiply(
+        matrix4Translate(0, 0, .3),
+        matrix4Rotate(Math.PI/2, 0, 0, 1),
+      ),
+      //type: SHAPED_RULE_TYPE_ADDITION,
+    }, {
+      shape: shapeFromPlanes(planesCapsule(6, .2, .1)),
+      transform: matrix4Multiply(
+        matrix4Translate(0, 0, -.3),
+        matrix4Rotate(Math.PI/2, 0, 0, 1),
+      ),
+      //type: SHAPED_RULE_TYPE_ADDITION,
+    },]),
   ],
   // TEXTURE_ID_RIBCAGE
   [

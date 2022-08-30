@@ -544,6 +544,20 @@ player.joints[SKELETON_PART_ID_HEAD].light = .2;
 // player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
 
+const enemy: Entity<SkeletonPartId> = entityCreate({
+  position: [(width - SKELETON_DIMENSION)/2, (height - SKELETON_DIMENSION)/2, 1.1],
+  dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+  orientation: ORIENTATION_EAST,
+  body: PART_SKELETON_BODY,
+  velocity: [0, 0, 0],
+  rotation: [0, 0, 0],
+  collisionGroup: COLLISION_GROUP_MONSTER,
+  collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+});
+// player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
+levelAddEntity(level, enemy);
+
+
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
 let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2;
 let cameraOffsetTransform: Matrix4;
@@ -966,7 +980,15 @@ const update = (now: number) => {
                 if (collisionEntity.velocity) {
                   // only do soft collisions in first iteration
                   if (!collisions) {
-                    // TODO soft collisions with other movable objects
+                    // soft collisions with other movable objects
+                    const entityCenter = entityMidpoint(entity);
+                    const collisionEntityCenter = entityMidpoint(collisionEntity);
+                    const deltas = vectorNSubtract(entityCenter, collisionEntityCenter);
+                    deltas.forEach((delta, i) => {
+                      const maxDelta = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;                      
+                      entity.velocity[i] -= (1 - delta/maxDelta)/999;
+                    });                    
+                    
                   }
                 } else {
                   // scale by velocity to get collision time
@@ -1129,8 +1151,8 @@ const update = (now: number) => {
           levelAddEntity(level, entity);
         }
 
-        const entityMidpoint = entity.position.map((v, i) => v + entity.dimensions[i]/2) as Vector3;
-        const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityMidpoint);
+        const entityCenter = entityMidpoint(entity);
+        const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
         return cy < 0 && cz > 0;
       },
       light,
