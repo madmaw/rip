@@ -14,26 +14,25 @@ const SKELETON_RIBCAGE_WIDTH = .15;
 const SKELETON_RIBCAGE_HEIGHT = .2;
 const SKELETON_RIBCAGE_DEPTH = .15;
 
-const SKELETON_HEAD_WIDTH = .14;
-const SKELETON_HEAD_HEIGHT = .1;
-const SKELETON_HEAD_DEPTH = .1;
+const SKELETON_HEAD_WIDTH = .09;
+const SKELETON_HEAD_HEIGHT = .08;
+const SKELETON_HEAD_DEPTH = .08;
 
-const SKELETON_HUMERUS_LENGTH = .1;
+const SKELETON_HUMERUS_LENGTH = .08;
 const SKELETON_HUMERUS_RADIUS = .02;
 
-const SKELETON_FOREARM_WIDTH = .1;
-const SKELETON_FOREARM_HEIGHT = .03;
-const SKELETON_FOREARM_DEPTH = .04;
+const SKELETON_FOREARM_WIDTH = .08;
+const SKELETON_FOREARM_RADIUS = .02;
 
 const SKELETON_HIPS_WIDTH = .06;
 const SKELETON_HIPS_HEIGHT = .1;
 const SKELETON_HIPS_DEPTH = .1;
 
-const SKELETON_FEMUR_LENGTH = .07;
-const SKELETON_FEMUR_RADIUS = .03;
+const SKELETON_FEMUR_LENGTH = .1;
+const SKELETON_FEMUR_RADIUS = .02;
 
 const SKELETON_SHIN_LENGTH = .1;
-const SKELETON_SHIN_RADIUS = .03;
+const SKELETON_SHIN_RADIUS = .02;
 const SKELETON_ANKLE_RADIUS = .02;
 
 const SKELETON_NECK_DIMENSION = .05;
@@ -274,7 +273,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HEAD,
           modelId: MODEL_SKELETON_HEAD,
-          textureId: TEXTURE_ID_SKELETON_HEAD,
+          textureId: TEXTURE_ID_SKULL,
           preRotationTransform: matrix4Translate(
               0,
               0,
@@ -285,6 +284,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HUMERUS_RIGHT,
           modelId: MODEL_SKELETON_HUMERUS,
+          textureId: TEXTURE_ID_BONE,
           preRotationTransform: matrix4Translate(
               0,
               -SKELETON_RIBCAGE_HEIGHT/2,
@@ -298,13 +298,14 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           children: [{
             id: SKELETON_PART_ID_FOREARM_RIGHT,
             modelId: MODEL_SKELETON_FOREARM,
+            textureId: TEXTURE_ID_BONE,
             preRotationTransform: matrix4Translate(
-                SKELETON_HUMERUS_LENGTH/2,
+                SKELETON_HUMERUS_LENGTH/2 + SKELETON_HUMERUS_RADIUS,
                 0,
                 0,
             ),
             postRotationTransform: matrix4Translate(
-                SKELETON_FOREARM_WIDTH/2,
+                SKELETON_FOREARM_WIDTH/2 + SKELETON_FOREARM_RADIUS,
                 0,
                 0,
             ),
@@ -327,6 +328,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HUMERUS_LEFT,
           modelId: MODEL_SKELETON_HUMERUS,
+          textureId: TEXTURE_ID_BONE,
           // TODO flip model
           preRotationTransform: matrix4Translate(
               0,
@@ -341,6 +343,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           children: [{
             id: SKELETON_PART_ID_FOREARM_LEFT,
             modelId: MODEL_SKELETON_FOREARM,
+            textureId: TEXTURE_ID_BONE,
             // TODO flip model
             preRotationTransform: matrix4Translate(
                 SKELETON_HUMERUS_LENGTH/2,
@@ -360,6 +363,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     {
       id: SKELETON_PART_ID_FEMUR_RIGHT,
       modelId: MODEL_SKELETON_FEMUR,
+      textureId: TEXTURE_ID_BONE,
       preRotationTransform: matrix4Translate(
           0,
           -SKELETON_HIPS_HEIGHT/2,
@@ -373,8 +377,9 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       children: [{
         id: SKELETON_PART_ID_SHIN_RIGHT,
         modelId: MODEL_SKELETON_SHIN,
+        textureId: TEXTURE_ID_BONE,
         preRotationTransform: matrix4Translate(
-            SKELETON_FEMUR_LENGTH,
+            SKELETON_FEMUR_LENGTH + SKELETON_FEMUR_RADIUS,
             0,
             0,
         ),
@@ -389,6 +394,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     {
       id: SKELETON_PART_ID_FEMUR_LEFT,
       modelId: MODEL_SKELETON_FEMUR,
+      textureId: TEXTURE_ID_BONE,
       // TODO flip model
       preRotationTransform: matrix4Translate(
           0,
@@ -403,9 +409,10 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       children: [{
         id: SKELETON_PART_ID_SHIN_LEFT,
         modelId: MODEL_SKELETON_SHIN,
+        textureId: TEXTURE_ID_BONE,
         // TODO flip model
         preRotationTransform: matrix4Translate(
-            SKELETON_FEMUR_LENGTH,
+            SKELETON_FEMUR_LENGTH + SKELETON_FEMUR_RADIUS,
             0,
             0,
         ),
@@ -471,13 +478,8 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
   ...planeFlipAndDuplicateOnAxis([
     // under jaw
     {
-      d: .03,
-      normal: vectorNNormalize([-1, 0, -2]),
-    },
-    // back of head
-    {
-      d: .05,
-      normal: vectorNNormalize([-1, 0, 0]),
+      d: .04,
+      normal: vectorNNormalize([-1, 0, -3]),
     },
     // front of face
     {
@@ -486,34 +488,44 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
     },
     // top of back of head
     {
-      d: .05,
-      normal: vectorNNormalize([-1, 0, 1.5]),
+      d: .04,
+      normal: vectorNNormalize([-2, 0, 3]),
     },
     // side of face
     {
       d: .05,
-      normal: vectorNNormalize([1, 1, 0]),
+      normal: vectorNNormalize([3, 3, 1]),
     },
     // forehead
     {
-      d: .05,
-      normal: vectorNNormalize([1, 0, 1]),
+      d: .045,
+      normal: vectorNNormalize([2, 0, 3]),
     },
-    // right jaw narrowing
+    // right cheek narrowing
     {
       d: .05,
-      normal: vectorNNormalize([1, 2, -1])
+      normal: vectorNNormalize([4, 5, -2])
     },
     // right cranium rounding
     {
-      d: .05,
-      normal: vectorNNormalize([0, 1, 1])
+      d: .04,
+      normal: vectorNNormalize([0, 2, 3])
     },
-    // right back of head rounding
+    // right back of head rounding (top)
     {
       d: .04,
-      normal: vectorNNormalize([-1, 1, 0])
-    }
+      normal: vectorNNormalize([-3, 3, 1])
+    },
+    // right back of head rounding (bottom)
+    {
+      d: .045,
+      normal: vectorNNormalize([-3, 3, -1])
+    },
+    // right bottom of head rounding
+    {
+      d: .045,
+      normal: vectorNNormalize([0, 1, -1])
+    },
   ], 1),
 ]);
 
@@ -533,18 +545,12 @@ const SHAPE_SKELETON_HIPS = shapeFromPlanes([
 
 const SHAPE_SKELETON_HUMERUS = shapeFromPlanes(
     planesCapsule(8, SKELETON_HUMERUS_LENGTH, SKELETON_HUMERUS_RADIUS)
+
 );
 
-const SHAPE_SKELETON_FOREARM = shapeFromPlanes([
-  ...planesCube(SKELETON_FOREARM_WIDTH, SKELETON_FOREARM_HEIGHT, SKELETON_FOREARM_DEPTH),
-  ...planeFlipAndDuplicateOnAxis(
-      planeFlipAndDuplicateOnAxis([{
-        d: .022,
-        normal: vectorNNormalize([1, 0, 3]),
-      }], 1),
-      2
-  ),
-])
+const SHAPE_SKELETON_FOREARM = shapeFromPlanes(
+  planesCapsule(6, SKELETON_FOREARM_WIDTH, SKELETON_FOREARM_RADIUS),
+)
 
 const SHAPE_SKELETON_FEMUR = shapeFromPlanes(
     planesCapsule(8, SKELETON_FEMUR_LENGTH, SKELETON_FEMUR_RADIUS)

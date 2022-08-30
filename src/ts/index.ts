@@ -103,7 +103,7 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   vec3 tx(vec3 p) {
-    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + p * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_1}, 1., 1.) + .5)
+    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + p * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
         / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
   }
 
@@ -117,12 +117,13 @@ const FRAGMENT_SHADER = `#version 300 es
     vec3 texturePosition = ${V_TEXTURE_POSITION};
     vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
     vec3 normal = normalize(${V_NORMAL});
+    float textureScale = max(.1, length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION}));
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-      textureDelta = 1.;
+      // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
+      textureDelta = 1.8;
       bool foundTexture = false;
       float minTextureDelta = 0.;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-        //float test = (textureDelta + minTextureDelta)/2.;
         float test = foundTexture
             ? (textureDelta + minTextureDelta)/2.
             : textureDelta - ${TEXTURE_LOOP_STEP_SIZE};
@@ -145,25 +146,25 @@ const FRAGMENT_SHADER = `#version 300 es
       }
       texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * textureDelta;
       textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-      if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-        discard;
-      }
+      // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      //   discard;
+      // }
       normal = normalize((
           ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
           - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
       )).xyz;
     }
 
-    float textureDepth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
+    float textureDepth = textureDelta * textureScale * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
     vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
     //color = vec4((normal + 1.) / 2., length(normal));
-    // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-    //   color = vec4(vec3(1., 0., 0.), 1.);
-    // }
+    if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      color = vec4(vec3(textureDelta, 0., 0.), 1.);
+    }
 
     vec3 position = (
         ${U_MODEL_VIEW_MATRIX}
-        * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta, 1.)
+        * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta * textureScale, 1.)
     ).xyz;
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
@@ -202,8 +203,8 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
-            + textureDepth * 1.5 / dot(normalize(${V_NORMAL}), deltan);
-        float bias = pow(d, 2.) * (1.01 - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+            + textureDepth / dot(normalize(${V_NORMAL}), deltan);
+        float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
           l += mix(
                   max(0., -n),
@@ -215,6 +216,7 @@ const FRAGMENT_SHADER = `#version 300 es
         } else if (i == 0) {
           l = 0.;
         }
+        //l = textureDepth;
       }
     }
     ${OUT_RESULT} = vec4(pow(color.xyz * l, vec3(.45)), 1.);
@@ -293,7 +295,7 @@ const [colorTexture, normalTexture] = [uniformTextureColors, uniformTextureNorma
       gl.TEXTURE_3D,
       0,
       gl.RGBA,
-      TEXTURE_SIZE_PLUS_1 * TEXTURE_FACTORIES.length,
+      TEXTURE_SIZE_PLUS_2 * TEXTURE_FACTORIES.length,
       TEXTURE_SIZE,
       TEXTURE_SIZE,
       0,
@@ -531,7 +533,7 @@ for (let i=0; i<MAX_LIGHTS; i++) {
 
 // and a player
 const player: Entity<SkeletonPartId> = entityCreate({
-  position: [(width - SKELETON_DIMENSION)/2, (height - SKELETON_DIMENSION)/2, 1.1],
+  position: [(width - SKELETON_DIMENSION)/2, -(SKELETON_DIMENSION)/2, 1.1],
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
   body: PART_SKELETON_BODY,

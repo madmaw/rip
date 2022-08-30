@@ -18,14 +18,18 @@ const createTextures = (
     textureFactories: [TextureFactory, TextureFactory][],
     textureDimension: number,
 ): Texture3D => {
-  const textureDimensionPlus1 = textureDimension + 1;
+  const textureDimensionPlus2 = textureDimension + 2;
   return array3New(
       textureDimension,
       textureDimension,
-      textureFactories.length * textureDimensionPlus1,
-      (...p) => {
-        const i = p[2] / textureDimensionPlus1 | 0;
-        const internalPoint = p.map(v => (Math.min(v % textureDimensionPlus1, textureDimension - 1) + .5)/textureDimension - .5) as Vector3;
+      textureFactories.length * textureDimensionPlus2,
+      (z, y, x) => {
+        const i = x / textureDimensionPlus2 | 0;
+        const internalPoint: Vector3 = [
+          (z + .5)/textureDimension - .5,
+          (y + .5)/textureDimension - .5, 
+          (Math.max(0, Math.min((x % textureDimensionPlus2) - 1, textureDimension - 1)) + .5)/textureDimension - .5
+        ];
         return textureFactories[i].map<Vector4>(f => f(...internalPoint)) as Texel;
       },
   );

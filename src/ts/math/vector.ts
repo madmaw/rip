@@ -68,7 +68,7 @@ const vectorNNormalize = <T extends number[]>(v: T): T => {
     return vectorNDivide(v, vectorNLength(v)) as any;
 }
 
-const vectorNSubtract = <T extends number[]>(v1: T, v2: T): T => {
+const vectorNSubtract = <T extends number[]>(v1: T, v2: number[]): T => {
     //return [v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]];
     return v1.map((v, i) => v - v2[i]) as any;
 }
