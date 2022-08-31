@@ -18,10 +18,10 @@ const SKELETON_HEAD_WIDTH = .09;
 const SKELETON_HEAD_HEIGHT = .08;
 const SKELETON_HEAD_DEPTH = .08;
 
-const SKELETON_HUMERUS_LENGTH = .08;
+const SKELETON_HUMERUS_LENGTH = .05;
 const SKELETON_HUMERUS_RADIUS = .02;
 
-const SKELETON_FOREARM_WIDTH = .08;
+const SKELETON_FOREARM_WIDTH = .05;
 const SKELETON_FOREARM_RADIUS = .02;
 
 const SKELETON_WRIST_RADIUS = .01;
@@ -37,6 +37,13 @@ const SKELETON_SHIN_LENGTH = .1;
 const SKELETON_SHIN_RADIUS = .02;
 const SKELETON_ANKLE_RADIUS = .01;
 
+const SKELETON_HAND_DIMENSION = .08;
+
+const SKELETON_FOOT_WIDTH = .1;
+const SKELETON_FOOT_HEIGHT = .04;
+const SKELETON_FOOT_DEPTH = .04;
+
+
 const SKELETON_NECK_DIMENSION = .05;
 
 const SKELETON_PART_ID_RIBCAGE = 0;
@@ -50,6 +57,10 @@ const SKELETON_PART_ID_FEMUR_RIGHT = 7;
 const SKELETON_PART_ID_FEMUR_LEFT = 8;
 const SKELETON_PART_ID_SHIN_RIGHT = 9;
 const SKELETON_PART_ID_SHIN_LEFT = 10;
+const SKELETON_PART_ID_HAND_RIGHT = 11;
+const SKELETON_PART_ID_HAND_LEFT = 12;
+const SKELETON_PART_ID_FOOT_RIGHT = 13;
+const SKELETON_PART_ID_FOOT_LEFT = 14;
 
 const SKELETON_WALK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>>[] = [{
   [SKELETON_PART_ID_HIPS]: [[
@@ -90,7 +101,12 @@ type SkeletonPartId =
     | typeof SKELETON_PART_ID_FEMUR_RIGHT
     | typeof SKELETON_PART_ID_FEMUR_LEFT
     | typeof SKELETON_PART_ID_SHIN_RIGHT
-    | typeof SKELETON_PART_ID_SHIN_LEFT;
+    | typeof SKELETON_PART_ID_SHIN_LEFT
+    | typeof SKELETON_PART_ID_HAND_RIGHT
+    | typeof SKELETON_PART_ID_HAND_LEFT
+    | typeof SKELETON_PART_ID_FOOT_RIGHT
+    | typeof SKELETON_PART_ID_FOOT_LEFT
+    ;
 
 const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   defaultJointRotations: [
@@ -116,6 +132,14 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     [0, Math.PI*3/10, 0],
     //SKELETON_PART_ID_SHIN_LEFT
     [0, Math.PI*3/10, 0],
+    // SKELETON_PART_ID_HAND_RIGHT
+    [0, 0, 0],
+    // SKELETON_PART_ID_HAND_LEFT
+    [0, 0, 0],
+    // SKELETON_PART_ID_FOOT_RIGHT
+    [0, 0, 0],
+    // SKELETON_PART_ID_FOOT_LEFT
+    [0, 0, 0],
   ],
   anims: {
     [ACTION_ID_IDLE]: {
@@ -254,7 +278,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
       0,
-      SKELETON_HIPS_DEPTH/2 + SKELETON_FEMUR_LENGTH + SKELETON_SHIN_LENGTH - SKELETON_DEPTH/2,
+      SKELETON_HIPS_DEPTH/2 + SKELETON_FEMUR_LENGTH + SKELETON_SHIN_LENGTH + SKELETON_FOOT_DEPTH - SKELETON_DEPTH/2,
   ),
   postRotationTransform: matrix4Translate(
       0,
@@ -314,19 +338,35 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
                 0,
                 0,
             ),
-            jointAttachmentHolderTransform: matrix4Multiply(
-                matrix4Translate(
-                    SKELETON_FOREARM_WIDTH/2,
-                    0,
+            children: [{
+              id: SKELETON_PART_ID_HAND_RIGHT,
+              modelId: MODEL_SKELETON_HAND,
+              textureId: TEXTURE_ID_HAND_RIGHT,
+              preRotationTransform: matrix4Translate(
+                  SKELETON_FOREARM_WIDTH/2 + SKELETON_FOREARM_RADIUS,
+                  0,
+                  0,
+              ),
+              postRotationTransform: matrix4Translate(
+                  SKELETON_HAND_DIMENSION/2,
+                  0,
+                  0
+              ),
+              jointAttachmentHolderTransform: matrix4Multiply(
+                  matrix4Rotate(
+                      -Math.PI/2,
+                      0,
+                      1, 
+                      0,
+                  ),
+                  matrix4Translate(
+                    SKELETON_HAND_DIMENSION/2,
+                    SKELETON_HAND_DIMENSION/3,
                     0,
                 ),
-                matrix4Rotate(
-                    -Math.PI/2,
-                    0,
-                    1, 
-                    0,
-                ),
-            ),
+
+              ),
+            }]
           }]
         },
         // left shoulder
@@ -351,15 +391,43 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             textureId: TEXTURE_ID_BONE,
             // TODO flip model
             preRotationTransform: matrix4Translate(
-                SKELETON_HUMERUS_LENGTH/2,
+                SKELETON_HUMERUS_LENGTH/2 + SKELETON_HUMERUS_RADIUS,
                 0,
                 0,
             ),
             postRotationTransform: matrix4Translate(
-                SKELETON_FOREARM_WIDTH/2,
+                SKELETON_FOREARM_WIDTH/2 + SKELETON_FOREARM_RADIUS,
                 0,
                 0,
-            )
+            ),
+            children: [{
+              id: SKELETON_PART_ID_HAND_LEFT,
+              modelId: MODEL_SKELETON_HAND,
+              textureId: TEXTURE_ID_HAND_LEFT,
+              preRotationTransform: matrix4Translate(
+                  SKELETON_FOREARM_WIDTH/2 + SKELETON_FOREARM_RADIUS,
+                  0,
+                  0,
+              ),
+              postRotationTransform: matrix4Translate(
+                  SKELETON_HAND_DIMENSION/2,
+                  0,
+                  0
+              ),
+              jointAttachmentHolderTransform: matrix4Multiply(
+                  matrix4Rotate(
+                      -Math.PI/2,
+                      0,
+                      1, 
+                      0,
+                  ),
+                  matrix4Translate(
+                    SKELETON_HAND_DIMENSION/2,
+                    -SKELETON_HAND_DIMENSION/3,
+                    0,
+                ),
+              ),
+            }]            
           }]
         },
       ],
@@ -393,6 +461,29 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             0, 
             0
         ),
+        children: [{
+          id: SKELETON_PART_ID_FOOT_RIGHT,
+          modelId: MODEL_SKELETON_FOOT,
+          textureId: TEXTURE_ID_FOOT,
+          preRotationTransform: matrix4Translate(
+              SKELETON_SHIN_LENGTH,
+              0,
+              0,
+          ),
+          postRotationTransform: matrix4Multiply(
+              matrix4Rotate(
+                  Math.PI/2.5,
+                  0,
+                  1, 
+                  0,
+              ),
+              matrix4Translate(
+                  -SKELETON_FOOT_WIDTH/2,
+                  0, 
+                  -SKELETON_FOOT_DEPTH/2,
+              ),
+          ),
+        }],
       }],
     },
     // left leg
@@ -426,6 +517,29 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             0, 
             0
         ),
+        children: [{
+          id: SKELETON_PART_ID_FOOT_RIGHT,
+          modelId: MODEL_SKELETON_FOOT,
+          textureId: TEXTURE_ID_FOOT,
+          preRotationTransform: matrix4Translate(
+              SKELETON_SHIN_LENGTH,
+              0,
+              0,
+          ),
+          postRotationTransform: matrix4Multiply(
+              matrix4Rotate(
+                  Math.PI/2.5,
+                  0,
+                  1, 
+                  0,
+              ),
+              matrix4Translate(
+                  -SKELETON_FOOT_WIDTH/2,
+                  0, 
+                  -SKELETON_FOOT_DEPTH/2,
+              ),
+          ),
+        }],        
       }],      
     }
   ],
@@ -440,11 +554,6 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
       SKELETON_RIBCAGE_DEPTH,
   ),
   ...planeFlipAndDuplicateOnAxis(planeFlipAndDuplicateOnAxis([
-    // stomach
-    {
-      d: .07, 
-      normal: vectorNNormalize([4, 0, -1])
-    },
     // shoulder
     {
       d: .09,
@@ -458,8 +567,8 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
     // back rounding
     {
       d: .06,
-      normal: vectorNNormalize([-2, 2, -1])
-    }
+      normal: vectorNNormalize([-2, 3, -1])
+    },
   ], 1), 0),
   // collar
   {
@@ -563,4 +672,12 @@ const SHAPE_SKELETON_FEMUR = shapeFromPlanes(
 
 const SHAPE_SKELETON_SHIN = shapeFromPlanes(
     planesCapsule(8, SKELETON_SHIN_LENGTH, SKELETON_SHIN_RADIUS, SKELETON_ANKLE_RADIUS)
+);
+
+const SHAPE_SKELETON_HAND = shapeFromPlanes(
+    planesCube(SKELETON_HAND_DIMENSION, SKELETON_HAND_DIMENSION, SKELETON_HAND_DIMENSION),
+);
+
+const SHAPE_SKELETON_FOOT = shapeFromPlanes(
+    planesCube(SKELETON_FOOT_WIDTH, SKELETON_FOOT_HEIGHT, SKELETON_FOOT_DEPTH),
 );

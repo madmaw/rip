@@ -18,11 +18,12 @@ const animLerp = (start: number, into: Vector3, to: Vector3, duration: number, e
   const from = [...into];
   return (now: number): 0 | 1 => {
     const delta = now - start;
-    const proportion = Math.min(delta / duration, 1)
+    const proportion = duration ? Math.min(delta / duration, 1) : 1;
     const progress = easing(proportion);
     arrayMapAndSet(into, (_, i) => {
       const diff = wrapAngles ? mathAngleDiff(from[i], to[i]) : to[i] - from[i];
-      return from[i] + diff * progress;
+      const result = from[i] + diff * progress;
+      return result;
     });
     return (proportion | 0) as any; // round down gives zero, until it's >= 1
   }

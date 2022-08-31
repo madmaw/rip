@@ -17,7 +17,45 @@ const gradientTextureFactory = createLinearGradientTextureFactory(
     [-.5, -.5, -.5],
     [0, 255, 0, 127],
     [.5, .5, .5],
-)
+);
+
+const rightHandNormalFactory = createShapedTextureNormalFactory([
+  {
+    shape: shapeFromPlanes(planesCapsule(6, .5, .05)),
+    transform: matrix4Multiply(
+        matrix4Translate(-.6, 0, 0),
+        matrix4Rotate(-Math.PI/5, 0, .8, -.7),
+        matrix4Translate(.4, 0, 0),
+    ),
+  },
+  ...new Array(4).fill(0).flatMap((_, i) => {
+    const a = -Math.PI/15 + i * Math.PI/15;
+    const t = matrix4Multiply(
+        matrix4Translate(-.6, 0, 0),
+        matrix4Rotate(a, 0, 1, 0),
+        matrix4Translate(.4, 0, 0),
+    );
+    return [{
+      shape: shapeFromPlanes(planesCapsule(6, .5, .05)),
+      transform: t,
+      //type: SHAPED_RULE_TYPE_ADDITION,
+    }, {
+      shape: shapeFromPlanes(planesCapsule(6, .4, .05, .01)),
+      transform: matrix4Multiply(
+        t,
+        matrix4Translate(.3, 0, 0),
+        matrix4Rotate(Math.PI/4, 0, 0, 1),
+        matrix4Translate(.2, 0, 0),
+      )
+      //type: SHAPED_RULE_TYPE_ADDITION,
+    }]
+  }),
+]);
+const leftHandNormalFactory = (z: number, y: number, x: number) => {
+  const n = rightHandNormalFactory(z, -y, x);
+  n[1] = 255 - n[1];
+  return n;
+}
 
 /*
 const shapedTextureNormalFactory = createShapedTextureNormalFactory([{
@@ -46,6 +84,9 @@ const TEXTURE_ID_SKULL = 3;
 const TEXTURE_ID_BONE = 4
 const TEXTURE_ID_HIPS = 5;
 const TEXTURE_ID_RIBCAGE = 6;
+const TEXTURE_ID_HAND_RIGHT = 7;
+const TEXTURE_ID_HAND_LEFT = 8;
+const TEXTURE_ID_FOOT = 9;
 
 type TextureId = 
     | typeof TEXTURE_ID_WHITE
@@ -55,6 +96,9 @@ type TextureId =
     | typeof TEXTURE_ID_BONE
     | typeof TEXTURE_ID_HIPS
     | typeof TEXTURE_ID_RIBCAGE
+    | typeof TEXTURE_ID_HAND_RIGHT
+    | typeof TEXTURE_ID_HAND_LEFT
+    | typeof TEXTURE_ID_FOOT
     ;
 
 const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
@@ -171,14 +215,16 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     boneTextureFactory,
     //gradientTextureFactory,
     createShapedTextureNormalFactory([
+      // spine
       {
-        shape: shapeFromPlanes(planesCapsule(6, .5, .05)),
+        shape: shapeFromPlanes(planesCapsule(6, .8, .05)),
         transform: matrix4Multiply(
           matrix4Translate(-.2, 0, 0),
-          matrix4Rotate(Math.PI/2, 0, 1, 0),
+          matrix4Rotate(Math.PI/2.2, 0, 1, 0),
         ),
         //type: SHAPED_RULE_TYPE_ADDITION,
       },
+      // ribs
       ...new Array(4).fill(0).flatMap<ShapedRule>((_, i) => {
         const RIB_RADIUS = .05;
         const RIB_WIDTH = .49;
@@ -227,7 +273,36 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
       }),
     ]),
   ],
-
+  // TEXTURE_ID_HAND_RIGHT
+  [
+    // maybe a gradient?
+    boneTextureFactory,
+    rightHandNormalFactory,
+  ],
+  // TEXTURE_ID_HAND_LEFT
+  [
+    boneTextureFactory,
+    leftHandNormalFactory,
+  ],
+  // TEXTURE_ID_FOOT
+  [
+    boneTextureFactory,
+    createShapedTextureNormalFactory([
+      ...new Array(5).fill(0).map((_, i) => {
+        const a = -Math.PI/15 + i * Math.PI/15;
+        const t = matrix4Multiply(
+            matrix4Translate(.5, 0, 0),
+            matrix4Rotate(a, 0, 0, 1),
+            matrix4Translate(-.4, 0, 0),
+        );
+        return {
+          shape: shapeFromPlanes(planesCapsule(6, 1, .05, .03)),
+          transform: t,
+          //type: SHAPED_RULE_TYPE_ADDITION,
+        };
+      }),
+    ])
+  ],
 ];
 
 const texture3D = createTextures(

@@ -11,13 +11,15 @@ const MODEL_SKELETON_HUMERUS = 9;
 const MODEL_SKELETON_FOREARM = 10;
 const MODEL_SKELETON_FEMUR = 11;
 const MODEL_SKELETON_SHIN = 12;
-const MODEL_CLUB_1 = 13;
-const MODEL_CLUB_2 = 14;
-const MODEL_CLUB_3 = 15;
-const MODEL_CLUB_4 = 16;
-const MODEL_CLUB_5 = 17;
-const MODEL_TORCH_HANDLE = 18;
-const MODEL_TORCH_HEAD = 19;
+const MODEL_SKELETON_HAND = 13;
+const MODEL_SKELETON_FOOT = 14;
+const MODEL_CLUB_1 = 15;
+const MODEL_CLUB_2 = 16;
+const MODEL_CLUB_3 = 17;
+const MODEL_CLUB_4 = 18;
+const MODEL_CLUB_5 = 19;
+const MODEL_TORCH_HANDLE = 20;
+const MODEL_TORCH_HEAD = 21;
 
 type ModelId =
     | typeof MODEL_WALL
@@ -33,6 +35,8 @@ type ModelId =
     | typeof MODEL_SKELETON_FOREARM
     | typeof MODEL_SKELETON_FEMUR
     | typeof MODEL_SKELETON_SHIN
+    | typeof MODEL_SKELETON_HAND
+    | typeof MODEL_SKELETON_FOOT
     | typeof MODEL_CLUB_1
     | typeof MODEL_CLUB_2
     | typeof MODEL_CLUB_3

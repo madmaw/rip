@@ -203,15 +203,16 @@ const FRAGMENT_SHADER = `#version 300 es
             + textureDepth / dot(normalize(${V_NORMAL}), deltan);
         // TODO distance in bias seems wrong
         float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+        float light = mix(
+            max(0., -n),
+            1.,
+            pow(max(0., (${MIN_LIGHT_THROW_C} - length(delta))*${U_LIGHT_POSITIONS}[i].w), 2.)
+        )
+        * ${U_LIGHT_POSITIONS}[i].w
+        * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
-          l += mix(
-                  max(0., -n),
-                  1.,
-                  pow(max(0., (${MIN_LIGHT_THROW_C} - length(delta))*${U_LIGHT_POSITIONS}[i].w), 2.)
-              )
-              * ${U_LIGHT_POSITIONS}[i].w
-              * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
-        } else if (i == 0) {
+          l += light;
+        } else if (i == 0){
           l = 0.;
         }
         //l = textureDepth;
@@ -375,6 +376,8 @@ const shapes = [
   SHAPE_SKELETON_FOREARM,
   SHAPE_SKELETON_FEMUR,
   SHAPE_SKELETON_SHIN,
+  SHAPE_SKELETON_HAND,
+  SHAPE_SKELETON_FOOT,
   ...SHAPES_CLUBS,
   SHAPE_TORCH_HANDLE,
   SHAPE_TORCH_HEAD,
@@ -507,7 +510,7 @@ stepParts.reduce((z, stepPart, i) => {
 }, 0);  
 
 // torch
-for (let i=0; i<1; i++) {
+for (let i=0; i<MAX_LIGHTS; i++) {
   const t = matrix4Translate(i + .5, .5, 1.1);
   const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
   const torch: Entity<TorchPartId> = entityCreate({
@@ -542,7 +545,6 @@ const player: Entity<SkeletonPartId> = entityCreate({
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
 });
 player.joints[SKELETON_PART_ID_HEAD].light = .2;
-// player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, player);
 
 const enemy: Entity<SkeletonPartId> = entityCreate({
@@ -556,7 +558,6 @@ const enemy: Entity<SkeletonPartId> = entityCreate({
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
 });
-// player.joints[SKELETON_PART_ID_FOREARM_RIGHT].attachedEntity = clubs[0];
 levelAddEntity(level, enemy);
 
 
@@ -1136,7 +1137,7 @@ const update = (now: number) => {
                     && verticalIntersectionCount == 1
                     && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
                 ) {
-                  entity.velocity[2] = Math.max(.0008, entity.velocity[2]);
+                  entity.velocity[2] = Math.max(.001, entity.velocity[2]);
                   // steps count as a z collision
                   entity.lastZCollision = worldTime;
                 }
@@ -1144,9 +1145,6 @@ const update = (now: number) => {
                 if (maxOverlapIndex == 2) {
                   entity.lastZCollision = worldTime;
                 }
-                // if (maxOverlapIndex != 2) {
-                //   console.log('x', maxOverlapIndex);
-                // }
               }
             }
           } while ((remainingDelta > EPSILON) && iterations < MAX_COLLISIONS);
@@ -1202,7 +1200,7 @@ const update = (now: number) => {
                   worldTime,
                   entity.offset,
                   bodyAnimations.translate || [0, 0, 0],
-                  totalDuration,
+                  totalDuration || 99,
                   EASE_OUT_QUAD,
               );
             }
@@ -1309,7 +1307,10 @@ function updateAndRenderLevel(
               }
               if (renderEntities[entity.id]) {
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
-                const invertedTransform = matrix4Invert(transform) || matrix4Identity();
+                const invertedTransform = matrix4Invert(transform);
+                if (!invertedTransform) {
+                  throw new Error();
+                }
                 const textureId = part.textureId || TEXTURE_ID_WHITE;
                 if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
                   const modelInstancedRenders = instancedRenders[part.modelId]

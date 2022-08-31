@@ -20,7 +20,7 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
     id: CLUB_PART_ID_BODY,
     modelId: MODEL_CLUB_1 + i as ModelId,
     jointAttachmentHeldTransform: matrix4Translate(clubWidth/3, 0, 0),
-    jointAttachmentHolderPartId: SKELETON_PART_ID_FOREARM_RIGHT,
+    jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_RIGHT,
     jointAttachmentHolderAnims: {
       [ACTION_ID_ATTACK_LIGHT]: {
         maxSpeed: .005,
@@ -37,6 +37,10 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
           ], 1],
           [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
             [0, -Math.PI/2, 0],
+            [0, Math.PI/3, 0],
+          ], 1, EASE_IN_QUAD],
+          [SKELETON_PART_ID_HAND_RIGHT]: [[
+            [0, -Math.PI/3, 0],
             [0, Math.PI/2, 0],
           ], 1, EASE_IN_QUAD],
         }],
