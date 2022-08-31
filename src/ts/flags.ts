@@ -6,3 +6,4 @@ const FLAG_TEXTURE_CLAMP_TO_EDGE = true;
 const FLAG_TEXTURE_SCALE_NEAREST = true;
 const FLAG_GAMEPAD_SUPPORT = true;
 const FLAG_ALLOW_ZOOM = true;
+const FLAG_INSTANCED_RENDERING = false;

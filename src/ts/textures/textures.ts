@@ -47,7 +47,7 @@ const TEXTURE_ID_BONE = 4
 const TEXTURE_ID_HIPS = 5;
 const TEXTURE_ID_RIBCAGE = 6;
 
-type TextureID = 
+type TextureId = 
     | typeof TEXTURE_ID_WHITE
     | typeof TEXTURE_ID_INCANDESENT
     | typeof TEXTURE_ID_BRICKS

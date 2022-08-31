@@ -86,11 +86,12 @@ type MoveableBase = {
 };
 
 type Active = Oriented & {
-
+  acc: number,
 };
 
 type Inactive = {
   orientation?: never,
+  acc?: never,
 }
 
 type Oriented = {
@@ -124,7 +125,7 @@ type Part<ID extends number> = {
   readonly preRotationTransform?: Matrix4 | Falsey,
   readonly postRotationTransform?: Matrix4 | Falsey,
   readonly modelId: ModelId,
-  readonly textureId?: TextureID,
+  readonly textureId?: TextureId,
   readonly children?: readonly Part<ID>[],
   // and where is this part held when carried
   readonly jointAttachmentHeldTransform?: Matrix4 | Falsey,
@@ -222,8 +223,9 @@ let entityId = 1;
 const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType): Entity<T> => {
   const joints: Joint[] = [];
   entityIterateParts((e, part) => {
+    const defaultRotation = entity.body.defaultJointRotations?.[part.id];
     joints[part.id] = entity.joints?.[part.id] || {
-      rotation: entity.body.defaultJointRotations?.[part.id] || [0, 0, 0],
+      rotation: defaultRotation ? [...defaultRotation] : [0, 0, 0],
     };
   }, entity, entity.body);
   return {

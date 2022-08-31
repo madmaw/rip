@@ -91,7 +91,7 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
-  uniform vec2 ${U_MODEL_ATTRIBUTES};
+  uniform ivec2 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
   uniform sampler3D ${U_TEXTURE_COLORS};
   uniform sampler3D ${U_TEXTURE_NORMALS};
@@ -103,8 +103,7 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   vec3 tx(vec3 p) {
-    
-    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + clamp(p, vec3(-.5), vec3(.5)) * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
+    return (vec3(float(${U_MODEL_ATTRIBUTES}.y), 0., 0.) + clamp(p, vec3(-.5), vec3(.5)) * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
         / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
   }
 
@@ -535,6 +534,7 @@ const player: Entity<SkeletonPartId> = entityCreate({
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
   body: PART_SKELETON_BODY,
+  acc: .005,
   velocity: [0, 0, 0],
   rotation: [0, 0, 0],
   collisionGroup: COLLISION_GROUP_MONSTER,
@@ -545,10 +545,11 @@ player.joints[SKELETON_PART_ID_HEAD].light = .2;
 levelAddEntity(level, player);
 
 const enemy: Entity<SkeletonPartId> = entityCreate({
-  position: [(width - SKELETON_DIMENSION)/2, (height - SKELETON_DIMENSION)/2, 1.1],
+  position: [(width - SKELETON_DIMENSION)/2 - 1, (height - SKELETON_DIMENSION)/2 - 1, 1.1],
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
   body: PART_SKELETON_BODY,
+  acc: .005,
   velocity: [0, 0, 0],
   rotation: [0, 0, 0],
   collisionGroup: COLLISION_GROUP_MONSTER,
@@ -721,9 +722,12 @@ const update = (now: number) => {
           lightBoundsPosition,
           lightBoundsDimensions,
           [],
-          // only occlude on scenery for player (first index), not monsters or items
+          // first index is the player line of sight, so it's a special case
           // for everything else, just exclude the actual lit object
-          e => !lightIndex && e.velocity != null || e.id == light.entityId,
+          e => !lightIndex
+              && e.velocity != null
+              //&& vectorNLength(vectorNSubtract(entityMidpoint(e), light.pos)) > light.luminosity * MAX_LIGHT_THROW
+              || e.id == light.entityId,
       );
     });
   }
@@ -778,6 +782,7 @@ const update = (now: number) => {
           const availableActions = entityAvailableActions(entity);
           const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
           const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
+          let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
           levelRemoveEntity(level, entity);
 
           if (entity == player) {
@@ -818,7 +823,7 @@ const update = (now: number) => {
               targetCameraOrientation = ((targetCameraOrientation + 1) % 4) as Orientation;
             }
 
-            const playerVelocity = canWalk ? (right - left) * (1 + (canRun ? running : 0)) / 999 : 0;
+            const targetPlayerVelocity = canWalk ? (right - left) * (1 + (canRun ? running : 0)) / 999 : 0;
             if (canIdle) {
               action = ACTION_ID_IDLE;
             }
@@ -832,7 +837,6 @@ const update = (now: number) => {
 
             if (canJump && up && probablyOnGround) {
               action = ACTION_ID_JUMP;
-              entity.velocity[2] += .003;
             }
             if (canDuck && down && probablyOnGround) {
               action = ACTION_ID_DUCK;
@@ -877,13 +881,17 @@ const update = (now: number) => {
               }
             }
             if (definitelyOnGround) {
-              entity.velocity = vector3TransformMatrix4(
+              targetVelocity = vector3TransformMatrix4(
                   matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
-                  playerVelocity,
+                  targetPlayerVelocity,
                   0,
                   entity.velocity[2],
               );
             }
+            if (action == ACTION_ID_JUMP) {
+              targetVelocity[2] = .003;
+            }
+
             const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
             if ((
                 cameraDelta
@@ -912,20 +920,41 @@ const update = (now: number) => {
           }
 
           const movable = entity as Moveable;
-          // add in gravity
-          movable.velocity[2] -= delta * GRAVITY;
+          
+          // limit velocity
+          movable.velocity = targetVelocity.map((v, i) => {
+            let velocity = v;
+            if (i < 2 && entity.acc) {
+              const diff = v - movable.velocity[i];
+              velocity = movable.velocity[i] + diff * entity.acc * delta;
+            }
+            return Math.min(
+                MAX_VELOCITY,
+                Math.max(
+                    -MAX_VELOCITY,
+                    velocity,
+                )
+            );
+          }) as Vector3;
+
           // move toward centerline of cross-orientation
           if (entity.orientation != null) {
             const crossAxis = (entity.orientation + 1) % 2;
+            
             const center = entity.position[crossAxis] + entity.dimensions[crossAxis]/2; 
             const rail = (center | 0) + .5;
-            movable.velocity[crossAxis] += (rail - center)/99;  
+            const diff = rail - center;
+            entity.velocity[crossAxis] = Math.max(
+                -Math.abs(diff/delta), 
+                Math.min(
+                    Math.abs(diff/delta),
+                    diff * RAIL_ALIGNMENT_VELOCITY,
+                ),
+            );
           }
-          
-          // limit velocity
-          movable.velocity = entity.velocity.map(
-              v => v > 0 ? Math.min(v, MAX_VELOCITY) : Math.max(v, -MAX_VELOCITY),
-          ) as Vector3;
+          // add in gravity
+          movable.velocity[2] -= delta * GRAVITY;
+
           // check collisions
           let collisions = 0;
           let maxOverlapIndex: number;
@@ -983,12 +1012,12 @@ const update = (now: number) => {
                     // soft collisions with other movable objects
                     const entityCenter = entityMidpoint(entity);
                     const collisionEntityCenter = entityMidpoint(collisionEntity);
-                    const deltas = vectorNSubtract(entityCenter, collisionEntityCenter);
-                    deltas.forEach((delta, i) => {
-                      const maxDelta = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;                      
-                      entity.velocity[i] -= (1 - delta/maxDelta)/999;
+                    const diffs = vectorNSubtract(entityCenter, collisionEntityCenter);
+                    diffs.forEach((diff, i) => {
+                      const maxDiff = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;
+                      
+                      entity.velocity[i] -= (1 - diff/maxDiff)/999;
                     });                    
-                    
                   }
                 } else {
                   // scale by velocity to get collision time
@@ -1057,7 +1086,7 @@ const update = (now: number) => {
                   && verticalIntersectionCount == 1
                   && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
               ) {
-                entity.velocity[2] = Math.max(.001, entity.velocity[2]);
+                entity.velocity[2] = Math.max(.0008, entity.velocity[2]);
                 // steps count as a z collision
                 entity.lastZCollision = worldTime;
               }
@@ -1153,7 +1182,7 @@ const update = (now: number) => {
 
         const entityCenter = entityMidpoint(entity);
         const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
-        return cy < 0 && cz > 0;
+        return cy < 0 && (cz > 0 && !entity.velocity || cz > 1);
       },
       light,
   );
@@ -1184,6 +1213,8 @@ function updateAndRenderLevel(
       uniformCameraPosition,
       cameraPosition,
   );
+
+  const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, TextureId][]>> = {};
 
   levelIterateEntitiesInBounds(
       level,
@@ -1219,28 +1250,37 @@ function updateAndRenderLevel(
                 });
               }
               if (!ignoreRendering) {
-                const lightPositions = previousLights.map(l => {
-                  const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
-                  const render = lightRenders[l.entityId];
-                  const position = partPositionAtLightRenderTime
-                      ? vectorNSubtract(render[2], vectorNSubtract(partPositionAtLightRenderTime, partPosition))
-                      : l.pos;
-                  return [...position, l.luminosity];
-                });
-                gl.uniform4fv(
-                    uniformLightPositions,
-                    lightPositions.flat(2).concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)),
-                );
-
-                gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
-                gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, matrix4Invert(transform) || matrix4Identity());
-                // light is not used here
-                gl.uniform2f(uniformModelAttributes, joint.light || 0, part.textureId || 0);
-            
-                const [vao, count] = models[part.modelId];
-                gl.bindVertexArray(vao);
-                gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+                const invertedTransform = matrix4Invert(transform) || matrix4Identity();
+                const textureId = part.textureId || TEXTURE_ID_WHITE;
+                if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
+                  const modelInstancedRenders = instancedRenders[part.modelId]
+                      || (instancedRenders[part.modelId] = []);
+                  modelInstancedRenders.push([transform, invertedTransform, textureId])
+                } else {
+                  const lightPositions = previousLights.map(l => {
+                    const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
+                    const render = lightRenders[l.entityId];
+                    const position = partPositionAtLightRenderTime
+                        ? vectorNSubtract(render[2], vectorNSubtract(partPositionAtLightRenderTime, partPosition))
+                        : render[2];
+                    return [...position, l.luminosity];
+                  });
+                  gl.uniform4fv(
+                      uniformLightPositions,
+                      lightPositions.flat(2).concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)),
+                  );
+  
+                  gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
+                  gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
+                  // x = nothing
+                  // y = texture id of part
+                  gl.uniform2i(uniformModelAttributes, 0, textureId);
+              
+                  const [vao, count] = models[part.modelId];
+                  gl.bindVertexArray(vao);
+                  gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);  
+                }
               }
             },
             entity,
@@ -1255,5 +1295,31 @@ function updateAndRenderLevel(
         }        
       },
   );
+  if (FLAG_INSTANCED_RENDERING) {
+    // these things don't move, so we don't need to check the light deltas
+    gl.uniform4fv(
+        uniformLightPositions,
+        previousLights
+            .map(l => {
+              const render = lightRenders[l.entityId];
+              return [...render[2], l.luminosity];
+            })
+            .flat(2)
+            .concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0))
+    );
+
+    for (let modelId in instancedRenders) {
+      const modelInstancedRenders: [Matrix4, Matrix4, TextureId][] = instancedRenders[modelId];
+      const [vao, count] = models[modelId];
+      gl.bindVertexArray(vao);
+      modelInstancedRenders.forEach(([transform, invertedTransform, textureId]) => {
+        gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
+        gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
+        gl.uniform2i(uniformModelAttributes, 0, textureId);
+    
+        gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+      });
+    }
+  }
   return lights;
 }
