@@ -61,17 +61,21 @@ const vectorNLength = <T extends number[]>(v: T): number => {
 }
 
 const vectorNMix = <T extends number[]>(v1: T, v2: T, amt: number): T => {
-    return v1.map((v, i) => v * amt + v2[i] * (1 - amt)) as any;
+    return v1.map((v, i) => v * amt + v2[i] * (1 - amt)) as T;
 }
 
 const vectorNNormalize = <T extends number[]>(v: T): T => {
-    return vectorNDivide(v, vectorNLength(v)) as any;
+    return vectorNDivide(v, vectorNLength(v)) as T;
 }
 
 const vectorNSubtract = <T extends number[]>(v1: T, v2: number[]): T => {
     //return [v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]];
-    return v1.map((v, i) => v - v2[i]) as any;
+    return v1.map((v, i) => v - v2[i]) as T;
 }
+
+const vectorNAdd = <T extends number[]>(v1: T, v2: number[]): T => {
+  return v1.map((v, i) => v + v2[i]) as T;
+};
 
 const vectorNScale = <T extends number[]>(v: T, s: number): T => {
   return v.map(v => v*s) as any;

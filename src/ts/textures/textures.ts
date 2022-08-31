@@ -67,7 +67,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   // TEXTURE_ID_SKULL
   [
     createRadialGradientTextureFactory(
-        [128, 0, 0, 255],
+        [0, 255, 0, 255],
         [0, 0, 0],
         [255, 255, 200, 130],
         .4,

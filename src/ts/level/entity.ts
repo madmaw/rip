@@ -181,7 +181,7 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
             joint.attachedEntity.body.jointAttachmentHeldTransform
         ),
     )
-  }
+  }  
 }
 
 const entityAvailableActions = <T extends number>(entity: Entity<T>): number => {

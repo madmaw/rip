@@ -7,7 +7,7 @@
 ///<reference path="../textures/textures.ts"/>
 ///<reference path="models.ts"/>
 
-const SKELETON_DIMENSION = .19;
+const SKELETON_DIMENSION = .2;
 const SKELETON_DEPTH = .4;
 
 const SKELETON_RIBCAGE_WIDTH = .1;

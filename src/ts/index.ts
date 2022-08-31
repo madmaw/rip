@@ -201,6 +201,7 @@ const FRAGMENT_SHADER = `#version 300 es
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
             + textureDepth / dot(normalize(${V_NORMAL}), deltan);
+        // TODO distance in bias seems wrong
         float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
           l += mix(
@@ -378,8 +379,9 @@ const shapes = [
   SHAPE_TORCH_HANDLE,
   SHAPE_TORCH_HEAD,
 ];
-const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
-  const [positions, normals, texturePositions, indices] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[]]>(
+const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) => {
+  const vertexPositionsToSmoothNormals: Record<string, Vector3[]> = {};
+  const [positions, hardNormals, texturePositions, indices] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[]]>(
       ([positions, normals, texturePositions, indices], face) => {
         const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
         const surfaceIndices = face.perimeter.slice(2).flatMap(
@@ -394,6 +396,11 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
         positions.push(...vertexPositions);
         //texturePositions.push(...vertexPositions);
         texturePositions.push(...vertexPositions.map(p => {
+          if (FLAG_SMOOTH_NORMALS) {
+            const key = JSON.stringify(p);
+            const normals = vertexPositionsToSmoothNormals[key] || (vertexPositionsToSmoothNormals[key] = []);
+            normals.push(face.plane.normal);  
+          }
           const divisor = Math.abs(p[0]) > Math.abs(p[1]) && Math.abs(p[0]) > Math.abs(p[2])
               ? p[0]
               : Math.abs(p[1]) > Math.abs(p[2])
@@ -401,6 +408,7 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
                   : p[2] || 1;
             return p.map(v => v * .5/Math.abs(divisor)) as Vector3;
           }));
+        
         normals.push(
             ...new Array<Vector3>(points.length).fill(face.plane.normal),
         )
@@ -408,6 +416,15 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map(shape => {
       },
       [[], [], [], []],
   );
+  const normals = FLAG_SMOOTH_NORMALS && shapeId > 6
+      ? positions.map(p => {
+        const key = JSON.stringify(p);
+        const normals = vertexPositionsToSmoothNormals[key];
+        return vectorNNormalize(
+            normals.reduce((acc, n) => vectorNAdd(acc, n), [0, 0, 0] as Vector3,
+        ));
+      })
+      : hardNormals;
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
 
@@ -489,32 +506,16 @@ stepParts.reduce((z, stepPart, i) => {
   return z + dimensions[2];
 }, 0);  
 
-// clubs
-const clubs = PARTS_CLUBS.slice(0, 1).map((clubBody, i) => {
-  const clubShape = shapes[clubBody.modelId];
-  const t = matrix4Multiply(matrix4Translate(i + .5, 2.5, 1.2)/*, matrix4Rotate(Math.PI/2, 0, 1, 0)*/);
-  const [position, dimensions] = shapeBounds(clubShape, t);
-  const club: Entity<ClubPartId> = entityCreate({
-    body: clubBody,
-    dimensions,
-    position,
-    rotation: [0, 0, 0],
-    velocity: [0, 0, 0],
-    collisionGroup: COLLISION_GROUP_ITEM,
-    collisionMask: COLLISION_GROUP_WALL,
-  });
-  return club;
-});
-clubs.map(club => levelAddEntity(level, club));
-
 // torch
-for (let i=0; i<MAX_LIGHTS; i++) {
+for (let i=0; i<1; i++) {
+  const t = matrix4Translate(i + .5, .5, 1.1);
+  const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
   const torch: Entity<TorchPartId> = entityCreate({
     body: PART_TORCH,
-    position: [i + .5, .5, 1.1],
-    dimensions: [TORCH_HANDLE_WIDTH + TORCH_HEAD_WIDTH, TORCH_HANDLE_WIDTH, TORCH_HANDLE_WIDTH],
+    position,
+    dimensions,
     collisionGroup: COLLISION_GROUP_ITEM,
-    collisionMask: COLLISION_GROUP_WALL,
+    collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
     rotation: [0, 0, 0],
     velocity: [0, 0, 0],
     joints: [{
@@ -588,6 +589,32 @@ if (FLAG_ALLOW_ZOOM) {
   cameraOffsetTransform = matrix4Translate(0, cameraOffset, -.5);
 }
 
+if (FLAG_SPAWN_WEAPONS_ON_CLICK) {
+  onclick = () => {
+    // club
+    const clubBody = PARTS_CLUBS[Math.random() * PARTS_CLUBS.length | 0];
+    //const clubBody = PARTS_CLUBS[0];
+    const clubShape = shapes[clubBody.modelId];
+    const t = matrix4Multiply(
+        matrix4Translate(
+            player.position[0] + Math.random() - .5,
+            player.position[1] + Math.random() - .5,
+            player.position[2] + 1,
+        ),
+    );
+    const [position, dimensions] = shapeBounds(clubShape, t, 1);
+    const club: Entity<ClubPartId> = entityCreate({
+      body: clubBody,
+      dimensions,
+      position,
+      rotation: [0, 0, Math.PI * 2 * Math.random()],
+      velocity: [0, 0, 0],
+      collisionGroup: COLLISION_GROUP_ITEM,
+      collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+    });
+    levelAddEntity(level, club);
+  };
+}
 let targetCameraOrientation: Orientation = ORIENTATION_EAST;
 let cameraZRotation = 0;
 
@@ -710,7 +737,7 @@ const update = (now: number) => {
           rotationTransform,
           matrix4Translate(...vectorNScale(light.pos, -1)),
       );
-      const [lightBoundsPosition, lightBoundsDimensions] = lightIndex && false
+      const [lightBoundsPosition, lightBoundsDimensions] = lightIndex
           ? [
             light.pos.map(v => v - light.luminosity * MAX_LIGHT_THROW) as Vector3,
             new Array(3).fill(light.luminosity * 2 * MAX_LIGHT_THROW) as Vector3,
@@ -724,10 +751,11 @@ const update = (now: number) => {
           [],
           // first index is the player line of sight, so it's a special case
           // for everything else, just exclude the actual lit object
-          e => !lightIndex
-              && e.velocity != null
-              //&& vectorNLength(vectorNSubtract(entityMidpoint(e), light.pos)) > light.luminosity * MAX_LIGHT_THROW
-              || e.id == light.entityId,
+          e => e.velocity && !lightIndex
+              || e.id == light.entityId
+              || FLAG_EXCLUDE_UNLIT_FROM_RENDER
+                  && lightIndex
+                  && vectorNLength(vectorNSubtract(entityMidpoint(e), light.pos)) > light.luminosity * MAX_LIGHT_THROW,
       );
     });
   }
@@ -922,11 +950,12 @@ const update = (now: number) => {
           const movable = entity as Moveable;
           
           // limit velocity
-          movable.velocity = targetVelocity.map((v, i) => {
+          arrayMapAndSet(movable.velocity, (c, i) => {
+            const v = targetVelocity[i];
             let velocity = v;
             if (i < 2 && entity.acc) {
-              const diff = v - movable.velocity[i];
-              velocity = movable.velocity[i] + diff * entity.acc * delta;
+              const diff = v - c;
+              velocity = c + diff * entity.acc * delta;
             }
             return Math.min(
                 MAX_VELOCITY,
@@ -935,7 +964,7 @@ const update = (now: number) => {
                     velocity,
                 )
             );
-          }) as Vector3;
+          });
 
           // move toward centerline of cross-orientation
           if (entity.orientation != null) {
@@ -956,20 +985,23 @@ const update = (now: number) => {
           movable.velocity[2] -= delta * GRAVITY;
 
           // check collisions
-          let collisions = 0;
+          let iterations = 0;
           let maxOverlapIndex: number;
           let remainingDelta = delta;
           let maxIntersectionArea = 0;
           let verticalIntersectionCount = 0;
           do {
             const targetPosition = entity.position.map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
-            const maximalPosition = entity.position.map((v, i) => Math.min(v, targetPosition[i])) as Vector3;
+            const maximalPosition = entity.position.map((v, i) => Math.min(v, targetPosition[i]) - EPSILON) as Vector3;
             const maximalDimensions = entity.dimensions.map(
-                (v, i) => v + Math.abs(targetPosition[i] - entity.position[i]),
+                (v, i) => v + Math.abs(targetPosition[i] - entity.position[i]) + EPSILON * 2,
             ) as Vector3;
 
             let maxOverlapDelta = 0;
+            // TODO might need initialisers for CC
             let maxCollisionEntity: Entity | Falsey;
+            let hadSoftBodyCollision: Booleanish;
+            
             maxOverlapIndex = -1;
             levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions, collisionEntity => {
               // no need to check for ourselves since we have been removed from the level at this point
@@ -982,8 +1014,8 @@ const update = (now: number) => {
                 collisionEntity.position,
                 collisionEntity.dimensions,
               );
-              if (startingIntersection.every(v => v > 0)) {
-                  console.log('collions', collisions);
+              if (FLAG_DEBUG_COLLISIONS && startingIntersection.every(v => v > 0)) {
+                  console.log('collions', iterations);
                   console.log('started inside');
                   console.log('position', entity.position);
                   console.log('dimensions', entity.dimensions);
@@ -995,38 +1027,47 @@ const update = (now: number) => {
                   console.log('previous position', entity['previousPosition']);
                   console.log('previous velocity', entity['previousVelocity']);
                   console.log('previous move delta', entity['previousMoveDelta']);
-                  //console.log('index', i);
+                  console.log('previous maximalPosition', entity['previousMaximalPosition']);
+                  console.log('previous maximalDimensions', entity['previousMaximalDimensions']);
+                  console.log('previous targetPosition', entity['previousTargetPosition']);
               }
 
               // do we overlap?
               const intersection = rect3Intersection(
-                  targetPosition,
-                  entity.dimensions,
+                  maximalPosition,
+                  maximalDimensions,
                   collisionEntity.position,
                   collisionEntity.dimensions,
               );
+              if (FLAG_DEBUG_COLLISIONS) {
+                if (!entity['previousIntersection']) {
+                  entity['previousIntersection'] = {};
+                }
+                entity['previousIntersection'][collisionEntity.id] = intersection;
+              }
+
               if (intersection.every(v => v >= 0)) {
                 if (collisionEntity.velocity) {
                   // only do soft collisions in first iteration
-                  if (!collisions) {
+                  if (!iterations) {
                     // soft collisions with other movable objects
                     const entityCenter = entityMidpoint(entity);
                     const collisionEntityCenter = entityMidpoint(collisionEntity);
                     const diffs = vectorNSubtract(entityCenter, collisionEntityCenter);
                     diffs.forEach((diff, i) => {
                       const maxDiff = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;
-                      
                       entity.velocity[i] -= (1 - diff/maxDiff)/999;
-                    });                    
+                    });
+                    // because the velocity has changed, we need to redo all the collisions here
+                    hadSoftBodyCollision = 1;
                   }
                 } else {
                   // scale by velocity to get collision time
-                  const overlap = intersection.reduce<[number, number, number] | Falsey>((acc, v, i) => {
+                  const overlap = intersection.reduce<[number, number, number] | Falsey>((acc, intersectionDimension, i) => {
                     const velocity = entity.velocity[i];
-                    if (velocity < 0 && targetPosition[i] + v + EPSILON > collisionEntity.position[i] + collisionEntity.dimensions[i] ||
-                        velocity > 0 && targetPosition[i] + entity.dimensions[i] - v - EPSILON < collisionEntity.position[i]
-                    ) {
-                      const overlapDelta = v/Math.abs(velocity);
+                    if (velocity) {
+                      const overlapDelta = intersectionDimension/Math.abs(velocity);
+
                       // unclear if this actually has any effect
                       const intersectionArea = intersection.reduce((a, v, j) => a * (j == i ? 1 : v), 1);
                       // if ((i != 2 || maxOverlapIndex >= 0 && maxOverlapIndex < 2) && overlapDelta <= remainingDelta) {
@@ -1049,7 +1090,7 @@ const update = (now: number) => {
                     if (overlapIndex != 2) {
                       verticalIntersectionCount++;
                     }
-                    if (overlapDelta < remainingDelta + EPSILON && 
+                    if (overlapDelta < remainingDelta && 
                         (overlapDelta > maxOverlapDelta
                             || overlapDelta > maxOverlapDelta - EPSILON && maxIntersectionArea < intersectionArea
                         )
@@ -1063,44 +1104,54 @@ const update = (now: number) => {
                 }
               }
             });
-            const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta - .1);
-            remainingDelta = maxOverlapDelta;
-            entity['previousPosition'] = entity.position;
-            entity['previousVelocity'] = entity.velocity;
-            entity['previousMoveDelta'] = moveDelta;
-            entity['previousCollisions'] = collisions;
-            entity['previousMaximalPosition'] = maximalPosition;
-            entity['previousMaximalDimensions'] = maximalDimensions;
-            entity.position = entity.position.map((v, i) => v + entity.velocity[i] * moveDelta) as Vector3;
-            if (maxCollisionEntity) {
-              entity.previousCollision = {
-                maxCollisionEntity,
-                maxIntersectionArea,
-                maxOverlapIndex,
-                worldTime,
-              };
-              collisions ++;
-              // check if we can step up
-              // TODO: only do this if we are a creature
-              if (maxOverlapIndex != 2
-                  && verticalIntersectionCount == 1
-                  && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
-              ) {
-                entity.velocity[2] = Math.max(.0008, entity.velocity[2]);
-                // steps count as a z collision
-                entity.lastZCollision = worldTime;
-              }
-              entity.velocity[maxOverlapIndex] = 0;
-              if (maxOverlapIndex == 2) {
-                entity.lastZCollision = worldTime;
-              }
-              // if (maxOverlapIndex != 2) {
-              //   console.log('x', maxOverlapIndex);
-              // }
+            if (maxCollisionEntity && maxOverlapIndex != 2 && FLAG_DEBUG_COLLISIONS) {
+              console.log('questionable intersection');
             }
-          } while (remainingDelta > EPSILON && collisions < MAX_COLLISIONS);
+            iterations ++;
+            if (!hadSoftBodyCollision) {
+              const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta) - EPSILON;
+              remainingDelta = maxOverlapDelta;
+              if (FLAG_DEBUG_COLLISIONS) {
+                entity['previousPosition'] = [...entity.position];
+                entity['previousVelocity'] = [...entity.velocity];
+                entity['previousMoveDelta'] = moveDelta;
+                entity['previousCollisions'] = iterations;
+                entity['previousMaximalPosition'] = maximalPosition;
+                entity['previousMaximalDimensions'] = maximalDimensions;  
+                entity['previousTargetPosition'] = targetPosition;
+              }
+              arrayMapAndSet(entity.position, (v, i) => v + entity.velocity[i] * moveDelta);
+              if (maxCollisionEntity) {
+                if (FLAG_DEBUG_COLLISIONS) {
+                  entity.previousCollision = {
+                    maxCollisionEntity,
+                    maxIntersectionArea,
+                    maxOverlapIndex,
+                    worldTime,
+                  };  
+                }
+                // check if we can step up
+                // TODO: only do this if we are a creature
+                if (maxOverlapIndex != 2
+                    && verticalIntersectionCount == 1
+                    && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
+                ) {
+                  entity.velocity[2] = Math.max(.0008, entity.velocity[2]);
+                  // steps count as a z collision
+                  entity.lastZCollision = worldTime;
+                }
+                entity.velocity[maxOverlapIndex] = 0;
+                if (maxOverlapIndex == 2) {
+                  entity.lastZCollision = worldTime;
+                }
+                // if (maxOverlapIndex != 2) {
+                //   console.log('x', maxOverlapIndex);
+                // }
+              }
+            }
+          } while ((remainingDelta > EPSILON) && iterations < MAX_COLLISIONS);
 
-          if (collisions >= MAX_COLLISIONS) {
+          if (FLAG_DEBUG_COLLISIONS && iterations >= MAX_COLLISIONS) {
             console.log('too many collisions');
           }
 
@@ -1180,7 +1231,7 @@ const update = (now: number) => {
           levelAddEntity(level, entity);
         }
 
-        const entityCenter = entityMidpoint(entity);
+        const entityCenter = entityMidpoint(carrier || entity);
         const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
         return cy < 0 && (cz > 0 && !entity.velocity || cz > 1);
       },
@@ -1223,13 +1274,18 @@ function updateAndRenderLevel(
       entity => {
         // do we need to render?
         const ignoreRendering = updateEntity(entity);
+        const renderEntities: Record<EntityId, Booleanish> = {[entity.id]: !ignoreRendering};
         const predicate = (j: Joint) =>
-            j.light || j.attachedEntity
-                && !updateEntity(j.attachedEntity, entity)
-                && j.attachedEntity.joints?.some(predicate);
-        const shouldRender = !ignoreRendering || entity.joints?.some(predicate); 
+                (j.attachedEntity
+                    && ((renderEntities[j.attachedEntity.id] = !updateEntity(j.attachedEntity, entity))
+                        || j.attachedEntity.joints.map(predicate).some(l => l)
+                    )
+                ) || j.light;
+        
+        const shouldIterateJoints = entity.joints.map(predicate);
+        const shouldIterateParts = !ignoreRendering || shouldIterateJoints.some(l => l); 
 
-        if (shouldRender) {
+        if (shouldIterateParts) {
           entityIterateParts(
             (entity, part, transform, joint) => {
               const partPosition = vector3TransformMatrix4(transform, 0, 0, 0);
@@ -1243,13 +1299,15 @@ function updateAndRenderLevel(
               }
       
               if (joint.light) {
+                const pos = [...partPosition];
+                pos[2] += LIGHT_Z_FUTZ;
                 lights.push({
-                  pos: partPosition,
+                  pos,
                   entityId: entity.id,
                   luminosity: joint.light,
                 });
               }
-              if (!ignoreRendering) {
+              if (renderEntities[entity.id]) {
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
                 const invertedTransform = matrix4Invert(transform) || matrix4Identity();
                 const textureId = part.textureId || TEXTURE_ID_WHITE;

@@ -5,7 +5,6 @@
 type Plane = {
   normal: Vector3,
   d: number,
-  invisible?: Booleanish,
 };
 
 type PerimeterEdge = {
@@ -151,7 +150,7 @@ const planeFlipAndDuplicateOnAxis = (planes: Plane[], axis: number) => {
   });
 };
 
-const shapeBounds = (shape: Shape, transform: Matrix4): Rect3 => {
+const shapeBounds = (shape: Shape, transform: Matrix4, minimalDimensions?: Booleanish): Rect3 => {
   const [min, max]: [Vector3, Vector3] = shape.reduce<[Vector3|Falsey, Vector3|Falsey]>((acc, face) => {
     const t = matrix4Multiply(transform, face.transformFromCoordinateSpace);
     return face.perimeter.reduce(([min, max], { firstOutgoingIntersection }) => {
@@ -162,7 +161,14 @@ const shapeBounds = (shape: Shape, transform: Matrix4): Rect3 => {
       ];
     }, acc);
   }, [0, 0]) as Rect3;
-  return [min, max.map((v, i) => v - min[i]) as Vector3];
+  const physicalDimensions = max.map((v, i) => v - min[i]) as Vector3
+  const dimensions = minimalDimensions
+      ? new Array(3)
+          .fill(physicalDimensions.reduce((acc, p) => Math.min(acc, p), physicalDimensions[0])) as Vector3
+      : physicalDimensions;
+  const position = min.map((m, i) => m + (physicalDimensions[i] - dimensions[i])/2) as Vector3;
+  
+  return [position, dimensions];
 };
 
 const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()): Shape => {
