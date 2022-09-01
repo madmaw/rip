@@ -52,6 +52,7 @@ const UNIFORMS = [
 const V_POSITION = 'vPosition';
 const V_NORMAL = 'vNormal';
 const V_MODEL_POSITION = 'vModelPosition';
+const V_MODEL_NORMAL = 'vModelNormal';
 const V_TEXTURE_POSITION = 'vTextureCoords';
 
 const VERTEX_SHADER = `#version 300 es
@@ -66,6 +67,8 @@ const VERTEX_SHADER = `#version 300 es
   out vec3 ${V_POSITION};
   out vec3 ${V_MODEL_POSITION};
   out vec3 ${V_NORMAL};
+  out vec3 ${V_MODEL_NORMAL};
+
   out vec3 ${V_TEXTURE_POSITION};
 
   void main() {
@@ -77,6 +80,7 @@ const VERTEX_SHADER = `#version 300 es
         ${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.)
         - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
     ).xyz;
+    ${V_MODEL_NORMAL} = ${A_VERTEX_NORMAL};
     gl_Position = ${U_PROJECTION_MATRIX} * position;
   }
 `;
@@ -99,6 +103,7 @@ const FRAGMENT_SHADER = `#version 300 es
   in vec3 ${V_POSITION};
   in vec3 ${V_MODEL_POSITION};
   in vec3 ${V_NORMAL};
+  in vec3 ${V_MODEL_NORMAL};
   in vec3 ${V_TEXTURE_POSITION};
   out vec4 ${OUT_RESULT};
 
@@ -109,15 +114,19 @@ const FRAGMENT_SHADER = `#version 300 es
 
   void main() {
     vec3 cameraDelta = ${V_POSITION} - ${U_CAMERA_POSITION};
-    vec3 textureCameraNormal = normalize(
+    float textureScale = length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION});
+    vec3 modelCameraNormal = normalize(
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(cameraDelta, 1.) -
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
     ).xyz;
+    vec3 scaleVector = normalize(vec3(abs(${V_MODEL_NORMAL}).x, abs(${V_MODEL_NORMAL}.y), abs(${V_MODEL_NORMAL}.z)));
+    //vec3 textureCameraNormal = normalize(modelCameraNormal + modelCameraNormal * scaleVector/textureScale);
+    vec3 textureCameraNormal = modelCameraNormal;
+    
     float textureDelta = 0.;
     vec3 texturePosition = ${V_TEXTURE_POSITION};
     vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
     vec3 normal = normalize(${V_NORMAL});
-    float textureScale = max(.1, length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION}));
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
       bool foundTexture = false;
@@ -152,25 +161,28 @@ const FRAGMENT_SHADER = `#version 300 es
       )).xyz;
     }
 
-    float textureDepth = textureDelta * textureScale * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
+    float depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
     vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
-    //color = vec4((normal + 1.) / 2., length(normal));
+    // color = vec4((normal + 1.) / 2., length(normal));
     // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
     //   color = vec4(vec3(textureDelta, 0., 0.), 1.);
     // }
 
     vec3 position = (
         ${U_MODEL_VIEW_MATRIX}
-        * vec4(${V_MODEL_POSITION} + textureCameraNormal * textureDelta * textureScale, 1.)
+        * vec4(${V_MODEL_POSITION} + modelCameraNormal * depth, 1.)
     ).xyz;
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
     //color = vec4(position / 3., 1.);
+    //color = vec4(${V_MODEL_POSITION} + modelCameraNormal * textureDelta + .5, 1.);
     //color = vec4(vec3(.5 + textureDelta * 2.), 1.);
     //color = vec4(texturePosition + .5, 0.);
 
 
-    float l = (color.w > .5 ? (color.w -.5) * 2. : textureDepth * (color.w - .5) * 2.);
+    float l = color.w > .5
+        ? (color.w -.5) * 2.
+        : 0.;
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
@@ -200,7 +212,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
-            + textureDepth / dot(normalize(${V_NORMAL}), deltan);
+            + depth / (dot(normalize(${V_NORMAL}), deltan) / textureScale);
         // TODO distance in bias seems wrong
         float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         float light = mix(
@@ -215,7 +227,7 @@ const FRAGMENT_SHADER = `#version 300 es
         } else if (i == 0){
           l = 0.;
         }
-        //l = textureDepth;
+        //l = depth;
       }
     }
     ${OUT_RESULT} = vec4(pow(color.xyz * l, vec3(.45)), 1.);

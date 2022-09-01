@@ -116,6 +116,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
         [255, 255, 200, 130],
         .4,
     ),
+    //solidTextureNormalFactory,
     createShapedTextureNormalFactory([{
       shape: shapeFromPlanes(planesCube(1, 1, 1)),
       type: SHAPED_RULE_TYPE_ADDITION,
@@ -160,24 +161,27 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   [
     boneTextureFactory,
     //gradientTextureFactory,
-    createShapedTextureNormalFactory([{
-      shape: shapeFromPlanes(planesCube(1, .3, 1)),
-      //type: SHAPED_RULE_TYPE_ADDITION,
-    },
-    {
-      shape: shapeFromPlanes(planesCapsule(4, .2, .2)),
-      transform: matrix4Multiply(matrix4Translate(1, 0, 0), matrix4Rotate(Math.PI/2, 0, 1, 0), matrix4Rotate(Math.PI/2, 0, 0, 1)),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
-    },
-    ...new Array(8).fill(0).map<ShapedRule>((_, i) => ({
-      shape: shapeFromPlanes(planesCapsule(6, .4, .35)),
-      transform: matrix4Multiply(matrix4Rotate(i * Math.PI/4, 1, 0, 0), matrix4Translate(0, 0, .5)),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
-    }))]),
+    createShapedTextureNormalFactory([
+      {
+        shape: shapeFromPlanes(planesCube(1, .3, 1)),
+        //type: SHAPED_RULE_TYPE_ADDITION,
+      },
+      // {
+      //   shape: shapeFromPlanes(planesCapsule(4, .2, .2)),
+      //   transform: matrix4Multiply(matrix4Translate(1, 0, 0), matrix4Rotate(Math.PI/2, 0, 1, 0), matrix4Rotate(Math.PI/2, 0, 0, 1)),
+      //   type: SHAPED_RULE_TYPE_SUBTRACTION,
+      // },
+      ...new Array(8).fill(0).map<ShapedRule>((_, i) => ({
+        shape: shapeFromPlanes(planesCapsule(6, .4, .35)),
+        transform: matrix4Multiply(matrix4Rotate(i * Math.PI/4, 1, 0, 0), matrix4Translate(0, 0, .5)),
+        type: SHAPED_RULE_TYPE_SUBTRACTION,
+      }))
+    ]),
   ],
   // TEXTURE_ID_HIPS
   [
     boneTextureFactory,
+    //solidTextureNormalFactory,
     createShapedTextureNormalFactory([{
       shape: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
       transform: matrix4Multiply(
@@ -208,12 +212,12 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
         matrix4Rotate(Math.PI/2, 0, 0, 1),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
-    },]),
+    }]),
   ],
   // TEXTURE_ID_RIBCAGE
   [
     boneTextureFactory,
-    //gradientTextureFactory,
+    //solidTextureNormalFactory,
     createShapedTextureNormalFactory([
       // spine
       {
@@ -278,15 +282,18 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     // maybe a gradient?
     boneTextureFactory,
     rightHandNormalFactory,
+    //solidTextureNormalFactory,
   ],
   // TEXTURE_ID_HAND_LEFT
   [
     boneTextureFactory,
     leftHandNormalFactory,
+    //solidTextureNormalFactory,
   ],
   // TEXTURE_ID_FOOT
   [
     boneTextureFactory,
+    //solidTextureNormalFactory,
     createShapedTextureNormalFactory([
       ...new Array(5).fill(0).map((_, i) => {
         const a = -Math.PI/15 + i * Math.PI/15;
