@@ -120,13 +120,16 @@ const FRAGMENT_SHADER = `#version 300 es
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
     ).xyz;
     vec3 scaleVector = normalize(vec3(abs(${V_MODEL_NORMAL}).x, abs(${V_MODEL_NORMAL}.y), abs(${V_MODEL_NORMAL}.z)));
-    //vec3 textureCameraNormal = normalize(modelCameraNormal + modelCameraNormal * scaleVector/textureScale);
+    //vec3 textureCameraNormal = normalize(modelCameraNormal + modelCameraNormal * scaleVector / textureScale);
     vec3 textureCameraNormal = modelCameraNormal;
     
     float textureDelta = 0.;
     vec3 texturePosition = ${V_TEXTURE_POSITION};
     vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
     vec3 normal = normalize(${V_NORMAL});
+    vec3 position = ${V_POSITION};
+    float depth = 0.;
+
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
       bool foundTexture = false;
@@ -152,26 +155,30 @@ const FRAGMENT_SHADER = `#version 300 es
       }
       texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * textureDelta;
       textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-      if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
+      vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * depth;
+      if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}
+          || abs(texturePosition.x) > .5
+          || abs(texturePosition.y) > .5
+          || abs(texturePosition.z) > .5
+      ) {
         discard;
       }
-      normal = normalize((
-          ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
-          - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
-      )).xyz;
+      position = (${U_MODEL_VIEW_MATRIX} * vec4(modelPosition, 1.)).xyz;
+      normal = abs(texturePosition.x) < .5 && abs(texturePosition.y) < .5 && abs(texturePosition.z) < .5
+          ? normalize((
+              ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
+              - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+          )).xyz
+          : ${V_NORMAL};
     }
 
-    float depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
     vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
     // color = vec4((normal + 1.) / 2., length(normal));
     // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
     //   color = vec4(vec3(textureDelta, 0., 0.), 1.);
     // }
 
-    vec3 position = (
-        ${U_MODEL_VIEW_MATRIX}
-        * vec4(${V_MODEL_POSITION} + modelCameraNormal * depth, 1.)
-    ).xyz;
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
     //color = vec4(position / 3., 1.);
@@ -212,7 +219,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
-            + depth / (dot(normalize(${V_NORMAL}), deltan) / textureScale);
+            + depth * textureScale / dot(normalize(${V_NORMAL}), deltan);
         // TODO distance in bias seems wrong
         float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         float light = mix(
@@ -479,7 +486,7 @@ for (let x=0; x<width; x++) {
     const floor: Entity<WallPartId> = entityCreate({
       position: [x, y, 0],
       dimensions: [1, 1, 1],
-      rotation: [0, 0, 0],
+      rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
       body: PART_WALL,
       collisionGroup: COLLISION_GROUP_WALL,
     });
@@ -488,7 +495,7 @@ for (let x=0; x<width; x++) {
       const wall: Entity<WallPartId> = entityCreate({
         position: [x, y, 1],
         dimensions: [1, 1, 1],
-        rotation: [0, 0, 0],
+        rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
         body: PART_WALL,
         collisionGroup: COLLISION_GROUP_WALL,
       });
@@ -827,12 +834,10 @@ const update = (now: number) => {
           levelRemoveEntity(level, entity);
 
           if (entity == player) {
-
             const canIdle = availableActions & ACTION_ID_IDLE;
             const canWalk = availableActions & ACTION_ID_WALK;
             const canRun = availableActions & ACTION_ID_RUN;
             const canJump = availableActions & ACTION_ID_JUMP;
-            const canTurn = availableActions & ACTION_ID_TURN;
             const canFall = availableActions & ACTION_ID_FALL;
             const canDuck = availableActions & ACTION_ID_DUCK;
             const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
@@ -856,7 +861,7 @@ const update = (now: number) => {
             } else {
               running = inputRead(INPUT_RUN, now, 1);
             }
-            
+
             if (rotateCameraRight) {
               targetCameraOrientation = mathSafeMod(targetCameraOrientation - 1, 4) as Orientation;
             }
@@ -864,12 +869,20 @@ const update = (now: number) => {
               targetCameraOrientation = ((targetCameraOrientation + 1) % 4) as Orientation;
             }
 
-            const targetPlayerVelocity = canWalk ? (right - left) * (1 + (canRun ? running : 0)) / 999 : 0;
+            const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
+            const canTurn = availableActions & ACTION_ID_TURN && (cameraDelta || running);
+
+            const walkingBackward = entity.orientation == targetCameraOrientation && left
+                || entity.orientation != targetCameraOrientation && right;
+
+            const targetPlayerVelocity = canWalk
+                ? (right - left) * (1 + (canRun ? running : 0)) / (999 * (walkingBackward ? 2 : 1))
+                : 0;
             if (canIdle) {
               action = ACTION_ID_IDLE;
             }
             if (canWalk && (left || right) && probablyOnGround) {
-              action = ACTION_ID_WALK;
+              action = walkingBackward ? ACTION_ID_WALK_BACKWARD : ACTION_ID_WALK;
               moving = 1;
             }
             if (canRun && running && (left || right) && probablyOnGround) {
@@ -933,7 +946,6 @@ const update = (now: number) => {
               targetVelocity[2] = .003;
             }
 
-            const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
             if ((
                 cameraDelta
                     || entity.orientation == targetCameraOrientation && left
@@ -942,17 +954,16 @@ const update = (now: number) => {
                 && canTurn
                 && moving
             ) {
-              entity.orientation =left || cameraDelta && entity.lastCameraOrientation != entity.orientation
+              entity.orientation = left
                       ? (targetCameraOrientation + 2) % 4 as Orientation
                       : targetCameraOrientation;
-              entity.lastCameraOrientation = targetCameraOrientation;
               const targetAngle = -entity.orientation * Math.PI/2;
               const to: Vector3 = [0, 0, targetAngle];
               entity.anim = animLerp(
                   worldTime,
                   player.rotation,
                   to,
-                  199,
+                  299,
                   EASE_IN_OUT_QUAD,
                   1,
               );
@@ -1166,8 +1177,9 @@ const update = (now: number) => {
           }
 
           // start new animations
-          const bodyAnimations: EntityBodyAnimation<number> = action && entity.joints?.reduce<Falsey | EntityBodyAnimation<number>>(
-              (acc, joint) => acc || joint.attachedEntity && joint.attachedEntity.body.jointAttachmentHolderAnims?.[action],
+          const bodyAnimations: EntityBodyAnimation<number> | Falsey = action && entity.joints?.reduce<Falsey | EntityBodyAnimation<number>>(
+              (acc, joint) => acc
+                  || joint.attachedEntity && joint.attachedEntity.body.jointAttachmentHolderAnims?.[action],
               0,
           ) || entity.body.anims?.[action];
           if (bodyAnimations) {
@@ -1211,7 +1223,11 @@ const update = (now: number) => {
               entity.offsetAnim = animLerp(
                   worldTime,
                   entity.offset,
-                  bodyAnimations.translate || [0, 0, 0],
+                  vector3TransformMatrix4(
+                      // TODO why does angle this need to be negated?
+                      matrix4Rotate(entity.orientation * -Math.PI/2, 0, 0, 1),
+                      ...bodyAnimations.translate || [0, 0, 0],
+                  ),
                   totalDuration || 99,
                   EASE_OUT_QUAD,
               );

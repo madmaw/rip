@@ -1,6 +1,8 @@
 const SHAPED_RULE_TYPE_ADDITION = 0;
 const SHAPED_RULE_TYPE_SUBTRACTION = 1;
 
+const SHAPED_AGGREGATE_LIMIT = 1/TEXTURE_SIZE;
+
 type ShapedRuleType =
     | typeof SHAPED_RULE_TYPE_ADDITION
     | typeof SHAPED_RULE_TYPE_SUBTRACTION;
@@ -37,8 +39,8 @@ const createShapedTextureNormalFactory = (
     // return the distance and the normal, otherwise
     // 0 = not set
     // 1 = excluded
-    const result = transformedRules.reduce<[number, Vector3] | 0>((acc, [transformsAndNormals, ruleType]) => {
-      const result = transformsAndNormals.reduce<[number, Vector3] | 0 | 1>((acc, [transform, normal, perimeter]) => {
+    const result = transformedRules.reduce<[number, Vector3[]] | 0>((acc, [transformsAndNormals, ruleType]) => {
+      const result = transformsAndNormals.reduce<[number, Vector3[]] | 0 | 1>((acc, [transform, normal, perimeter]) => {
         const v = vector3TransformMatrix4(transform, x, y, z);
         const d = v[2];
         if (
@@ -48,7 +50,7 @@ const createShapedTextureNormalFactory = (
           if (d > 0) {
             acc = 1;
           } else if (!acc || acc[0] > -d){
-            acc = [-d, normal];
+            acc = [-d, [normal]];
           }
         }
         if (ruleType // == SHAPED_RULE_TYPE_SUBTRACTION
@@ -68,18 +70,19 @@ const createShapedTextureNormalFactory = (
                     : acc;
                 return Math.min(acc, Math.abs(d3), vectorNLength(vDelta));
               }, 1);
-          acc = [d2, vectorNScale(normal, -1)];
+          acc = [d2, [vectorNScale(normal, -1)]];
         }  
         return acc;
       }, 0);
       //acc && !result && console.log('removing', x, y, z);
-      // TODO average equal normals
       return result == 1
           ? acc
           : result
               ? acc
-                  ? result[0] < acc[0]
-                      ? result
+                  ? result[0] < acc[0] + SHAPED_AGGREGATE_LIMIT
+                      ? Math.abs(acc[0] - result[0]) < SHAPED_AGGREGATE_LIMIT
+                            ? [result[0], [...acc[1], ...result[1]]]
+                            : result
                       : acc
                   : ruleType // == SHAPED_RULE_TYPE_SUBTRACTION
                       ? 0
@@ -89,10 +92,18 @@ const createShapedTextureNormalFactory = (
                   : acc;
     }, 0);
     
-    //console.log(x * 8 + 3.5, y * 8 + 3.5, z * 8 + 3.5, result ? result[1] : 0);
+    // average equal normals
+    let r: Vector4 = [0, 0, 0, 0];
+    if (result) {
+      const normals = result[1];
+      const averageNormal = vectorNNormalize(
+          normals.reduce((acc, v) => vectorNAdd(vectorNScale(v, 1/normals.length), acc),
+          [0, 0, 0],
+      ));
+      r = [...averageNormal.map(v => (v + 1) * 127.5 | 0) as Vector3, 255];
+    }
+    //console.log(x, y, z, r);
 
-    return result
-        ? [...(result[1]).map(v => (v + 1) * 127.5 | 0) as Vector3, 255]
-        : [1, 0, 0, 0];
+    return r;
   };
 };

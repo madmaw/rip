@@ -19,18 +19,20 @@ const ORIENTATIONS: Orientation[] = [
 // action ids are also masks
 const ACTION_ID_IDLE = 1;
 const ACTION_ID_WALK = 2;
-const ACTION_ID_TURN = 4;
-const ACTION_ID_JUMP = 8;
-const ACTION_ID_RUN = 16;
-const ACTION_ID_FALL = 32;
-const ACTION_ID_DUCK = 64;
-const ACTION_ID_ATTACK_LIGHT = 128;
-const ACTION_ID_ATTACK_HEAVY = 256;
+const ACTION_ID_WALK_BACKWARD = 4;
+const ACTION_ID_TURN = 8;
+const ACTION_ID_JUMP = 16;
+const ACTION_ID_RUN = 32;
+const ACTION_ID_FALL = 64;
+const ACTION_ID_DUCK = 128;
+const ACTION_ID_ATTACK_LIGHT = 256;
+const ACTION_ID_ATTACK_HEAVY = 512;
 
 type ActionId = 
     | typeof ACTION_ID_TURN
     | typeof ACTION_ID_IDLE 
     | typeof ACTION_ID_WALK
+    | typeof ACTION_ID_WALK_BACKWARD
     | typeof ACTION_ID_JUMP
     | typeof ACTION_ID_RUN
     | typeof ACTION_ID_FALL
@@ -70,7 +72,6 @@ type EntityBase<T extends number> = {
     worldTime: number,
   },
   lastZCollision?: number,
-  lastCameraOrientation?: Orientation,
   collisionGroup: CollisionGroup,
   collisionMask?: number,
 } & Pick<Joint, 'rotation' | 'anim' | 'animAction'>;

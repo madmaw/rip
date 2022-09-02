@@ -23,26 +23,31 @@ const PART_TORCH: EntityBody<TorchPartId> = {
   jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_LEFT,
   jointAttachmentHolderAnims: {
     [ACTION_ID_IDLE]: {
-      maxSpeed: .003,
+      maxSpeed: .001,
       // hold up
       sequences: [{
+        ...SKELETON_IDLE_SEQUENCE,
         [SKELETON_PART_ID_HUMERUS_LEFT]: [[
           [0, -Math.PI/4, 0],
         ]],
         [SKELETON_PART_ID_HAND_LEFT]: [[
-          [Math.PI/3, 0, 0],
+          [0, Math.PI/5, 0],
         ]],
       }],
     }, 
     [ACTION_ID_WALK]: {
-      maxSpeed: .001,
+      maxSpeed: .003,
       // hold up
       sequences: [{
+        ...SKELETON_DEFENSIVE_WALK_SEQUENCE,
         [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-          [0, -Math.PI/4, 0],
+          [0, 0, 0],
+        ]],
+        [SKELETON_PART_ID_FOREARM_LEFT]: [[
+          [0, -Math.PI/2, 0],
         ]],
         [SKELETON_PART_ID_HAND_LEFT]: [[
-          [Math.PI/3, 0, 0],
+          [0, Math.PI/2, 0],
         ]],
       }],
     },
