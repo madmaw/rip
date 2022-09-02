@@ -14,7 +14,8 @@ const boneTextureFactory = createSpeckleTextureFactory(
     1,
 );
 const redTextureFactory = createSolidTextureColorFactory([255, 0, 0, 127]);
-const brickTextureFactory = createSolidTextureColorFactory([230, 150, 140, 127]);
+const brickTextureFactory = createSpeckleTextureFactory(createSolidTextureColorFactory([200, 120, 100, 127]), .2, 1);
+const graniteTextureFactory = createSpeckleTextureFactory(createSolidTextureColorFactory([56, 67, 80, 127]), .4, 1);
 const cyanTextureFactory = createSolidTextureColorFactory([128, 255, 255, 127]);
 const magentaTextureFactory = createSolidTextureColorFactory([255, 0, 255, 127]);
 
@@ -119,17 +120,19 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   [createSolidTextureColorFactory([255, 255, 255, 255]), solidTextureNormalFactory],
   // TEXTURE_ID_BRICKS
   [
-    createSpeckleTextureFactory(brickTextureFactory, .2, 1),
-    //createBrickTextureNormalFactory(array3New(2, 2, 2, (x, y, z) => x * 16 + y * 4 + z), 2),
+    graniteTextureFactory,
     createSpeckleTextureFactory(
-        createBrickTextureNormalFactory(array3New(3, 3, 3, () => Math.random() * 3 | 0), 2),
+        createBrickTextureNormalFactory(
+            array3New(3, 3, 3, () => Math.random() * 3 | 0),
+            2,
+        ),
         .2,
     ),
     //createBrickTextureNormalFactory(array3New(1, 1, 1, () => 0), 1),
   ],
   // TEXTURE_ID_BLOCK
   [
-    createSpeckleTextureFactory(brickTextureFactory, .2, 1),
+    whiteTextureFactory,
     //createBrickTextureNormalFactory(array3New(2, 2, 2, (x, y, z) => x * 16 + y * 4 + z), 2),
     createSpeckleTextureFactory(
         createBrickTextureNormalFactory([[[1]]], 1),
@@ -338,9 +341,18 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   ],
   // TEXTURE_ID_WOOD
   [
-    createSpeckleTextureFactory(createSolidTextureColorFactory([164, 116, 73, 127]), .2, 1),
+    createSpeckleTextureFactory(
+        createLinearGradientTextureFactory(
+            [33, 22, 0, 127],
+            [-.5, 0, 0],
+            [164, 116, 73, 127],
+            [.25, 0, 0],
+        ),
+        .4,
+        1,
+    ),
     //solidTextureNormalFactory,
-    createSpeckleTextureFactory(solidTextureNormalFactory, .1),
+    createSpeckleTextureFactory(solidTextureNormalFactory, .2),
   ],
 ];
 

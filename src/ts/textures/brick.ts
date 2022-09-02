@@ -38,7 +38,7 @@ const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension
           const offset = vector3TransformMatrix4(matrix4Multiply(transform, offsetPointTransform), 1, 1, 0);
           //planes.push(planeFromPointAndNormal([0, 0, 0], vectorNNormalize(offset), blockDimension * 1.3/2)); 
           planes.push({
-            d: blockDimension * (1.4 - 3/TEXTURE_SIZE)/2,
+            d: blockDimension * (1.4 - dimension*2/TEXTURE_SIZE)/2,
             normal: vectorNNormalize(offset),
           });
         }

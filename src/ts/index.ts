@@ -128,7 +128,6 @@ const FRAGMENT_SHADER = `#version 300 es
     vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
     vec3 normal = normalize(${V_NORMAL});
     vec3 position = ${V_POSITION};
-    float depth = 0.;
 
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
@@ -155,12 +154,11 @@ const FRAGMENT_SHADER = `#version 300 es
       }
       texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * textureDelta;
       textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-      depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
-      vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * depth;
+      vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * textureDelta;
       if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}
-          || abs(texturePosition.x) > .5
-          || abs(texturePosition.y) > .5
-          || abs(texturePosition.z) > .5
+          || abs(modelPosition.x) > .5
+          || abs(modelPosition.y) > .5
+          || abs(modelPosition.z) > .5
       ) {
         discard;
       }
@@ -173,6 +171,7 @@ const FRAGMENT_SHADER = `#version 300 es
           : ${V_NORMAL};
     }
 
+    float depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
     vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
     // color = vec4((normal + 1.) / 2., length(normal));
     // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
@@ -219,7 +218,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
-            + depth * textureScale / dot(normalize(${V_NORMAL}), deltan);
+            + depth * 2. * textureScale / dot(normalize(${V_NORMAL}), deltan);
         // TODO distance in bias seems wrong
         float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         float light = mix(
@@ -403,6 +402,7 @@ const shapes = [
 ];
 const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) => {
   const vertexPositionsToSmoothNormals: Record<string, Vector3[]> = {};
+  const rounded = shapeId > 5;
   const [positions, hardNormals, texturePositions, indices] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[]]>(
       ([positions, normals, texturePositions, indices], face) => {
         const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
@@ -428,7 +428,7 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) =
               : Math.abs(p[1]) > Math.abs(p[2])
                   ? p[1]
                   : p[2] || 1;
-            return p.map(v => v * .5/Math.abs(divisor)) as Vector3;
+            return p.map(v => rounded ? v * .5/Math.abs(divisor) : v*.5/Math.abs(v)) as Vector3;
           }));
         
         normals.push(
@@ -438,7 +438,7 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) =
       },
       [[], [], [], []],
   );
-  const normals = FLAG_SMOOTH_NORMALS && shapeId > 6
+  const normals = FLAG_SMOOTH_NORMALS && rounded
       ? positions.map(p => {
         const key = JSON.stringify(p);
         const normals = vertexPositionsToSmoothNormals[key];
