@@ -177,6 +177,38 @@ const SKELETON_RUN_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimat
   ]],
 };
 
+const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
+  [SKELETON_PART_ID_HEAD]: [[
+    [0, -Math.PI/6, Math.PI/3],
+    [0, -Math.PI/6, -Math.PI/3],
+  ], 1],
+  [SKELETON_PART_ID_HIPS]: [[
+    [0, -Math.PI/12, -Math.PI/3],
+    [0, Math.PI/12, Math.PI/3],
+  ], 1],
+  [SKELETON_PART_ID_FEMUR_LEFT]: [[
+    [0, Math.PI/5, Math.PI/4],
+    [0, Math.PI/3, 0],
+  ], 1],
+  [SKELETON_PART_ID_SHIN_LEFT]: [[
+    [0, Math.PI/2, 0],
+    [0, Math.PI/8, 0],
+  ]],
+  [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+    [0, Math.PI/2, -Math.PI/5],
+    [0, Math.PI/2.5, -Math.PI/5],
+  ], 1],
+  [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+    [0, Math.PI/2, -Math.PI/2],
+    //[0, -Math.PI/8, -Math.PI/2],
+    [0, -Math.PI/4, 0],
+  ], 1, EASE_IN_QUAD],
+  [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+    [0, -Math.PI/2, 0],
+    [0, 0, 0],
+  ], 1, EASE_IN_QUAD, 1.3 /* damage mult */],
+};
+
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
   [SKELETON_PART_ID_HIPS]: [[
     [0, 0, 0],
@@ -312,7 +344,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_DUCK]: {
       maxSpeed: .005,
-      blockActions: ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK,
+      blockActions: ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK | ACTION_ID_RUN,
       translate: [0, 0, -SKELETON_SHIN_WIDTH],
       sequences: [{
         [SKELETON_PART_ID_HEAD]: [[
@@ -336,45 +368,31 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       }],
     },
     [ACTION_ID_ATTACK_LIGHT]: {
-      maxSpeed: .005,
-      blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK,
+      maxSpeed: .007,
+      blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_RUN,
       translate: [.2, 0, 0],
+      sequences: [SKELETON_LIGHT_ATTACK_SEQUENCE],
+    },    
+    [ACTION_ID_TAKE_DAMAGE]: {
+      maxSpeed: .005,
+      blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK | ACTION_ID_RUN | ACTION_ID_ATTACK_LIGHT | ACTION_ID_ATTACK_HEAVY,
+      translate: [-.2, 0, 0],
       sequences: [{
         [SKELETON_PART_ID_HEAD]: [[
-          [0, -Math.PI/6, Math.PI/3],
-          [0, -Math.PI/6, -Math.PI/3],
+          [0, -Math.PI/6, 0],
+          [0, Math.PI/6, 0],          
         ], 1],
         [SKELETON_PART_ID_HIPS]: [[
-          [0, -Math.PI/12, -Math.PI/3],
-          [0, Math.PI/12, Math.PI/3],
+          [0, -Math.PI/12, 0],
+          [0, Math.PI/12, 0],
         ], 1],
-        [SKELETON_PART_ID_FEMUR_LEFT]: [[
-          [0, Math.PI/5, Math.PI/4],
-          [0, Math.PI/3, 0],
-        ]],
-        [SKELETON_PART_ID_SHIN_LEFT]: [[
-          [0, Math.PI/2, 0],
-          [0, Math.PI/8, 0],
-        ]],
-        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-          [0, Math.PI/2, -Math.PI/5],
-          [0, Math.PI/2.5, -Math.PI/5],
-        ]],
-        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-          [0, Math.PI/2, -Math.PI/2],
-          //[0, -Math.PI/8, -Math.PI/2],
-          [0, -Math.PI/4, 0],
-        ], 1, EASE_IN_QUAD],
-        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-          [0, -Math.PI/2, 0],
-          [0, 0, 0],
-        ], 1, EASE_IN_QUAD],
-      }],
-    },    
+      }]
+    }
   },
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,
   textureId: TEXTURE_ID_HIPS,
+  vulnerability: 1,
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
       0,
@@ -391,6 +409,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       id: SKELETON_PART_ID_RIBCAGE,
       modelId: MODEL_SKELETON_TORSO,
       textureId: TEXTURE_ID_RIBCAGE,
+      vulnerability: 1,
       preRotationTransform: matrix4Translate(
           0,
           0,
@@ -403,6 +422,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           id: SKELETON_PART_ID_HEAD,
           modelId: MODEL_SKELETON_HEAD,
           textureId: TEXTURE_ID_SKULL,
+          vulnerability: 2,
           preRotationTransform: matrix4Translate(
               0,
               0,
@@ -760,7 +780,7 @@ const SHAPE_SKELETON_HIPS = shapeFromPlanes([
 ]);
 
 const SHAPE_SKELETON_HUMERUS = shapeFromPlanes(
-    planesCapsule(8, SKELETON_HUMERUS_WIDTH, SKELETON_HUMERUS_DIAMETER/2)
+    planesCapsule(6, SKELETON_HUMERUS_WIDTH, SKELETON_HUMERUS_DIAMETER/2)
     //planesCube(SKELETON_HUMERUS_WIDTH, SKELETON_HUMERUS_DIAMETER, SKELETON_HUMERUS_DIAMETER)
 );
 
@@ -769,7 +789,7 @@ const SHAPE_SKELETON_FOREARM = shapeFromPlanes(
 )
 
 const SHAPE_SKELETON_FEMUR = shapeFromPlanes(
-    planesCapsule(8, SKELETON_FEMUR_LENGTH, SKELETON_FEMUR_RADIUS)
+    planesCapsule(6, SKELETON_FEMUR_LENGTH, SKELETON_FEMUR_RADIUS)
 );
 
 const SHAPE_SKELETON_SHIN = shapeFromPlanes(

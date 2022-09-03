@@ -126,8 +126,8 @@ const FRAGMENT_SHADER = `#version 300 es
     float textureDelta = 0.;
     vec3 texturePosition = ${V_TEXTURE_POSITION};
     vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-    vec3 normal = normalize(${V_NORMAL});
     vec3 position = ${V_POSITION};
+    vec3 normal = normalize(${V_NORMAL});
 
     if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
@@ -156,19 +156,21 @@ const FRAGMENT_SHADER = `#version 300 es
       textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
       vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * textureDelta;
       if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}
-          || abs(modelPosition.x) > .5
-          || abs(modelPosition.y) > .5
-          || abs(modelPosition.z) > .5
+          // || abs(modelPosition.x) > .5
+          // || abs(modelPosition.y) > .5
+          // || abs(modelPosition.z) > .5
       ) {
         discard;
       }
       position = (${U_MODEL_VIEW_MATRIX} * vec4(modelPosition, 1.)).xyz;
-      normal = abs(texturePosition.x) < .5 && abs(texturePosition.y) < .5 && abs(texturePosition.z) < .5
-          ? normalize((
-              ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
-              - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
-          )).xyz
-          : ${V_NORMAL};
+      normal = normalize(
+          abs(texturePosition.x) < .5 && abs(texturePosition.y) < .5 && abs(texturePosition.z) < .5
+              ? (
+                  ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
+                  - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+              ).xyz
+              : ${V_NORMAL}
+      );
     }
 
     float depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
@@ -177,6 +179,14 @@ const FRAGMENT_SHADER = `#version 300 es
     // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
     //   color = vec4(vec3(textureDelta, 0., 0.), 1.);
     // }
+    // vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * textureDelta;
+    // if (abs(modelPosition.x) > .5
+    //     || abs(modelPosition.y) > .5
+    //     || abs(modelPosition.z) > .5
+    // ) {
+    //   color = vec4(vec3(0, 0., 1.), 1.);
+    // }
+
 
     //position = ${V_POSITION};
     //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
@@ -186,9 +196,11 @@ const FRAGMENT_SHADER = `#version 300 es
     //color = vec4(texturePosition + .5, 0.);
 
 
-    float l = color.w > .5
-        ? (color.w -.5) * 2.
-        : 0.;
+    vec3 lightColor = vec3(
+        color.w > .5
+            ? (color.w -.5) * 2.
+            : 0.
+    );
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
@@ -228,15 +240,16 @@ const FRAGMENT_SHADER = `#version 300 es
         )
         * ${U_LIGHT_POSITIONS}[i].w
         * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
+        // * pow(max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.);
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
-          l += light;
+          lightColor += light * (i == 0 ? vec3(.3, 1., .5) : mix(vec3(1., .4, .1), vec3(1., 1., .8), light));
         } else if (i == 0){
-          l = 0.;
+          lightColor = vec3(0.);
         }
-        //l = depth;
+        //l = depth;z
       }
     }
-    ${OUT_RESULT} = vec4(pow(color.xyz * l, vec3(.45)), 1.);
+    ${OUT_RESULT} = vec4(pow(color.xyz * lightColor, vec3(.45)), 1.);
   }
 `;
 
@@ -400,11 +413,12 @@ const shapes = [
   SHAPE_TORCH_HANDLE,
   SHAPE_TORCH_HEAD,
 ];
-const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) => {
+// VAO, index count, radius
+const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((shape, shapeId) => {
   const vertexPositionsToSmoothNormals: Record<string, Vector3[]> = {};
   const rounded = shapeId > 5;
-  const [positions, hardNormals, texturePositions, indices] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[]]>(
-      ([positions, normals, texturePositions, indices], face) => {
+  const [positions, hardNormals, texturePositions, indices, radius] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[], number]>(
+      ([positions, normals, texturePositions, indices, maxRadius], face) => {
         const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
         const surfaceIndices = face.perimeter.slice(2).flatMap(
             (_, i) => [positions.length, positions.length + i + 1, positions.length + i + 2]
@@ -416,6 +430,7 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) =
             ),
         );
         positions.push(...vertexPositions);
+        maxRadius = vertexPositions.reduce((acc, v) => Math.max(acc, vectorNLength(v)), maxRadius);
         //texturePositions.push(...vertexPositions);
         texturePositions.push(...vertexPositions.map(p => {
           if (FLAG_SMOOTH_NORMALS) {
@@ -434,9 +449,9 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) =
         normals.push(
             ...new Array<Vector3>(points.length).fill(face.plane.normal),
         )
-        return [positions, normals, texturePositions, indices];
+        return [positions, normals, texturePositions, indices, maxRadius];
       },
-      [[], [], [], []],
+      [[], [], [], [], 0],
   );
   const normals = FLAG_SMOOTH_NORMALS && rounded
       ? positions.map(p => {
@@ -472,7 +487,7 @@ const models: [WebGLVertexArrayObject, number][] = shapes.map((shape, shapeId) =
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
-  return [vao, indices.length];
+  return [vao, indices.length, radius];
 });
 
 const level: Level = {
@@ -544,7 +559,7 @@ for (let i=0; i<MAX_LIGHTS; i++) {
       rotation: [0, 0, 0],
     }, {
       rotation: [0, 0, 0],
-      light: .4,
+      light: .3,
     }]
   });
   levelAddEntity(level, torch);  
@@ -563,7 +578,7 @@ const player: Entity<SkeletonPartId> = entityCreate({
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
 });
-player.joints[SKELETON_PART_ID_HEAD].light = .2;
+player.joints[SKELETON_PART_ID_HEAD].light = .15;
 levelAddEntity(level, player);
 
 const enemy: Entity<SkeletonPartId> = entityCreate({
@@ -858,7 +873,8 @@ const update = (now: number) => {
             // running and interact share keys, so we want to avoid collisions
             if (down) {
               interact = inputRead(INPUT_INTERACT, now);
-            } else {
+            }
+            if (canRun) {
               running = inputRead(INPUT_RUN, now, 1);
             }
 
@@ -969,6 +985,9 @@ const update = (now: number) => {
               );
               // action = ACTION_ID_TURN;
             }
+          } else {
+            // TODO AI
+            action = ACTION_ID_IDLE;
           }
 
           const movable = entity as Moveable;
@@ -1007,6 +1026,86 @@ const update = (now: number) => {
           }
           // add in gravity
           movable.velocity[2] -= delta * GRAVITY;
+
+          // check attacking
+          const attacking = entity.joints.some((joint, jointId) => {
+            return joint.animAction && entityGetActionAnims(entity, joint.animAction)
+                ?.sequences[joint.animActionIndex]
+                ?.[jointId]
+                ?.[ENTITY_ANIMATION_DAMAGE_INDEX]
+          });
+          if (attacking) {
+            // get a big area (we don't know how large the animations are)
+            const position = entity.position.map(v => v - MAX_ATTACK_RADIUS) as Vector3;
+            const dimensions = entity.dimensions.map(v => v + MAX_ATTACK_RADIUS * 2) as Vector3;
+            levelIterateEntitiesInBounds(level, position, dimensions, victim => {
+              // work out the most appropriate action for each victim
+              if (!victim.lastDamaged || victim.lastDamaged < worldTime - DAMAGE_INVULNERABILITY_DURATION) {
+                let maxDamage = 0;
+                let blocked: Booleanish;
+                  entityIterateParts((e, entityPart, entityTransform, entityJoint, entityDamageMultiplier) => {
+                  if (entityDamageMultiplier > 1) {
+                    const entityPartShape = shapes[entityPart.modelId];
+                    const entityPartRadius = models[entityPart.modelId][2];
+                    const entityPartPosition = vector3TransformMatrix4(entityTransform, 0, 0, 0);
+                    const entityPartPlanes = entityPartShape.map(f => planeTransform(f.plane, entityTransform));
+                    // could split this out, but there should only be a very small number (ideally 1) of
+                    // damaging body parts for a given entity
+                    entityIterateParts((v, victimPart, victimTransform, victimJoint, victimDamageMultiplier) => {
+                      // do the shapes overlap?
+                      const victimPartShape = shapes[victimPart.modelId];
+                      const victimPartRadius = models[victimPart.modelId][2];
+                      const victimPartPosition = vector3TransformMatrix4(victimTransform, 0, 0, 0);
+                      // shapeFromPlanes is very expensive, so check the bounds first
+                      if (
+                          (victimDamageMultiplier || victimPart.vulnerability) 
+                          && victimPartRadius + entityPartRadius > vectorNLength(vectorNSubtract(victimPartPosition, entityPartPosition))
+                      ) {
+                        let overlap: Booleanish;
+                        if (FLAG_FAST_COLLISIONS) {
+                          // are any points contained in the shapes
+                          overlap = shapeContainsPointsFromShape(victimPartShape, victimTransform, entityPartShape, entityTransform)
+                              || shapeContainsPointsFromShape(entityPartShape, entityTransform, victimPartShape, victimTransform);
+                        } else {
+                          const victimPartPlanes = victimPartShape.map(f => planeTransform(f.plane, victimTransform));
+                          overlap = shapeFromPlanes([...entityPartPlanes, ...victimPartPlanes]).length > 3;
+                        }
+                        if (overlap) {
+                          maxDamage = Math.max(maxDamage, entityDamageMultiplier * (victimPart.vulnerability || 0));
+                          blocked = blocked || !!victimDamageMultiplier || victimPart.vulnerability < 0;
+                        }
+                      }
+                    }, victim, victim.body);
+                  }
+                }, entity, entity.body);
+  
+                if (blocked) {
+                  // start the attack cancel animation
+                  //action = ACTION_ID_CANCEL;
+                  console.log('clang!');
+                }
+                if (maxDamage) {
+                  // start the damage received animation
+                  entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
+                  victim.lastDamaged = worldTime;
+                  if (victim.velocity) {
+                    victim.velocity = vectorNAdd(
+                      victim.velocity,
+                      vectorNScale(
+                          vectorNNormalize(
+                              vectorNSubtract(
+                                  entityMidpoint(victim),
+                                  entityMidpoint(entity),
+                              )
+                          ),
+                          .001 * maxDamage,
+                      )
+                    );
+                  }
+                }
+              }
+            });
+          }
 
           // check collisions
           let iterations = 0;
@@ -1080,7 +1179,11 @@ const update = (now: number) => {
                     const diffs = vectorNSubtract(entityCenter, collisionEntityCenter);
                     diffs.forEach((diff, i) => {
                       const maxDiff = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;
-                      entity.velocity[i] -= (1 - diff/maxDiff)/999;
+                      const dv = (1 - diff/maxDiff)/4999;
+                      entity.velocity[i] -= dv;
+                      // TODO why does the collision entity not apply this to itself when it
+                      // detects a collision?
+                      collisionEntity.velocity[i] += dv;
                     });
                     // because the velocity has changed, we need to redo all the collisions here
                     hadSoftBodyCollision = 1;
@@ -1177,83 +1280,7 @@ const update = (now: number) => {
           }
 
           // start new animations
-          const bodyAnimations: EntityBodyAnimation<number> | Falsey = action && entity.joints?.reduce<Falsey | EntityBodyAnimation<number>>(
-              (acc, joint) => acc
-                  || joint.attachedEntity && joint.attachedEntity.body.jointAttachmentHolderAnims?.[action],
-              0,
-          ) || entity.body.anims?.[action];
-          if (bodyAnimations) {
-            // find the index with the smallest move time
-            const [bestAnimationDuration, bestAnimationIndex] = bodyAnimations.sequences.reduce((acc, bodyAnimation, i) => {
-              const [min] = acc;
-              const animationDuration = entity.joints.reduce((max, v, jointId) => {
-                const jointBodyAnim = bodyAnimation[jointId];
-                // only interested in how long it takes to move to the first step
-                return jointBodyAnim && animDeltaRotation(v.rotation, jointBodyAnim[0][0]) > max
-                    ? delta
-                    : max;
-              }, 0);
-              if (animationDuration < min) {
-                return [animationDuration, i];
-              }
-              return acc;
-            }, [9999, 0]);
-            
-            const bodyAnimation = bodyAnimations.sequences[bestAnimationIndex];
-            const animFrameDurations = entity.joints.reduce<number[]>((acc, joint, jointId) => {
-              const bodyJointAnimation = bodyAnimation[jointId];
-              let prev = joint.rotation;
-              return bodyJointAnimation?.[0].reduce((acc, rotation, index) => {
-                const deltaRotation = animDeltaRotation(prev, rotation);
-                const minDuration = deltaRotation / bodyAnimations.maxSpeed;
-                if (index < acc.length) {
-                  acc[index] = Math.max(minDuration, acc[index]);
-                } else {
-                  acc.push(minDuration);
-                }
-                prev = rotation;
-                return acc;
-              }, acc) || acc;
-            }, []);
-
-            entity.offset = entity.offset || [0, 0, 0];
-            
-            if (entity.offset?.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) < EPSILON)) {
-              const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
-              entity.offsetAnim = animLerp(
-                  worldTime,
-                  entity.offset,
-                  vector3TransformMatrix4(
-                      // TODO why does angle this need to be negated?
-                      matrix4Rotate(entity.orientation * -Math.PI/2, 0, 0, 1),
-                      ...bodyAnimations.translate || [0, 0, 0],
-                  ),
-                  totalDuration || 99,
-                  EASE_OUT_QUAD,
-              );
-            }
-
-            entity.joints.forEach((joint, jointId) => {
-              const bodyJointAnimation = bodyAnimation[jointId];
-              const defaultBodyJointRotation = entity.body.defaultJointRotations?.[jointId];
-              if (joint.animAction != action && bodyJointAnimation
-                  || defaultBodyJointRotation && !joint.animAction) {
-                const easing = bodyJointAnimation?.[2] || EASE_LINEAR;
-                const anim = bodyJointAnimation
-                    ? animComposite(...bodyJointAnimation[0].map((rotation, index) => {
-                      // TODO use max speed correctly
-                      //const duration = 1/bodyAnimations.maxSpeed;
-                      const duration = animFrameDurations[index];
-                      return now => animLerp(now, joint.rotation, rotation, duration, easing);
-                    }))
-                    // TODO use overall speed of the animation
-                    : animLerp(worldTime, joint.rotation, defaultBodyJointRotation, 100, easing);
-                joint.anim = anim;
-                joint.animAction = action;
-                joint.animActionIndex = bestAnimationIndex;
-              }
-            })
-          }
+          entityStartAnimation(entity, action);
           levelAddEntity(level, entity);
         }
 
@@ -1372,12 +1399,6 @@ function updateAndRenderLevel(
             },
             entity,
             entity.body,
-            matrix4Multiply(
-                matrix4Translate(...(entity.dimensions.map(
-                    (v, i) => v/2 + entity.position[i] + (entity.offset?.[i] || 0)) as Vector3),
-                ),
-                matrix4RotateInOrder(...entity.rotation),
-            ),
           );
         }        
       },

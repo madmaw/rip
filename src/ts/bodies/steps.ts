@@ -16,6 +16,7 @@ const PART_ORIENTATION_STEPS = ORIENTATIONS.map(o => {
       modelId: MODEL_STEP_1 + i as ModelId,
       textureId: TEXTURE_ID_BLOCK,
       preRotationTransform: matrix4Rotate(o * Math.PI/2, 0, 0, 1),
+      vulnerability: -1,
     };
   });
 });

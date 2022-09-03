@@ -8,8 +8,9 @@
 
 
 const whiteTextureFactory = createSolidTextureColorFactory([255, 255, 255, 127]);
+const boneColor: Vector4 = [255, 255, 200, 127];
 const boneTextureFactory = createSpeckleTextureFactory(
-    createSolidTextureColorFactory([255, 255, 200, 50]),
+    createSolidTextureColorFactory(boneColor),
     .1,
     1,
 );
@@ -86,7 +87,7 @@ const shapedTextureNormalFactory = createShapedTextureNormalFactory([{
 }]);
 */
 const TEXTURE_ID_WHITE = 0;
-const TEXTURE_ID_INCANDESENT = 1;
+const TEXTURE_ID_FLAME = 1;
 const TEXTURE_ID_BRICKS = 2;
 const TEXTURE_ID_BLOCK = 3;
 const TEXTURE_ID_SKULL = 4;
@@ -100,7 +101,7 @@ const TEXTURE_ID_WOOD = 11;
 
 type TextureId = 
     | typeof TEXTURE_ID_WHITE
-    | typeof TEXTURE_ID_INCANDESENT
+    | typeof TEXTURE_ID_FLAME
     | typeof TEXTURE_ID_BRICKS
     | typeof TEXTURE_ID_BLOCK
     | typeof TEXTURE_ID_SKULL
@@ -116,8 +117,8 @@ type TextureId =
 const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   // TEXTURE_ID_WHITE
   [whiteTextureFactory, solidTextureNormalFactory],
-  // TEXTURE_ID_INCANDESENT
-  [createSolidTextureColorFactory([255, 255, 255, 255]), solidTextureNormalFactory],
+  // TEXTURE_ID_FLAME
+  [createSolidTextureColorFactory([255, 200, 150, 255]), solidTextureNormalFactory],
   // TEXTURE_ID_BRICKS
   [
     graniteTextureFactory,
@@ -132,7 +133,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   ],
   // TEXTURE_ID_BLOCK
   [
-    whiteTextureFactory,
+    graniteTextureFactory,
     //createBrickTextureNormalFactory(array3New(2, 2, 2, (x, y, z) => x * 16 + y * 4 + z), 2),
     createSpeckleTextureFactory(
         createBrickTextureNormalFactory([[[1]]], 1),
@@ -142,12 +143,12 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   ],
   // TEXTURE_ID_SKULL
   [
-    createRadialGradientTextureFactory(
+    createSpeckleTextureFactory(createRadialGradientTextureFactory(
         [0, 255, 0, 255],
         [0, 0, 0],
-        [255, 255, 200, 130],
+        boneColor,
         .4,
-    ),
+    ), .2),
     //solidTextureNormalFactory,
     createShapedTextureNormalFactory([{
       shape: shapeFromPlanes(planesCube(1, 1, 1)),

@@ -74,6 +74,19 @@ const planeFromPointAndNormal = (p: Vector3, n: Vector3, d: number = 0): Plane =
   };
 }
 
+const planeTransform = (p: Plane, transform: Matrix4) => {
+  const point = vectorNScale(p.normal, p.d);
+  const transformedPoint = vector3TransformMatrix4(transform, ...point);
+  const transformedNormal = vector3TransformMatrix4(transform, ...p.normal);
+  const transformedOrigin = vector3TransformMatrix4(transform, 0, 0, 0);
+  return planeFromPointAndNormal(
+      transformedPoint,
+      vectorNNormalize(
+          vectorNSubtract(transformedNormal, transformedOrigin),
+      ),
+  );
+};
+
 const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusRight: number = radiusLeft): Plane[] => {
   const endSteps = steps / 2 | 0;
 
@@ -227,6 +240,11 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
           point: intersectionPoint.slice(0, 2) as Vector2,
           withPlane: compare,
         });
+      } else {
+        if (plane.d > compare.d) {
+          // this plane is dead to us
+          //continue outer;
+        }
       }
     }
 
@@ -292,18 +310,46 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
       };
   
       faces.push(face);  
-    } else {
-      console.log('dropped plane', plane);
+    // } else {
+    //   console.log('dropped plane', plane);
     }
     // console.log('surface', JSON.stringify(surface.perimeter.map(l => l.firstOutgoingIntersection)));
   }
-  // remove any surfaces that no longer intersect with any plane used in the shape 
-  return faces.filter(
-      f => faces.some(
+  return faces
+      // remove any faces that contain points that are outside the other planes (alternatively, might be able to 
+      // detect CW points and remove that way)
+      .filter(f => {
+        return f.perimeter.every(p => {
+          const point = vector3TransformMatrix4(f.transformFromCoordinateSpace, ...p.firstOutgoingIntersection, 0);
+          return faces.every(face => vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] < EPSILON);
+        });
+      })
+      // remove any surfaces that no longer intersect with any plane used in the shape
+      .filter((f, i, faces) => faces.some(
           face => face.perimeter.some(
               edge => edge.firstOutgoingIntersectionEdge?.withPlane == f.plane,
           ),
-      ),
-  );
+      ));
+}
+
+const shapeContainsPointsFromShape = (
+    container: Shape,
+    containerTransform: Matrix4,
+    pointSource: Shape,
+    pointSourceTransform: Matrix4,
+) => {
+  return pointSource.some(face => {
+    const transform = matrix4Multiply(
+        matrix4Invert(containerTransform),
+        pointSourceTransform,
+        face.transformFromCoordinateSpace,
+    );
+    return face.perimeter.some(p => {
+      const point = vector3TransformMatrix4(transform, ...p.firstOutgoingIntersection, 0);
+      return container.every(face => {
+        return vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] < EPSILON;
+      });
+    });
+  });
 }
 
