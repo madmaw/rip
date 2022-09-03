@@ -10,11 +10,11 @@
 //   );
 // };
 
-const array3New = <T>(width: number, height: number, depth: number, f: (x: number, y: number, z: number) => T) => {
+const array3New = <T>(width: number, height: number, depth: number, f?: (x: number, y: number, z: number) => T) => {
   return new Array(width).fill(0).map(
       (_, x) => new Array(height).fill(0).map(
           (_, y) => new Array(depth).fill(0).map(
-              (_, z) => f(x, y, z)
+              (_, z) => f?.(x, y, z)
           )
       )
   );

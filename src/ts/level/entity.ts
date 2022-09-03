@@ -16,6 +16,25 @@ const ORIENTATIONS: Orientation[] = [
   ORIENTATION_SOUTH,
 ];
 
+const ORIENTATION_OFFSETS: Record<Orientation, Vector3> & Vector3[] = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [-1, 0, 0],
+  [0, -1, 0],
+];
+
+const ENTITY_TYPE_WALL = 0;
+const ENTITY_TYPE_STAIR = 1;
+const ENTITY_TYPE_HOSTILE = 2;
+const ENTITY_TYPE_PLAYER = 3;
+
+type EntityType =
+  | typeof ENTITY_TYPE_WALL
+  | typeof ENTITY_TYPE_STAIR
+  | typeof ENTITY_TYPE_HOSTILE
+  | typeof ENTITY_TYPE_PLAYER
+  ;
+
 // action ids are also masks
 // order is priority 
 const ACTION_ID_IDLE = 1;
@@ -50,7 +69,11 @@ const ENTITY_CHILD_PART_ANIMATION_DAMAGE_INDEX = 3;
 
 type EntityId = number;
 
-type Entity<T extends number = number> = EntityBase<T> & (Immovable | Moveable) & (Active | Inactive);
+type Entity<T extends number = number> = 
+    & EntityBase<T>
+    & (Immovable | Moveable)
+    & (Active | Inactive)
+    & (Intelligent | Inanimate);
 
 type PartialEntity<T extends number> = Omit<Entity<T>, 'id' | 'joints'> & { joints?: Joint[] };
 
@@ -66,6 +89,7 @@ const COLLISION_GROUP_ITEM = 4;
 
 type EntityBase<T extends number> = {
   readonly id: EntityId,
+  readonly entityType?: EntityType,
   position: Vector3,
   offset?: Vector3,
   offsetAnim?: Anim | Falsey,
@@ -105,6 +129,18 @@ type Inactive = {
 
 type Oriented = {
   orientation: Orientation,
+};
+
+type Intelligent = {
+  activePath?: Vector3[],
+  activePathTime?: number,
+  activeTarget?: Entity,
+};
+
+type Inanimate = {
+  activePath: never,
+  activePathTime: never,
+  activeTarget?: never,
 };
 
 const ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS = 0;
@@ -356,15 +392,15 @@ const entityStartAnimation = <T extends number>(
     }, []);
 
     entity.offset = entity.offset || [0, 0, 0];
-    
-    if (entity.offset?.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) < EPSILON)) {
+
+    // TODO some?? Surely should be every?
+    if (entity.offset.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) < EPSILON)) {
       const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
       entity.offsetAnim = animLerp(
           worldTime,
           entity.offset,
           vector3TransformMatrix4(
-              // TODO why does angle this need to be negated?
-              matrix4Rotate(entity.orientation * -Math.PI/2, 0, 0, 1),
+              matrix4Rotate((entity.orientation || 0) * Math.PI/2, 0, 0, 1),
               ...bodyAnimations.translate || [0, 0, 0],
           ),
           totalDuration || 99,

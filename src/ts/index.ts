@@ -494,11 +494,13 @@ const level: Level = {
   dimensions,
   tiles,
 };
+levelPopulateGraph(level);
 
 // populate with a floor
 for (let x=0; x<width; x++) {
   for (let y=0; y<height; y++) {
     const floor: Entity<WallPartId> = entityCreate({
+      entityType: ENTITY_TYPE_WALL,
       position: [x, y, 0],
       dimensions: [1, 1, 1],
       rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
@@ -508,6 +510,7 @@ for (let x=0; x<width; x++) {
     levelAddEntity(level, floor);
     if ((y > Math.floor(height/2) && x != Math.floor(width/2) || x >= width - 3)) {
       const wall: Entity<WallPartId> = entityCreate({
+        entityType: ENTITY_TYPE_WALL,
         position: [x, y, 1],
         dimensions: [1, 1, 1],
         rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
@@ -533,6 +536,8 @@ stepParts.reduce((z, stepPart, i) => {
   const t = matrix4Multiply(transform, matrix4Translate(-STEP_WIDTH/2 * i, 0, z + STEP_DEPTH/2));
   const [position, dimensions] = shapeBounds(SHAPE_STEPS[i], t);
   const step: Entity = entityCreate({
+    entityType: ENTITY_TYPE_STAIR,
+    orientation: ORIENTATION_NORTH,
     position,
     dimensions,
     rotation: [0, 0, 0],
@@ -545,7 +550,7 @@ stepParts.reduce((z, stepPart, i) => {
 
 // torch
 for (let i=0; i<MAX_LIGHTS; i++) {
-  const t = matrix4Translate(i + .5, .5, 1.1);
+  const t = matrix4Translate(i + .5, 3.5, 1.1);
   const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
   const torch: Entity<TorchPartId> = entityCreate({
     body: PART_TORCH,
@@ -572,6 +577,7 @@ const player: Entity<SkeletonPartId> = entityCreate({
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
   body: PART_SKELETON_BODY,
+  entityType: ENTITY_TYPE_PLAYER,
   acc: .005,
   velocity: [0, 0, 0],
   rotation: [0, 0, 0],
@@ -586,11 +592,13 @@ const enemy: Entity<SkeletonPartId> = entityCreate({
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
   body: PART_SKELETON_BODY,
+  entityType: ENTITY_TYPE_HOSTILE,
   acc: .005,
   velocity: [0, 0, 0],
   rotation: [0, 0, 0],
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+  activeTarget: player,
 });
 levelAddEntity(level, enemy);
 
@@ -650,7 +658,9 @@ if (FLAG_SPAWN_WEAPONS_ON_CLICK) {
     levelAddEntity(level, club);
   };
 }
-let targetCameraOrientation: Orientation = ORIENTATION_EAST;
+// NOTE that camera orientation is not exactly the same as camera rotation
+// the relationship (I think) is camera rotation = (1 - cameraOrientation) * Math.PI/2
+let targetCameraOrientation: Orientation = player.orientation;
 let cameraZRotation = 0;
 
 let then = 0;
@@ -670,7 +680,7 @@ const update = (now: number) => {
   }
 
   const playerMidPoint = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
-  const targetCameraZRotation = targetCameraOrientation * Math.PI/2;
+  const targetCameraZRotation = (-targetCameraOrientation) * Math.PI/2;
   const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
   // TODO can we tween this?
   cameraZRotation += cameraZDelta * delta / 100;
@@ -846,6 +856,9 @@ const update = (now: number) => {
           const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
           const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
           let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
+          let targetOrientation = entity.orientation;
+          let interact = 0;
+
           levelRemoveEntity(level, entity);
 
           if (entity == player) {
@@ -868,7 +881,6 @@ const update = (now: number) => {
             const heavyAttack = inputRead(INPUT_ATTACK_HEAVY, now);
 
             let running = 0;
-            let interact = 0;
             let moving = 0;
             // running and interact share keys, so we want to avoid collisions
             if (down) {
@@ -878,10 +890,10 @@ const update = (now: number) => {
               running = inputRead(INPUT_RUN, now, 1);
             }
 
-            if (rotateCameraRight) {
+            if (rotateCameraLeft) {
               targetCameraOrientation = mathSafeMod(targetCameraOrientation - 1, 4) as Orientation;
             }
-            if (rotateCameraLeft) {
+            if (rotateCameraRight) {
               targetCameraOrientation = ((targetCameraOrientation + 1) % 4) as Orientation;
             }
 
@@ -892,7 +904,7 @@ const update = (now: number) => {
                 || entity.orientation != targetCameraOrientation && right;
 
             const targetPlayerVelocity = canWalk
-                ? (right - left) * (1 + (canRun ? running : 0)) / (999 * (walkingBackward ? 2 : 1))
+                ? (right - left) * (1 + (canRun ? running : 0)) * SKELETON_WALK_SPEED / (walkingBackward ? 2 : 1)
                 : 0;
             if (canIdle) {
               action = ACTION_ID_IDLE;
@@ -920,36 +932,7 @@ const update = (now: number) => {
             if (canHeavyAttack && heavyAttack) {
               action = ACTION_ID_ATTACK_HEAVY;
             }
-            if (interact) {
-              // find any entities we might be able to pick up
-              let pickedUp: Entity | undefined;
-              levelIterateEntitiesInBounds(level, entity.position, entity.dimensions, found => {
-                // NOTE: while 0 is a valid part id, we assume it's not used for extremities
-                if (found.body.jointAttachmentHolderPartId) {
-                  // TODO get the closest one
-                  pickedUp = found;
-                }
-              });
-              // drop whatever we are carrying
-              const joint = entity.joints.find(
-                  (joint, partId) => joint.attachedEntity && (!pickedUp || partId == pickedUp.body.jointAttachmentHolderPartId),
-              );
-              if (joint) {
-                // add the attached entity back into the world
-                const held = joint.attachedEntity as Entity;
-                held.position = entity.position.map(
-                    (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
-                ) as Vector3;
-                held.rotation = [...entity.rotation];
-                held.velocity = [0, 0, 0];
-                levelAddEntity(level, held);
-                joint.attachedEntity = 0;
-              }
-              if (pickedUp) {
-                levelRemoveEntity(level, pickedUp);
-                entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
-              }
-            }
+
             if (definitelyOnGround) {
               targetVelocity = vector3TransformMatrix4(
                   matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
@@ -970,24 +953,143 @@ const update = (now: number) => {
                 && canTurn
                 && moving
             ) {
-              entity.orientation = left
+              targetOrientation = left
                       ? (targetCameraOrientation + 2) % 4 as Orientation
                       : targetCameraOrientation;
-              const targetAngle = -entity.orientation * Math.PI/2;
-              const to: Vector3 = [0, 0, targetAngle];
-              entity.anim = animLerp(
-                  worldTime,
-                  player.rotation,
-                  to,
-                  299,
-                  EASE_IN_OUT_QUAD,
-                  1,
-              );
-              // action = ACTION_ID_TURN;
             }
           } else {
-            // TODO AI
+            const entityCenter = entityMidpoint(entity);
             action = ACTION_ID_IDLE;
+            if (entity.entityType == ENTITY_TYPE_HOSTILE) {
+              // AI
+              
+              if (!entity.activePathTime || entity.activePathTime < worldTime - AI_RECALCULATION_TIME){
+                // look around
+                let bestTarget: Entity;
+                let bestTargetValue = 0;
+                levelIterateEntitiesInBounds(
+                    level,
+                    // TODO adjust look radius to account for orientation (i.e don't look
+                    // behind)
+                    entityCenter.map(v => v - AI_LOOK_RADIUS) as Vector3,
+                    new Array(3).fill(AI_LOOK_RADIUS*2) as Vector3,
+                    target => {
+                      let targetValue = 0;
+                      if (target.entityType == ENTITY_TYPE_PLAYER) {
+                        // TODO aggro
+                        targetValue = 2;
+                      }
+                      if (
+                          target.body.jointAttachmentHolderPartId
+                              && !entity.joints[target.body.jointAttachmentHolderPartId].attachedEntity
+                      ) {
+                        targetValue = 1;
+                      }
+                      if (target == entity.activeTarget) {
+                        targetValue++;
+                      }
+                      if (targetValue) {
+                        // account for proximity (closer items are more attractive)
+                        targetValue -= vectorNLength(vectorNSubtract(entityCenter, entityMidpoint(target)))*2/AI_LOOK_RADIUS;
+                      }
+                      if (targetValue > bestTargetValue) {
+                        bestTarget = target;
+                        bestTargetValue = targetValue;
+                      }
+                    }
+                );
+                // TODO recalculate activePath
+                entity.activeTarget = bestTarget;
+                entity.activePathTime = worldTime;
+              }
+              if (entity.activeTarget) {
+                // are we close enough to move directly to and/or interact with the target?
+                const delta = vectorNSubtract(entityMidpoint(entity.activeTarget), entityCenter);
+                const distance = vectorNLength(delta);
+                if (distance < AI_DIRECT_MOVE_RADIUS) {
+                  // look at target
+                  const validOrientations: Orientation[] = [];
+                  if (Math.abs(delta[0]) > .1) {
+                    validOrientations.push(delta[0] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST);
+                  }
+                  if (Math.abs(delta[1]) > .1) {
+                    validOrientations.push(delta[1] > 0 ? ORIENTATION_NORTH : ORIENTATION_SOUTH);
+                  }
+
+                  if (validOrientations.indexOf(targetOrientation) < 0 && validOrientations.length) {
+                    // array can be empty
+                    targetOrientation = validOrientations[0];
+                  }
+                  
+                  // walk in that direction
+                  // TODO account for target size and weapon range
+                  if (distance > AI_DIRECT_ACTION_RADIUS) {
+                    if (definitelyOnGround) {
+                      action = ACTION_ID_WALK;
+                      targetVelocity = vector3TransformMatrix4(
+                          matrix4Rotate(targetOrientation * Math.PI/2, 0, 0, 1),
+                          SKELETON_WALK_SPEED,
+                          0,
+                          entity.velocity[2],
+                      );
+                    }  
+                  } else {
+                    if (entity.activeTarget.entityType == ENTITY_TYPE_PLAYER) {
+                      action = ACTION_ID_ATTACK_LIGHT;
+                    } else {
+                      action = ACTION_ID_DUCK;
+                      interact = 1;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (targetOrientation != entity.orientation) {
+            entity.orientation = targetOrientation;
+            const targetAngle = targetOrientation * Math.PI/2;
+            const to: Vector3 = [0, 0, targetAngle];
+            entity.anim = animLerp(
+                worldTime,
+                entity.rotation,
+                to,
+                299,
+                EASE_IN_OUT_QUAD,
+                1,
+            );
+            // action = ACTION_ID_TURN;
+          }
+
+          if (interact) {
+            // find any entities we might be able to pick up
+            let pickedUp: Entity | undefined;
+            levelIterateEntitiesInBounds(level, entity.position, entity.dimensions, found => {
+              // NOTE: while 0 is a valid part id, we assume it's not used for extremities
+              if (found.body.jointAttachmentHolderPartId) {
+                // TODO get the closest one
+                pickedUp = found;
+              }
+            });
+            // drop whatever we are carrying
+            const joint = entity.joints.find(
+                (joint, partId) => joint.attachedEntity && (!pickedUp || partId == pickedUp.body.jointAttachmentHolderPartId),
+            );
+            if (joint) {
+              // add the attached entity back into the world
+              const held = joint.attachedEntity as Entity;
+              held.position = entity.position.map(
+                  (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
+              ) as Vector3;
+              held.rotation = [...entity.rotation];
+              held.velocity = [0, 0, 0];
+              levelAddEntity(level, held);
+              joint.attachedEntity = 0;
+            }
+            if (pickedUp) {
+              levelRemoveEntity(level, pickedUp);
+              entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
+            }
           }
 
           const movable = entity as Moveable;
@@ -1362,7 +1464,7 @@ function updateAndRenderLevel(
                 // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
                 const invertedTransform = matrix4Invert(transform);
                 if (!invertedTransform) {
-                  throw new Error();
+                  throw new Error(JSON.stringify(transform));
                 }
                 const textureId = part.textureId || TEXTURE_ID_WHITE;
                 if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
