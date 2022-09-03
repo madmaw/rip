@@ -200,13 +200,15 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
   ], 1],
   [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
     [0, Math.PI/2, -Math.PI/2],
-    //[0, -Math.PI/8, -Math.PI/2],
     [0, -Math.PI/4, 0],
   ], 1, EASE_IN_QUAD],
   [SKELETON_PART_ID_FOREARM_RIGHT]: [[
     [0, -Math.PI/2, 0],
     [0, 0, 0],
-  ], 1, EASE_IN_QUAD, 1.3 /* damage mult */],
+  ], 1, EASE_IN_QUAD],
+  [SKELETON_PART_ID_HAND_RIGHT]: [[
+    [0, 0, 0],
+  ], 1, EASE_IN_QUAD, 1 /* damage multiplier */]
 };
 
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
@@ -300,7 +302,11 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_JUMP]: {
       maxSpeed: .01,
-      blockActions:  ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK | ACTION_ID_JUMP,
+      blockActions: 
+          ACTION_ID_IDLE
+          | ACTION_ID_FALL
+          | ACTION_ID_WALK
+          | ACTION_ID_JUMP,
       translate: [0, 0, -SKELETON_FEMUR_LENGTH],
       sequences: [{
         [SKELETON_PART_ID_HIPS]: [[
@@ -344,7 +350,13 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_DUCK]: {
       maxSpeed: .005,
-      blockActions: ACTION_ID_IDLE | ACTION_ID_FALL | ACTION_ID_WALK | ACTION_ID_RUN,
+      blockActions:
+          ACTION_ID_IDLE
+          | ACTION_ID_FALL
+          | ACTION_ID_WALK
+          | ACTION_ID_WALK_BACKWARD
+          | ACTION_ID_RUN
+          | ACTION_ID_ATTACK_HEAVY,
       translate: [0, 0, -SKELETON_SHIN_WIDTH],
       sequences: [{
         [SKELETON_PART_ID_HEAD]: [[
@@ -369,9 +381,17 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_ATTACK_LIGHT]: {
       maxSpeed: .007,
-      blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_RUN,
+      blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
       translate: [.2, 0, 0],
-      sequences: [SKELETON_LIGHT_ATTACK_SEQUENCE],
+      sequences: [{
+        ...SKELETON_LIGHT_ATTACK_SEQUENCE,
+        // make the forearm damaging so the hand
+        // (which should be empty if you're using the default attack) inherits it
+        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+          [0, -Math.PI/2, 0],
+          [0, 0, 0],
+        ], 1, EASE_IN_QUAD, 1],
+      }],
     },    
     [ACTION_ID_TAKE_DAMAGE]: {
       maxSpeed: .005,
@@ -392,7 +412,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,
   textureId: TEXTURE_ID_HIPS,
-  vulnerability: 1,
+  incomingDamageMultiplier: 1,
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
       0,
@@ -409,7 +429,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       id: SKELETON_PART_ID_RIBCAGE,
       modelId: MODEL_SKELETON_TORSO,
       textureId: TEXTURE_ID_RIBCAGE,
-      vulnerability: 1,
+      incomingDamageMultiplier: 1,
       preRotationTransform: matrix4Translate(
           0,
           0,
@@ -422,7 +442,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           id: SKELETON_PART_ID_HEAD,
           modelId: MODEL_SKELETON_HEAD,
           textureId: TEXTURE_ID_SKULL,
-          vulnerability: 2,
+          incomingDamageMultiplier: 2,
           preRotationTransform: matrix4Translate(
               0,
               0,
@@ -462,6 +482,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               id: SKELETON_PART_ID_HAND_RIGHT,
               modelId: MODEL_SKELETON_HAND,
               textureId: TEXTURE_ID_HAND_RIGHT,
+              outgoingDamage: 1,
               preRotationTransform: matrix4Translate(
                   SKELETON_FOREARM_WIDTH/2,
                   0,
@@ -484,7 +505,6 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
                     SKELETON_HAND_DIMENSION/3,
                     0,
                 ),
-
               ),
             }]
           }]

@@ -395,7 +395,7 @@ const width = 9;
 const height = 9;
 const depth = 9;
 const dimensions: Vector3 = [width, height, depth];
-const tiles: Tile[][][] = array3New(...dimensions, () => ({}));
+const tiles: Tile[][][] = array3New(...dimensions, () => ({ entities: {} }));
 
 const shapes = [
   SHAPE_WALL,
@@ -1032,7 +1032,7 @@ const update = (now: number) => {
             return joint.animAction && entityGetActionAnims(entity, joint.animAction)
                 ?.sequences[joint.animActionIndex]
                 ?.[jointId]
-                ?.[ENTITY_ANIMATION_DAMAGE_INDEX]
+                ?.[ENTITY_CHILD_PART_ANIMATION_DAMAGE_INDEX]
           });
           if (attacking) {
             // get a big area (we don't know how large the animations are)
@@ -1043,8 +1043,8 @@ const update = (now: number) => {
               if (!victim.lastDamaged || victim.lastDamaged < worldTime - DAMAGE_INVULNERABILITY_DURATION) {
                 let maxDamage = 0;
                 let blocked: Booleanish;
-                  entityIterateParts((e, entityPart, entityTransform, entityJoint, entityDamageMultiplier) => {
-                  if (entityDamageMultiplier > 1) {
+                  entityIterateParts((e, entityPart, entityTransform, entityJoint, entityPartDamage) => {
+                  if (entityPartDamage) {
                     const entityPartShape = shapes[entityPart.modelId];
                     const entityPartRadius = models[entityPart.modelId][2];
                     const entityPartPosition = vector3TransformMatrix4(entityTransform, 0, 0, 0);
@@ -1058,7 +1058,7 @@ const update = (now: number) => {
                       const victimPartPosition = vector3TransformMatrix4(victimTransform, 0, 0, 0);
                       // shapeFromPlanes is very expensive, so check the bounds first
                       if (
-                          (victimDamageMultiplier || victimPart.vulnerability) 
+                          (victimDamageMultiplier || victimPart.incomingDamageMultiplier) 
                           && victimPartRadius + entityPartRadius > vectorNLength(vectorNSubtract(victimPartPosition, entityPartPosition))
                       ) {
                         let overlap: Booleanish;
@@ -1071,8 +1071,8 @@ const update = (now: number) => {
                           overlap = shapeFromPlanes([...entityPartPlanes, ...victimPartPlanes]).length > 3;
                         }
                         if (overlap) {
-                          maxDamage = Math.max(maxDamage, entityDamageMultiplier * (victimPart.vulnerability || 0));
-                          blocked = blocked || !!victimDamageMultiplier || victimPart.vulnerability < 0;
+                          maxDamage = Math.max(maxDamage, entityPartDamage * (victimPart.incomingDamageMultiplier || 0));
+                          blocked = blocked || !!victimDamageMultiplier || victimPart.incomingDamageMultiplier < 0;
                         }
                       }
                     }, victim, victim.body);
@@ -1081,27 +1081,25 @@ const update = (now: number) => {
   
                 if (blocked) {
                   // start the attack cancel animation
-                  //action = ACTION_ID_CANCEL;
-                  console.log('clang!');
-                }
-                if (maxDamage) {
+                  action = ACTION_ID_CANCEL;
+                } else if (maxDamage) {
                   // start the damage received animation
                   entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
                   victim.lastDamaged = worldTime;
-                  if (victim.velocity) {
-                    victim.velocity = vectorNAdd(
-                      victim.velocity,
-                      vectorNScale(
-                          vectorNNormalize(
-                              vectorNSubtract(
-                                  entityMidpoint(victim),
-                                  entityMidpoint(entity),
-                              )
-                          ),
-                          .001 * maxDamage,
-                      )
-                    );
-                  }
+                }
+                if (victim.velocity && (blocked || maxDamage)) {
+                  victim.velocity = vectorNAdd(
+                    victim.velocity,
+                    vectorNScale(
+                        vectorNNormalize(
+                            vectorNSubtract(
+                                entityMidpoint(victim),
+                                entityMidpoint(entity),
+                            )
+                        ),
+                        .001 * (maxDamage || 1),
+                    )
+                  );
                 }
               }
             });

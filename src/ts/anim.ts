@@ -14,7 +14,15 @@ const animDeltaRotation = (from: Vector3, to: Vector3) => {
   return Math.acos(cosDiffNormal);
 }
 
-const animLerp = (start: number, into: Vector3, to: Vector3, duration: number, easing: Easing, wrapAngles?: Booleanish) => {
+const animLerp = (
+    start: number,
+    into: Vector3,
+    to: Vector3,
+    duration: number,
+    easing: Easing,
+    wrapAngles?: Booleanish,
+    onComplete?: (() => void) | Falsey,
+) => {
   const from = [...into];
   return (now: number): 0 | 1 => {
     const delta = now - start;
@@ -25,7 +33,10 @@ const animLerp = (start: number, into: Vector3, to: Vector3, duration: number, e
       const result = from[i] + diff * progress;
       return result;
     });
-    return (proportion | 0) as any; // round down gives zero, until it's >= 1
+    if (proportion | 0) {
+      onComplete && onComplete();
+      return 1;
+    }
   }
 };
 

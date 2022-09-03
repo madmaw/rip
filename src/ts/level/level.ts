@@ -3,7 +3,9 @@ type Level = {
   tiles: Tile[][][],
 };
 
-type Tile = Record<EntityId, Entity>;
+type Tile = {
+  entities: Record<EntityId, Entity>
+};
 
 const levelIterateInBounds = (
     level: Level,
@@ -34,9 +36,9 @@ const levelIterateEntitiesInBounds = (
 ) => {
   const iteratedEntities: Record<EntityId, Truthy> = {};
   levelIterateInBounds(level, position, dimensions, tile => {
-    for (let entityId in tile) {
+    for (let entityId in tile.entities) {
       if (!iteratedEntities[entityId]) {
-        const entity = tile[entityId];
+        const entity = tile.entities[entityId];
         f(entity);
         iteratedEntities[entityId] = 1;
       }
@@ -48,11 +50,11 @@ const levelAddEntity = (level: Level, entity: Entity) => levelIterateInBounds(
     level,
     entity.position,
     entity.dimensions,
-    tile => tile[entity.id] = entity,
+    tile => tile.entities[entity.id] = entity,
 );
 const levelRemoveEntity = (level: Level, entity: Entity) => levelIterateInBounds(
     level,
     entity.position,
     entity.dimensions,
-    tile => delete tile[entity.id],
+    tile => delete tile.entities[entity.id],
 );

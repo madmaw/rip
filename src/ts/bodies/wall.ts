@@ -9,7 +9,7 @@ const PART_WALL: Part<WallPartId> = {
   modelId: MODEL_WALL,
   id: WALL_PART_ID_BODY,
   textureId: TEXTURE_ID_BRICKS,
-  vulnerability: -1,
+  incomingDamageMultiplier: -1,
 };
 
 const SHAPE_WALL = shapeFromPlanes(planesCube(1, 1, 1));
