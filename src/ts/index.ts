@@ -391,12 +391,6 @@ const cubeTextures = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
 
 const visionFramebuffer = gl.createFramebuffer();
 
-const width = 9;
-const height = 9;
-const depth = 9;
-const dimensions: Vector3 = [width, height, depth];
-const tiles: Tile[][][] = array3New(...dimensions, () => ({ entities: {} }));
-
 const shapes = [
   SHAPE_WALL,
   ...SHAPE_STEPS,
@@ -490,90 +484,39 @@ const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((
   return [vao, indices.length, radius];
 });
 
-const level: Level = {
-  dimensions,
-  tiles,
-};
-levelPopulateGraph(level);
+const startX = 4;
+const startY = 4;
+const level = levelCreate(9, 9);
+levelAppendLayers(level, 3, startX, startY);
 
-// populate with a floor
-for (let x=0; x<width; x++) {
-  for (let y=0; y<height; y++) {
-    const floor: Entity<WallPartId> = entityCreate({
-      entityType: ENTITY_TYPE_WALL,
-      position: [x, y, 0],
-      dimensions: [1, 1, 1],
-      rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
-      body: PART_WALL,
-      collisionGroup: COLLISION_GROUP_WALL,
-    });
-    levelAddEntity(level, floor);
-    if ((y > Math.floor(height/2) && x != Math.floor(width/2) || x >= width - 3)) {
-      const wall: Entity<WallPartId> = entityCreate({
-        entityType: ENTITY_TYPE_WALL,
-        position: [x, y, 1],
-        dimensions: [1, 1, 1],
-        rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
-        body: PART_WALL,
-        collisionGroup: COLLISION_GROUP_WALL,
-      });
-      levelAddEntity(level, wall);
-    }
-  }
-}
-// add some stairs
-const stepOrientation = ORIENTATION_SOUTH;
-const stepParts = PART_ORIENTATION_STEPS[stepOrientation];
-const stepsPosition: Vector3 = [width - 4, height/2 | 0, 1];
-const transform = matrix4Multiply(
-    matrix4Translate(...stepsPosition),
-    matrix4Translate(.5, 0, 0),
-    matrix4Rotate(Math.PI/2 * stepOrientation, 0, 0, 1),
-    matrix4Translate(-.5, 0, 0),
-);
-
-stepParts.reduce((z, stepPart, i) => {
-  const t = matrix4Multiply(transform, matrix4Translate(-STEP_WIDTH/2 * i, 0, z + STEP_DEPTH/2));
-  const [position, dimensions] = shapeBounds(SHAPE_STEPS[i], t);
-  const step: Entity = entityCreate({
-    entityType: ENTITY_TYPE_STAIR,
-    orientation: ORIENTATION_NORTH,
-    position,
-    dimensions,
-    rotation: [0, 0, 0],
-    body: stepPart,
-    collisionGroup: COLLISION_GROUP_WALL,
-  });
-  levelAddEntity(level, step);
-  return z + dimensions[2];
-}, 0);  
+// TODO enemy pathing
+//levelPopulateGraph(level);
 
 // torch
-for (let i=0; i<MAX_LIGHTS; i++) {
-  const t = matrix4Translate(Math.random() * 9, Math.random() * 9, 5);
-  const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
-  const torch: Entity<TorchPartId> = entityCreate({
-    body: PART_TORCH,
-    position,
-    dimensions,
-    collisionGroup: COLLISION_GROUP_ITEM,
-    collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-    rotation: [0, 0, 0],
-    velocity: [0, 0, 0],
-    joints: [{
-      rotation: [0, 0, 0],
-    }, {
-      rotation: [0, 0, 0],
-      light: .3,
-    }]
-  });
-  levelAddEntity(level, torch);  
-}
-
+// for (let i=0; i<MAX_LIGHTS; i++) {
+//   const t = matrix4Translate(Math.random() * 9, Math.random() * 9, 5);
+//   const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
+//   const torch: Entity<TorchPartId> = entityCreate({
+//     body: PART_TORCH,
+//     position,
+//     dimensions,
+//     collisionGroup: COLLISION_GROUP_ITEM,
+//     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+//     rotation: [0, 0, 0],
+//     velocity: [0, 0, 0],
+//     joints: [{
+//       rotation: [0, 0, 0],
+//     }, {
+//       rotation: [0, 0, 0],
+//       light: .3,
+//     }]
+//   });
+//   levelAddEntity(level, torch);  
+// }
 
 // and a player
 const player: Entity<SkeletonPartId> = entityCreate({
-  position: [(width - SKELETON_DIMENSION)/2, -(SKELETON_DIMENSION)/2, 1.1],
+  position: [startX + .5 - SKELETON_DIMENSION/2, startY + .5 - SKELETON_DIMENSION/2, 1.1],
   dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
   orientation: ORIENTATION_EAST,
   body: PART_SKELETON_BODY,
@@ -588,25 +531,24 @@ const player: Entity<SkeletonPartId> = entityCreate({
 player.joints[SKELETON_PART_ID_HEAD].light = .2;
 levelAddEntity(level, player);
 
-for (let i=0; i<3; i++ ) {
-  const enemy: Entity<SkeletonPartId> = entityCreate({
-    position: [Math.random() * 9, Math.random() * 9, 4],
-    dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-    orientation: ORIENTATION_EAST,
-    body: PART_SKELETON_BODY,
-    entityType: ENTITY_TYPE_HOSTILE,
-    acc: .005,
-    velocity: [0, 0, 0],
-    rotation: [0, 0, 0],
-    health: 3,
-    collisionGroup: COLLISION_GROUP_MONSTER,
-    collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-    activeTarget: player,
-  });
-  enemy.joints[SKELETON_PART_ID_HEAD].light = .12;
-  levelAddEntity(level, enemy);
-}
-
+// for (let i=0; i<3; i++ ) {
+//   const enemy: Entity<SkeletonPartId> = entityCreate({
+//     position: [Math.random() * level.dimensions[0], Math.random() * level.dimensions[1], 4],
+//     dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+//     orientation: ORIENTATION_EAST,
+//     body: PART_SKELETON_BODY,
+//     entityType: ENTITY_TYPE_HOSTILE,
+//     acc: .005,
+//     velocity: [0, 0, 0],
+//     rotation: [0, 0, 0],
+//     health: 3,
+//     collisionGroup: COLLISION_GROUP_MONSTER,
+//     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+//     activeTarget: player,
+//   });
+//   enemy.joints[SKELETON_PART_ID_HEAD].light = .12;
+//   levelAddEntity(level, enemy);
+// }
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
 let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2;
@@ -875,6 +817,7 @@ const update = (now: number) => {
           let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
           let targetOrientation = entity.orientation;
           let interact = 0;
+          const entityCenter = entityMidpoint(entity);
 
           levelRemoveEntity(level, entity);
 
@@ -975,7 +918,6 @@ const update = (now: number) => {
                       : targetCameraOrientation;
             }
           } else {
-            const entityCenter = entityMidpoint(entity);
             action = ACTION_ID_IDLE;
             if (entity.entityType == ENTITY_TYPE_HOSTILE) {
               // AI
@@ -1145,10 +1087,10 @@ const update = (now: number) => {
           });
 
           // move toward centerline of cross-orientation
-          if (entity.orientation != null) {
+          if (entity.orientation != null && delta) {
             const crossAxis = (entity.orientation + 1) % 2;
             
-            const center = entity.position[crossAxis] + entity.dimensions[crossAxis]/2; 
+            const center = entityCenter[crossAxis]; 
             const rail = (center | 0) + .5;
             const diff = rail - center;
             entity.velocity[crossAxis] = Math.max(

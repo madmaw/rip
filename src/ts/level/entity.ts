@@ -77,7 +77,10 @@ type Entity<T extends number = number> =
     & (Destructible | Indestructible)
     ;
 
-type PartialEntity<T extends number> = Omit<Entity<T>, 'id' | 'joints'> & { joints?: Joint[] };
+type PartialEntity<T extends number> = Omit<Entity<T>, 'id' | 'joints' | 'rotation'> & {
+  joints?: Joint[],
+  rotation?: Vector3,
+};
 
 type CollisionGroup =
     | typeof COLLISION_GROUP_WALL
@@ -312,6 +315,7 @@ let entityId = 1;
 
 const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType): Entity<T> => {
   const joints: Joint[] = [];
+  entity.rotation = entity.rotation || [0, 0, 0];
   entityIterateParts((e, part) => {
     const defaultRotation = entity.body.defaultJointRotations?.[part.id];
     joints[part.id] = entity.joints?.[part.id] || {
@@ -320,8 +324,8 @@ const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(ent
   }, entity, entity.body);
   return {
     id: entityId++,
-    ...entity,
     joints,
+    ...entity,
   } as Entity<T>;
 };
 
@@ -493,7 +497,7 @@ const entityFlipBodyPartAnimationSequences = <ID extends number>(
     if (oppositePartId) {
       // swap the sequences
       source = sequences[oppositePartId]
-    } 
+    }
     if (!source) {
       source = sequences[partId];
     }

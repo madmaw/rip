@@ -12,3 +12,4 @@ const FLAG_SPAWN_WEAPONS_ON_CLICK = true;
 const FLAG_EXCLUDE_UNLIT_FROM_RENDER = true;
 const FLAG_SMOOTH_NORMALS = true;
 const FLAG_FAST_COLLISIONS = true;
+const FLAG_PRINT_LEVEL = true;
