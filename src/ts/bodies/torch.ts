@@ -39,8 +39,8 @@ const PART_TORCH: EntityBody<TorchPartId> = {
     [ACTION_ID_WALK]: {
       maxSpeed: .003,
       // hold up
-      sequences: [{
-        ...SKELETON_DEFENSIVE_WALK_SEQUENCE,
+      sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES.map(s => ({
+        ...s,
         [SKELETON_PART_ID_HUMERUS_LEFT]: [[
           [0, 0, 0],
         ]],
@@ -48,9 +48,9 @@ const PART_TORCH: EntityBody<TorchPartId> = {
           [0, -Math.PI/2, 0],
         ]],
         [SKELETON_PART_ID_HAND_LEFT]: [[
-          [0, Math.PI/2, 0],
+          [0, Math.PI/3, 0],
         ]],
-      }],
+      })),
     },
   },
   children: [{

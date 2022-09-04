@@ -369,7 +369,7 @@ const entityStartAnimation = <T extends number>(
   if (bodyAnimations) {
     // find the index with the smallest move time
     const [bestAnimationDuration, bestAnimationIndex] = bodyAnimations.sequences.reduce((acc, bodyAnimation, i) => {
-      const [min] = acc;
+      const [extent] = acc;
       const animationDuration = entity.joints.reduce((max, v, jointId) => {
         const jointBodyAnim = bodyAnimation[jointId];
         // only interested in how long it takes to move to the first step
@@ -379,11 +379,12 @@ const entityStartAnimation = <T extends number>(
             ? delta
             : max;
       }, 0);
-      if (animationDuration < min) {
+      // bitwise XOR works on booleans
+      if (((animationDuration < extent) as any) ^ ((action == ACTION_ID_TAKE_DAMAGE) as any)) {
         return [animationDuration, i];
       }
       return acc;
-    }, [9999, 0]);
+    }, [action == ACTION_ID_TAKE_DAMAGE ? 0 : 9999, 0]);
     
     const bodyAnimation = bodyAnimations.sequences[bestAnimationIndex];
     const animFrameDurations = entity.joints.reduce<number[]>((acc, joint, jointId) => {
@@ -472,3 +473,38 @@ const entityStartAnimation = <T extends number>(
     })
   }
 };
+
+const entityFlipBodyPartAnimationSequences = <ID extends number>(
+  sequences: Partial<Record<ID, EntityBodyPartAnimationSequence>>,
+  // TODO work out the opposites based on the delta from the defaults
+  //defaultRotations: Vector3[] & Record<ID, Vector3>,
+  oppositePartIdMap: Partial<Record<ID, ID>>,
+): Partial<Record<ID, EntityBodyPartAnimationSequence>>[] => {
+  // ensure the map is bidirectional
+  for (let partId in oppositePartIdMap) {
+    const oppositePartId = oppositePartIdMap[partId];
+    oppositePartIdMap[oppositePartId] = partId;
+  }
+  const flippedSequences: Partial<Record<ID, EntityBodyPartAnimationSequence>> = {};
+  for (let partId in sequences) {
+    //const defaultRotation = defaultRotations[partId];
+    const oppositePartId = oppositePartIdMap[partId];
+    let source: EntityBodyPartAnimationSequence;
+    if (oppositePartId) {
+      // swap the sequences
+      source = sequences[oppositePartId]
+    } 
+    if (!source) {
+      source = sequences[partId];
+    }
+    const [rotations, ...theRest] = source;
+    // flip the rotations
+    flippedSequences[partId] = [
+      rotations.map(rotation => [-rotation[0], rotation[1], -rotation[2]]),
+      // types don't transfer
+      ...theRest,
+    ] as any;
+  }
+  return [sequences, flippedSequences];
+};
+

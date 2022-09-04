@@ -62,6 +62,15 @@ const SKELETON_PART_ID_HAND_LEFT = 12;
 const SKELETON_PART_ID_FOOT_RIGHT = 13;
 const SKELETON_PART_ID_FOOT_LEFT = 14;
 
+const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
+  [SKELETON_PART_ID_HUMERUS_LEFT]: SKELETON_PART_ID_HUMERUS_RIGHT,
+  [SKELETON_PART_ID_FOREARM_LEFT]: SKELETON_PART_ID_FOREARM_RIGHT,
+  [SKELETON_PART_ID_HAND_LEFT]: SKELETON_PART_ID_HAND_RIGHT,
+  [SKELETON_PART_ID_FEMUR_LEFT]: SKELETON_PART_ID_FEMUR_RIGHT,
+  [SKELETON_PART_ID_SHIN_LEFT]: SKELETON_PART_ID_SHIN_RIGHT,
+  [SKELETON_PART_ID_FOOT_LEFT]: SKELETON_PART_ID_FOOT_RIGHT,
+};
+
 const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
   [SKELETON_PART_ID_HIPS]: [[
     [0, 0, Math.PI/9],
@@ -93,89 +102,95 @@ const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnim
   ]],
 };
 
-const SKELETON_DEFENSIVE_WALK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
-  [SKELETON_PART_ID_HEAD]: [[
-    [0, -Math.PI/12, 0],
-    [0, Math.PI/12, 0],
-  ]],
-  [SKELETON_PART_ID_HIPS]: [[
-    [0, Math.PI/20, -Math.PI/4],
-    [0, -Math.PI/20, -Math.PI/3],
-  ]],
-  [SKELETON_PART_ID_FEMUR_LEFT]: [[
-    [0, Math.PI/2, 0],
-    [0, Math.PI/2.5, Math.PI/6],
-  ]],
-  [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-    [0, Math.PI/2.5, Math.PI/6],
-    [0, Math.PI/2, -Math.PI/6],
-  ]],
-  [SKELETON_PART_ID_SHIN_LEFT]: [[
-    [0, Math.PI*4/10, 0],
-    [0, Math.PI*2/10, 0],
-  ]],
-  [SKELETON_PART_ID_SHIN_RIGHT]: [[
-    [0, Math.PI*2/10, 0],
-    [0, Math.PI*4/10, 0],
-  ]],
-  [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-    [0, Math.PI/4, 0],
-    [0, Math.PI/5, 0],
-  ]],
-  [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-    [0, Math.PI/5, 0],
-    [0, Math.PI/4, 0],
-  ]],
-  [SKELETON_PART_ID_FOREARM_LEFT]: [[
-    [0, -Math.PI/2, 0],
-    [0, -Math.PI/3, 0],
-  ]],
-  [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-    [0, -Math.PI/2, 0],
-    [0, -Math.PI/1.5, 0],
-  ]],
-};
+const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
+    {
+      [SKELETON_PART_ID_HEAD]: [[
+        [0, -Math.PI/12, 0],
+        [0, Math.PI/12, 0],
+      ]],
+      [SKELETON_PART_ID_HIPS]: [[
+        [0, Math.PI/20, -Math.PI/4],
+        [0, -Math.PI/20, -Math.PI/3],
+      ]],
+      [SKELETON_PART_ID_FEMUR_LEFT]: [[
+        [0, Math.PI/2, 0],
+        [0, Math.PI/2.5, Math.PI/6],
+      ]],
+      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+        [0, Math.PI/2.5, Math.PI/6],
+        [0, Math.PI/2, -Math.PI/6],
+      ]],
+      [SKELETON_PART_ID_SHIN_LEFT]: [[
+        [0, Math.PI*4/10, 0],
+        [0, Math.PI*2/10, 0],
+      ]],
+      [SKELETON_PART_ID_SHIN_RIGHT]: [[
+        [0, Math.PI*2/10, 0],
+        [0, Math.PI*4/10, 0],
+      ]],
+      [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+        [0, Math.PI/4, 0],
+        [0, Math.PI/5, 0],
+      ]],
+      [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+        [0, Math.PI/5, 0],
+        [0, Math.PI/4, 0],
+      ]],
+      [SKELETON_PART_ID_FOREARM_LEFT]: [[
+        [0, -Math.PI/2, 0],
+        [0, -Math.PI/3, 0],
+      ]],
+      [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+        [0, -Math.PI/2, 0],
+        [0, -Math.PI/1.5, 0],
+      ]],
+    },
+    SKELETON_PART_FLIPS,
+);
 
-const SKELETON_RUN_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
-  [SKELETON_PART_ID_HEAD]: [[
-    [0, -Math.PI/12, -Math.PI/12],
-    [0, -Math.PI/12, Math.PI/12],
-  ]],
-  [SKELETON_PART_ID_HIPS]: [[
-    [0, Math.PI/12, Math.PI/12],
-    [0, Math.PI/12, -Math.PI/12], 
-  ]],
-  [SKELETON_PART_ID_FEMUR_LEFT]: [[
-    [0, Math.PI/1.5, 0],
-    [0, -Math.PI/8, 0],
-  ]],
-  [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-    [0, -Math.PI/8, 0],
-    [0, Math.PI/1.5, 0],
-  ]],
-  [SKELETON_PART_ID_SHIN_LEFT]: [[
-    [0, Math.PI*4/10, 0],
-    [0, Math.PI*2/10, 0],
-  ]],
-  [SKELETON_PART_ID_SHIN_RIGHT]: [[
-    [0, Math.PI*2/10, 0],
-    [0, Math.PI*4/10, 0],
-  ]],
-  [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-    [0, 0, 0],
-    [0, Math.PI/2, 0],
-  ]],
-  [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-    [0, Math.PI/2, 0],
-    [0, 0, 0],
-  ]],
-  [SKELETON_PART_ID_FOREARM_LEFT]: [[
-    [0, -Math.PI/3, 0],
-  ]],
-  [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-    [0, -Math.PI/3, 0],
-  ]],
-};
+const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
+    {
+      [SKELETON_PART_ID_HEAD]: [[
+        [0, -Math.PI/12, -Math.PI/12],
+        [0, -Math.PI/12, Math.PI/12],
+      ]],
+      [SKELETON_PART_ID_HIPS]: [[
+        [0, Math.PI/12, Math.PI/12],
+        [0, Math.PI/12, -Math.PI/12], 
+      ]],
+      [SKELETON_PART_ID_FEMUR_LEFT]: [[
+        [0, Math.PI/1.5, 0],
+        [0, -Math.PI/8, 0],
+      ]],
+      [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+        [0, -Math.PI/8, 0],
+        [0, Math.PI/1.5, 0],
+      ]],
+      [SKELETON_PART_ID_SHIN_LEFT]: [[
+        [0, Math.PI*4/10, 0],
+        [0, Math.PI*2/10, 0],
+      ]],
+      [SKELETON_PART_ID_SHIN_RIGHT]: [[
+        [0, Math.PI*2/10, 0],
+        [0, Math.PI*4/10, 0],
+      ]],
+      [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+        [0, 0, 0],
+        [0, Math.PI/2, 0],
+      ]],
+      [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+        [0, Math.PI/2, 0],
+        [0, 0, 0],
+      ]],
+      [SKELETON_PART_ID_FOREARM_LEFT]: [[
+        [0, -Math.PI/3, 0],
+      ]],
+      [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+        [0, -Math.PI/3, 0],
+      ]],
+    },
+    SKELETON_PART_FLIPS,
+);
 
 const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
   [SKELETON_PART_ID_HEAD]: [[
@@ -322,15 +337,15 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_WALK]: {
       maxSpeed: .004,
-      sequences: [SKELETON_DEFENSIVE_WALK_SEQUENCE],
+      sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES,
     },
     [ACTION_ID_WALK_BACKWARD]: {
       maxSpeed: .003,
-      sequences: [SKELETON_DEFENSIVE_WALK_SEQUENCE],
+      sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES,
     },
     [ACTION_ID_RUN]: {
       maxSpeed: .005,
-      sequences: [SKELETON_RUN_SEQUENCE],
+      sequences: SKELETON_RUN_SEQUENCES,
     },
     [ACTION_ID_JUMP]: {
       maxSpeed: .01,
@@ -429,32 +444,35 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     [ACTION_ID_TAKE_DAMAGE]: {
       maxSpeed: .007,
       blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK | ACTION_ID_RUN | ACTION_ID_ATTACK_LIGHT | ACTION_ID_ATTACK_HEAVY,
-      sequences: [{
-        [SKELETON_PART_ID_HEAD]: [[
-          [0, -Math.PI/6, -Math.PI/3],
-        ], 1, EASE_OUT_QUAD],
-        [SKELETON_PART_ID_HIPS]: [[
-          [0, -Math.PI/12, -Math.PI/3],
-        ], 1, EASE_OUT_QUAD],
-        [SKELETON_PART_ID_RIBCAGE]: [[
-          [0, 0, -Math.PI/3],
-        ], 1],
-        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-          [0, Math.PI/9, -Math.PI/3],
-        ], 1],
-        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-          [0, Math.PI/6, 0],
-        ], 1],
-        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-          [0, -Math.PI/9, Math.PI/3],
-        ], 1],
-        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-          [0, Math.PI*1/10, -Math.PI/3],
-        ], 1],
-        [SKELETON_PART_ID_SHIN_RIGHT]: [[
-          [0, Math.PI*7/10, 0],
-        ], 1],
-      }]
+      sequences: entityFlipBodyPartAnimationSequences(
+          {
+            [SKELETON_PART_ID_HEAD]: [[
+              [0, -Math.PI/6, -Math.PI/3],
+            ], 1, EASE_OUT_QUAD],
+            [SKELETON_PART_ID_HIPS]: [[
+              [0, -Math.PI/12, -Math.PI/3],
+            ], 1, EASE_OUT_QUAD],
+            [SKELETON_PART_ID_RIBCAGE]: [[
+              [0, 0, -Math.PI/3],
+            ], 1],
+            [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+              [0, Math.PI/9, -Math.PI/3],
+            ], 1],
+            [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+              [0, Math.PI/6, 0],
+            ], 1],
+            [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+              [0, -Math.PI/9, Math.PI/3],
+            ], 1],
+            [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+              [0, Math.PI*1/10, -Math.PI/3],
+            ], 1],
+            [SKELETON_PART_ID_SHIN_RIGHT]: [[
+              [0, Math.PI*7/10, 0],
+            ], 1],
+          },
+          SKELETON_PART_FLIPS,
+      ),
     }
   },
   id: SKELETON_PART_ID_HIPS,
