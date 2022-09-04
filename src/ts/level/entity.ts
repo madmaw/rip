@@ -71,9 +71,11 @@ type EntityId = number;
 
 type Entity<T extends number = number> = 
     & EntityBase<T>
-    & (Immovable | Moveable)
+    & (Moveable | Immovable)
     & (Active | Inactive)
-    & (Intelligent | Inanimate);
+    & (Intelligent | Mindless)
+    & (Destructible | Indestructible)
+    ;
 
 type PartialEntity<T extends number> = Omit<Entity<T>, 'id' | 'joints'> & { joints?: Joint[] };
 
@@ -137,11 +139,19 @@ type Intelligent = {
   activeTarget?: Entity,
 };
 
-type Inanimate = {
+type Mindless = {
   activePath: never,
   activePathTime: never,
   activeTarget?: never,
 };
+
+type Destructible = {
+  health: number,
+};
+
+type Indestructible = {
+  health?: never,
+}
 
 const ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS = 0;
 const ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_REQUIRED = 1;
@@ -165,6 +175,8 @@ type EntityBodyAnimation<ID extends number> = {
   blockActions?: number,
   sequences: Partial<Record<ID, EntityBodyPartAnimationSequence>>[],
   translate?: Vector3,
+  // the range that this animation should be applied at (for AI)
+  range?: number,
 };
 
 type EntityBody<ID extends number> = Part<ID> & {

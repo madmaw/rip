@@ -28,6 +28,7 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
         maxSpeed: .006 - .003 * i/(i + 1),
         blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
         translate: [.1, 0, 0],
+        range: .1 + i/19,
         sequences: [{
           // adjust existing attack
           ...SKELETON_LIGHT_ATTACK_SEQUENCE,
@@ -45,6 +46,7 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
             | ACTION_ID_WALK
             | ACTION_ID_WALK_BACKWARD,
         translate: [.2, 0, -.1],
+        range: .2,
         // overhead smash
         sequences: [{
           [SKELETON_PART_ID_HIPS]: [[

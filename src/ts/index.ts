@@ -550,7 +550,7 @@ stepParts.reduce((z, stepPart, i) => {
 
 // torch
 for (let i=0; i<MAX_LIGHTS; i++) {
-  const t = matrix4Translate(i + .5, 3.5, 1.1);
+  const t = matrix4Translate(Math.random() * 9, Math.random() * 9, 5);
   const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
   const torch: Entity<TorchPartId> = entityCreate({
     body: PART_TORCH,
@@ -581,26 +581,31 @@ const player: Entity<SkeletonPartId> = entityCreate({
   acc: .005,
   velocity: [0, 0, 0],
   rotation: [0, 0, 0],
+  health: 30,
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
 });
-player.joints[SKELETON_PART_ID_HEAD].light = .15;
+player.joints[SKELETON_PART_ID_HEAD].light = .2;
 levelAddEntity(level, player);
 
-const enemy: Entity<SkeletonPartId> = entityCreate({
-  position: [(width - SKELETON_DIMENSION)/2 - 1, (height - SKELETON_DIMENSION)/2 - 1, 1.1],
-  dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-  orientation: ORIENTATION_EAST,
-  body: PART_SKELETON_BODY,
-  entityType: ENTITY_TYPE_HOSTILE,
-  acc: .005,
-  velocity: [0, 0, 0],
-  rotation: [0, 0, 0],
-  collisionGroup: COLLISION_GROUP_MONSTER,
-  collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-  activeTarget: player,
-});
-levelAddEntity(level, enemy);
+for (let i=0; i<3; i++ ) {
+  const enemy: Entity<SkeletonPartId> = entityCreate({
+    position: [Math.random() * 9, Math.random() * 9, 4],
+    dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+    orientation: ORIENTATION_EAST,
+    body: PART_SKELETON_BODY,
+    entityType: ENTITY_TYPE_HOSTILE,
+    acc: .005,
+    velocity: [0, 0, 0],
+    rotation: [0, 0, 0],
+    health: 3,
+    collisionGroup: COLLISION_GROUP_MONSTER,
+    collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+    activeTarget: player,
+  });
+  enemy.joints[SKELETON_PART_ID_HEAD].light = .12;
+  levelAddEntity(level, enemy);
+}
 
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
@@ -652,6 +657,7 @@ if (FLAG_SPAWN_WEAPONS_ON_CLICK) {
       position,
       rotation: [0, 0, Math.PI * 2 * Math.random()],
       velocity: [0, 0, 0],
+      health: 3,
       collisionGroup: COLLISION_GROUP_ITEM,
       collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
     });
@@ -667,6 +673,17 @@ let then = 0;
 let worldTime = 0;
 let updateCount = 0;
 let previousLights: Light[] = [];
+let previousPreviousLights: Light[] = [];
+const getLightAppeal = (light: Light, playerMidPoint: Vector3): number => {
+  // always have player light first
+  // prioritise brighter lights
+  // prioritise already visible lights to avoid flicker
+  return light.entityId == player.id
+      ? 0
+      : vectorNLength(vectorNSubtract(playerMidPoint, light.pos))
+          / (light.luminosity * Math.min(previousPreviousLights.findIndex(l => l.entityId == light.entityId))+2, 2)
+}
+
 const lightRenders: Record<EntityId, [number, number, Vector3]> = {};
 
 const update = (now: number) => {
@@ -699,12 +716,11 @@ const update = (now: number) => {
   );
   const cameraProjectionMatrix = matrix4Multiply(projection, cameraPositionMatrix);
 
-
   // sort from closest to furthest, with player at 0
   previousLights
       .sort((l1, l2) => {
-        const d1 = l1.entityId == player.id ? 0 : vectorNLength(vectorNSubtract(playerMidPoint, l1.pos));
-        const d2 = l2.entityId == player.id ? 0 : vectorNLength(vectorNSubtract(playerMidPoint, l2.pos))
+        const d1 = getLightAppeal(l1, playerMidPoint);
+        const d2 = getLightAppeal(l2, playerMidPoint);
         return d1 - d2;
       });
   // find the oldest texture
@@ -827,6 +843,7 @@ const update = (now: number) => {
       ),
   );
 
+  previousPreviousLights = previousLights;
   previousLights = updateAndRenderLevel(
       cameraProjectionMatrix,
       cameraPosition,
@@ -870,7 +887,7 @@ const update = (now: number) => {
             const canDuck = availableActions & ACTION_ID_DUCK;
             const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
             const canHeavyAttack = availableActions & ACTION_ID_ATTACK_HEAVY;
-
+    
             const right = inputRead(INPUT_RIGHT);
             const left = inputRead(INPUT_LEFT);
             const up = canJump && probablyOnGround && inputRead(INPUT_UP, now);
@@ -1005,7 +1022,9 @@ const update = (now: number) => {
               if (entity.activeTarget) {
                 // are we close enough to move directly to and/or interact with the target?
                 const delta = vectorNSubtract(entityMidpoint(entity.activeTarget), entityCenter);
-                const distance = vectorNLength(delta);
+                const distance = vectorNLength(
+                    delta.map((v, i) => Math.max(0, Math.abs(v) - (entity.dimensions[i] + entity.activeTarget.dimensions[i])/2))
+                );
                 if (distance < AI_DIRECT_MOVE_RADIUS) {
                   // look at target
                   const validOrientations: Orientation[] = [];
@@ -1023,23 +1042,37 @@ const update = (now: number) => {
                   
                   // walk in that direction
                   // TODO account for target size and weapon range
-                  if (distance > AI_DIRECT_ACTION_RADIUS) {
-                    if (definitelyOnGround) {
-                      action = ACTION_ID_WALK;
-                      targetVelocity = vector3TransformMatrix4(
-                          matrix4Rotate(targetOrientation * Math.PI/2, 0, 0, 1),
-                          SKELETON_WALK_SPEED,
-                          0,
-                          entity.velocity[2],
-                      );
-                    }  
+                  let targetAction: ActionId | undefined;
+                  if (entity.activeTarget.entityType == ENTITY_TYPE_PLAYER) {
+                    // TODO find best attack for range
+                    targetAction = ACTION_ID_ATTACK_LIGHT;
                   } else {
-                    if (entity.activeTarget.entityType == ENTITY_TYPE_PLAYER) {
-                      action = ACTION_ID_ATTACK_LIGHT;
-                    } else {
-                      action = ACTION_ID_DUCK;
+                    targetAction = ACTION_ID_DUCK;
+                  }
+                  const targetActionAvailable = !targetAction || (availableActions & targetAction);
+                  const animations = entityGetActionAnims(entity, targetAction);
+                  const actionRange = animations.range || 0;
+                  const inRange = distance < actionRange + .05 && distance > actionRange - .05;
+                  if (animations && targetAction && targetActionAvailable && inRange) {
+                    action = targetAction;
+                    if (targetAction == ACTION_ID_DUCK) {
                       interact = 1;
                     }
+                  } else if ((availableActions & ACTION_ID_WALK)
+                      && definitelyOnGround
+                      && (!inRange || !targetActionAvailable)
+                  ){
+                    // stay back a bit if the desired action isn't available
+                    const direction = targetActionAvailable
+                        ? (distance - actionRange)/Math.abs(distance - actionRange)
+                        : -1;
+                    action = ACTION_ID_WALK;
+                    targetVelocity = vector3TransformMatrix4(
+                        matrix4Rotate(targetOrientation * direction * Math.PI/2, 0, 0, 1),
+                        direction > 0 ? SKELETON_WALK_SPEED : SKELETON_WALK_SPEED/2,
+                        0,
+                        entity.velocity[2],
+                    );
                   }
                 }
               }
@@ -1181,27 +1214,73 @@ const update = (now: number) => {
                   }
                 }, entity, entity.body);
   
+                const victimVelocity = vectorNAdd<Vector3>(
+                    victim.velocity || [0, 0, 0],
+                    vectorNScale(
+                        vectorNNormalize(
+                          vectorNSubtract(
+                              entityMidpoint(victim),
+                              entityMidpoint(entity),
+                          )
+                        ),
+                        .001 * (maxDamage || 1),
+                    )
+                );
                 if (blocked) {
                   // start the attack cancel animation
                   action = ACTION_ID_CANCEL;
                 } else if (maxDamage) {
                   // start the damage received animation
-                  entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
+                  victim.health -= maxDamage;
                   victim.lastDamaged = worldTime;
+                  if (victim.health > 0) {
+                    entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
+                  } else {
+                    // collapse
+                    levelRemoveEntity(level, victim);
+                    entityIterateParts((e, part, transform, joint) => {
+                      const position = vector3TransformMatrix4(transform, 0, 0, 0);
+                      let partEntity: Entity;
+                      if (e == victim) {
+                        // turn their body parts into items
+                        const [position, dimensions] = shapeBounds(shapes[part.modelId], transform, 1);
+                        partEntity = entityCreate({
+                          // create generic self-contained entity for each body part
+                          body: {
+                            ...part,
+                            id: 0,
+                            preRotationTransform: 0,
+                            children: [],
+                          },
+                          joints: [{ 
+                            ...joint,
+                            animAction: 0,
+                            attachedEntity: 0,
+                            rotation: [0, 0, 0],
+                          }],
+                          collisionGroup: COLLISION_GROUP_ITEM,
+                          // some stuff just fall through
+                          collisionMask: Math.random() < .5 ? COLLISION_GROUP_WALL : 0,
+                          dimensions,
+                          position,
+                          // TODO use current rotation 
+                          rotation: [0, 0, Math.random() * Math.PI * 2],
+                        });
+                      } else {
+                        // drop whatever they're holding
+                        partEntity = e;
+                        partEntity.position = position;
+                      }
+                      if (partEntity) {
+                        partEntity.velocity = victimVelocity
+                            .map(v => v + (Math.random() - .5) * .001) as Vector3;
+                        levelAddEntity(level, partEntity);
+                      }
+                    }, victim, victim.body);
+                  }
                 }
                 if (victim.velocity && (blocked || maxDamage)) {
-                  victim.velocity = vectorNAdd(
-                    victim.velocity,
-                    vectorNScale(
-                        vectorNNormalize(
-                            vectorNSubtract(
-                                entityMidpoint(victim),
-                                entityMidpoint(entity),
-                            )
-                        ),
-                        .001 * (maxDamage || 1),
-                    )
-                  );
+                  victim.velocity = victimVelocity;
                 }
               }
             });

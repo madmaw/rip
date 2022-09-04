@@ -232,6 +232,38 @@ const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnima
   ]],
 };
 
+const SKELETON_FEMUR_ATTACHMENT_INFO: Pick<
+    Part<SkeletonPartId>, 
+    'jointAttachmentHolderPartId'
+    | 'jointAttachmentHeldTransform'
+    | 'jointAttachmentHolderTransform'
+    | 'jointAttachmentHolderAnims'
+    | 'outgoingDamage'
+> = {
+  jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_RIGHT,
+  jointAttachmentHeldTransform: matrix4Multiply(
+      matrix4Rotate(Math.PI, 0, 1, 0),
+      matrix4Translate(-SKELETON_FEMUR_LENGTH/2, (SKELETON_FEMUR_RADIUS - SKELETON_HAND_DIMENSION)/2, 0),
+  ),
+  jointAttachmentHolderAnims: {
+    [ACTION_ID_ATTACK_LIGHT]: {
+      maxSpeed: .005,
+      blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
+      translate: [.1, 0, 0],
+      range: .1,
+      sequences: [{
+        // adjust existing attack
+        ...SKELETON_LIGHT_ATTACK_SEQUENCE,
+        [SKELETON_PART_ID_HAND_RIGHT]: [[
+          [Math.PI/1.5, 0, 0],
+          [0, Math.PI/1.5, 0],
+        ], 1, EASE_IN_QUAD, 1],
+      }],
+    },         
+  },
+  outgoingDamage: 1,
+};
+
 type SkeletonPartId = 
     | typeof SKELETON_PART_ID_RIBCAGE
     | typeof SKELETON_PART_ID_HEAD
@@ -383,6 +415,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       maxSpeed: .007,
       blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
       translate: [.2, 0, 0],
+      range: .2,
       sequences: [{
         ...SKELETON_LIGHT_ATTACK_SEQUENCE,
         // make the forearm damaging so the hand
@@ -394,17 +427,32 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       }],
     },    
     [ACTION_ID_TAKE_DAMAGE]: {
-      maxSpeed: .005,
+      maxSpeed: .007,
       blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK | ACTION_ID_RUN | ACTION_ID_ATTACK_LIGHT | ACTION_ID_ATTACK_HEAVY,
-      translate: [-.2, 0, 0],
       sequences: [{
         [SKELETON_PART_ID_HEAD]: [[
-          [0, -Math.PI/6, 0],
-          [0, Math.PI/6, 0],          
-        ], 1],
+          [0, -Math.PI/6, -Math.PI/3],
+        ], 1, EASE_OUT_QUAD],
         [SKELETON_PART_ID_HIPS]: [[
-          [0, -Math.PI/12, 0],
-          [0, Math.PI/12, 0],
+          [0, -Math.PI/12, -Math.PI/3],
+        ], 1, EASE_OUT_QUAD],
+        [SKELETON_PART_ID_RIBCAGE]: [[
+          [0, 0, -Math.PI/3],
+        ], 1],
+        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+          [0, Math.PI/9, -Math.PI/3],
+        ], 1],
+        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+          [0, Math.PI/6, 0],
+        ], 1],
+        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+          [0, -Math.PI/9, Math.PI/3],
+        ], 1],
+        [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+          [0, Math.PI*1/10, -Math.PI/3],
+        ], 1],
+        [SKELETON_PART_ID_SHIN_RIGHT]: [[
+          [0, Math.PI*7/10, 0],
         ], 1],
       }]
     }
@@ -448,6 +496,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               0,
               SKELETON_RIBCAGE_DEPTH/2 + SKELETON_HEAD_DEPTH/2 + SKELETON_NECK_LENGTH,
           ),
+          jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_LEFT,
+          jointAttachmentHeldTransform: matrix4Rotate(Math.PI/3, 0, 1, 0),
         },
         // right shoulder
         {
@@ -464,6 +514,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               0, 
               0,
           ),
+          ...SKELETON_FEMUR_ATTACHMENT_INFO,
           children: [{
             id: SKELETON_PART_ID_FOREARM_RIGHT,
             modelId: MODEL_SKELETON_FOREARM,
@@ -525,6 +576,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               0, 
               0,
           ),
+          ...SKELETON_FEMUR_ATTACHMENT_INFO,
           children: [{
             id: SKELETON_PART_ID_FOREARM_LEFT,
             modelId: MODEL_SKELETON_FOREARM,
@@ -587,6 +639,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           0,
           0,
       ),
+      ...SKELETON_FEMUR_ATTACHMENT_INFO,
       children: [{
         id: SKELETON_PART_ID_SHIN_RIGHT,
         modelId: MODEL_SKELETON_SHIN,
@@ -643,6 +696,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           0,
           0,
       ),
+      ...SKELETON_FEMUR_ATTACHMENT_INFO,
       children: [{
         id: SKELETON_PART_ID_SHIN_LEFT,
         modelId: MODEL_SKELETON_SHIN,
