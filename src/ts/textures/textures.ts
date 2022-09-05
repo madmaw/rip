@@ -118,7 +118,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   // TEXTURE_ID_WHITE
   [whiteTextureFactory, solidTextureNormalFactory],
   // TEXTURE_ID_FLAME
-  [createSolidTextureColorFactory([255, 200, 150, 255]), solidTextureNormalFactory],
+  [createSolidTextureColorFactory([255, 180, 50, 255]), solidTextureNormalFactory],
   // TEXTURE_ID_BRICKS
   [
     graniteTextureFactory,

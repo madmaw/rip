@@ -163,7 +163,7 @@ const planeFlipAndDuplicateOnAxis = (planes: Plane[], axis: number) => {
   });
 };
 
-const shapeBounds = (shape: Shape, transform: Matrix4, minimalDimensions?: Booleanish): Rect3 => {
+const shapeBounds = (shape: Shape, transform?: Matrix4 | Falsey, minimalDimensions?: Booleanish): Rect3 => {
   const [min, max]: [Vector3, Vector3] = shape.reduce<[Vector3|Falsey, Vector3|Falsey]>((acc, face) => {
     const t = matrix4Multiply(transform, face.transformFromCoordinateSpace);
     return face.perimeter.reduce(([min, max], { firstOutgoingIntersection }) => {

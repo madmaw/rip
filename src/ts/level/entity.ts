@@ -27,12 +27,14 @@ const ENTITY_TYPE_WALL = 0;
 const ENTITY_TYPE_STAIR = 1;
 const ENTITY_TYPE_HOSTILE = 2;
 const ENTITY_TYPE_PLAYER = 3;
+const ENTITY_TYPE_TORCH = 4;
 
 type EntityType =
   | typeof ENTITY_TYPE_WALL
   | typeof ENTITY_TYPE_STAIR
   | typeof ENTITY_TYPE_HOSTILE
   | typeof ENTITY_TYPE_PLAYER
+  | typeof ENTITY_TYPE_TORCH
   ;
 
 // action ids are also masks
@@ -150,10 +152,12 @@ type Mindless = {
 
 type Destructible = {
   health: number,
+  maxHealth: number,
 };
 
 type Indestructible = {
   health?: never,
+  maxHealth?: never,
 }
 
 const ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS = 0;
@@ -313,9 +317,12 @@ const entityAvailableActions = <T extends number>(entity: Entity<T>): number => 
 
 let entityId = 1;
 
-const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType): Entity<T> => {
+const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType, center?: Booleanish): Entity<T> => {
   const joints: Joint[] = [];
   entity.rotation = entity.rotation || [0, 0, 0];
+  if (center) {
+    arrayMapAndSet(entity.position, (v, i) => (v | 0) + i < 2 ? (.5 - entity.dimensions[i]/2) : EPSILON);
+  }
   entityIterateParts((e, part) => {
     const defaultRotation = entity.body.defaultJointRotations?.[part.id];
     joints[part.id] = entity.joints?.[part.id] || {

@@ -10,6 +10,9 @@ const TORCH_HEAD_RADIUS = .02;
 const TORCH_PART_ID_BODY = 0;
 const TORCH_PART_ID_HEAD = 1;
 
+const TORCH_BRIGHTNESS = .4;
+const TORCH_MAX_HEALTH = 4;
+
 type TorchPartId = 
     | typeof TORCH_PART_ID_BODY
     | typeof TORCH_PART_ID_HEAD

@@ -198,7 +198,7 @@ const FRAGMENT_SHADER = `#version 300 es
 
     vec3 lightColor = vec3(
         color.w > .5
-            ? (color.w -.5) * 2.
+            ? (color.w -.5) * .02 * float(${U_MODEL_ATTRIBUTES}.x)
             : 0.
     );
     for (int i = ${MAX_LIGHTS}; i > 0;) {
@@ -487,32 +487,10 @@ const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((
 const startX = 4;
 const startY = 4;
 const level = levelCreate(9, 9);
-levelAppendLayers(level, 3, startX, startY);
+levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE, startX, startY);
 
 // TODO enemy pathing
 //levelPopulateGraph(level);
-
-// torch
-// for (let i=0; i<MAX_LIGHTS; i++) {
-//   const t = matrix4Translate(Math.random() * 9, Math.random() * 9, 5);
-//   const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
-//   const torch: Entity<TorchPartId> = entityCreate({
-//     body: PART_TORCH,
-//     position,
-//     dimensions,
-//     collisionGroup: COLLISION_GROUP_ITEM,
-//     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-//     rotation: [0, 0, 0],
-//     velocity: [0, 0, 0],
-//     joints: [{
-//       rotation: [0, 0, 0],
-//     }, {
-//       rotation: [0, 0, 0],
-//       light: .3,
-//     }]
-//   });
-//   levelAddEntity(level, torch);  
-// }
 
 // and a player
 const player: Entity<SkeletonPartId> = entityCreate({
@@ -528,27 +506,8 @@ const player: Entity<SkeletonPartId> = entityCreate({
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
 });
-player.joints[SKELETON_PART_ID_HEAD].light = .2;
+player.joints[SKELETON_PART_ID_HEAD].light = .25;
 levelAddEntity(level, player);
-
-// for (let i=0; i<3; i++ ) {
-//   const enemy: Entity<SkeletonPartId> = entityCreate({
-//     position: [Math.random() * level.dimensions[0], Math.random() * level.dimensions[1], 4],
-//     dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-//     orientation: ORIENTATION_EAST,
-//     body: PART_SKELETON_BODY,
-//     entityType: ENTITY_TYPE_HOSTILE,
-//     acc: .005,
-//     velocity: [0, 0, 0],
-//     rotation: [0, 0, 0],
-//     health: 3,
-//     collisionGroup: COLLISION_GROUP_MONSTER,
-//     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-//     activeTarget: player,
-//   });
-//   enemy.joints[SKELETON_PART_ID_HEAD].light = .12;
-//   levelAddEntity(level, enemy);
-// }
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
 let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2;
@@ -579,33 +538,6 @@ if (FLAG_ALLOW_ZOOM) {
   cameraOffsetTransform = matrix4Translate(0, cameraOffset, -.5);
 }
 
-if (FLAG_SPAWN_WEAPONS_ON_CLICK) {
-  onclick = () => {
-    // club
-    const clubBody = PARTS_CLUBS[Math.random() * PARTS_CLUBS.length | 0];
-    //const clubBody = PARTS_CLUBS[0];
-    const clubShape = shapes[clubBody.modelId];
-    const t = matrix4Multiply(
-        matrix4Translate(
-            player.position[0] + Math.random() - .5,
-            player.position[1] + Math.random() - .5,
-            player.position[2] + 1,
-        ),
-    );
-    const [position, dimensions] = shapeBounds(clubShape, t, 1);
-    const club: Entity<ClubPartId> = entityCreate({
-      body: clubBody,
-      dimensions,
-      position,
-      rotation: [0, 0, Math.PI * 2 * Math.random()],
-      velocity: [0, 0, 0],
-      health: 3,
-      collisionGroup: COLLISION_GROUP_ITEM,
-      collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-    });
-    levelAddEntity(level, club);
-  };
-}
 // NOTE that camera orientation is not exactly the same as camera rotation
 // the relationship (I think) is camera rotation = (1 - cameraOrientation) * Math.PI/2
 let targetCameraOrientation: Orientation = player.orientation;
@@ -638,31 +570,31 @@ const update = (now: number) => {
     fps.innerText = `${Math.floor(updateCount*1000/worldTime)} FPS`;
   }
 
-  const playerMidPoint = player.position.map((v, i) => v + player.dimensions[i]/2) as Vector3;
+  const playerCenter = entityMidpoint(player);
   const targetCameraZRotation = (-targetCameraOrientation) * Math.PI/2;
   const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
   // TODO can we tween this?
   cameraZRotation += cameraZDelta * delta / 100;
   const cameraRotation = matrix4Rotate(cameraZRotation, 0, 0, 1);
-  const negatedPlayerMidPoint = vectorNScale(playerMidPoint, -1);
+  const negatedPlayerCenter = vectorNScale(playerCenter, -1);
   const cameraPositionMatrix = matrix4Multiply(
       cameraOffsetTransform,
       cameraRotation,
-      matrix4Translate(...negatedPlayerMidPoint),
+      matrix4Translate(...negatedPlayerCenter),
   );
   const cameraPosition = vector3TransformMatrix4(matrix4Invert(cameraPositionMatrix), 0, 0, 0);
   const cameraRenderCutoffTransform = matrix4Multiply(
     matrix4Translate(0, .5, .2),
     matrix4Rotate(cameraZRotation, 0, 0, 1),
-    matrix4Translate(...negatedPlayerMidPoint),
+    matrix4Translate(...negatedPlayerCenter),
   );
   const cameraProjectionMatrix = matrix4Multiply(projection, cameraPositionMatrix);
 
   // sort from closest to furthest, with player at 0
   previousLights
       .sort((l1, l2) => {
-        const d1 = getLightAppeal(l1, playerMidPoint);
-        const d2 = getLightAppeal(l2, playerMidPoint);
+        const d1 = getLightAppeal(l1, playerCenter);
+        const d2 = getLightAppeal(l2, playerCenter);
         return d1 - d2;
       });
   // find the oldest texture
@@ -740,12 +672,12 @@ const update = (now: number) => {
           rotationTransform,
           matrix4Translate(...vectorNScale(light.pos, -1)),
       );
-      const [lightBoundsPosition, lightBoundsDimensions] = lightIndex
-          ? [
-            light.pos.map(v => v - light.luminosity * MAX_LIGHT_THROW) as Vector3,
-            new Array(3).fill(light.luminosity * 2 * MAX_LIGHT_THROW) as Vector3,
-          ]
-          : [[0, 0, 0] as Vector3, level.dimensions];
+      const lightBoundsDimensions = lightIndex
+          ? RENDER_DIMENSIONS.map(v => Math.min(v, light.luminosity * 2 * MAX_LIGHT_THROW)) as Vector3
+          : RENDER_DIMENSIONS;
+      const lightBoundsPosition = light.pos.map(
+          (v, i) => v - lightBoundsDimensions[i]/2,
+      ) as Vector3;
       updateAndRenderLevel(
           faceCameraTransform,
           light.pos,
@@ -754,7 +686,7 @@ const update = (now: number) => {
           [],
           // first index is the player line of sight, so it's a special case
           // for everything else, just exclude the actual lit object
-          e => e.velocity && !lightIndex
+          e => e.collisionGroup != COLLISION_GROUP_WALL && !lightIndex
               || e.id == light.entityId
               || FLAG_EXCLUDE_UNLIT_FROM_RENDER
                   && lightIndex
@@ -785,12 +717,18 @@ const update = (now: number) => {
       ),
   );
 
+  const renderPosition = RENDER_DIMENSIONS.map((v, i) => playerCenter[i] - v/2) as Vector3;
+  if (renderPosition[2] + RENDER_DIMENSIONS[2] > level.dimensions[2]) {
+    // time to generate some more layers
+    levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE);
+  }
+
   previousPreviousLights = previousLights;
   previousLights = updateAndRenderLevel(
       cameraProjectionMatrix,
       cameraPosition,
-      [0, 0, 0],
-      level.dimensions,
+      renderPosition,
+      RENDER_DIMENSIONS,
       previousLights,
       (entity: Entity, carrier?: Entity) => {
         // update animations
@@ -799,10 +737,19 @@ const update = (now: number) => {
             rotation: [...rotation],
           }));
         }
-        [...(entity.joints || []), entity].forEach((joint) => {
+        [...(entity.joints || []), entity].forEach((joint: Joint) => {
           if (joint.anim && joint.anim?.(worldTime)) {
             joint.anim = 0;
             joint.animAction = 0;
+          }
+          const attachedEntity = joint.attachedEntity;
+          if (attachedEntity) {
+            // update attached entity
+            if (attachedEntity.entityType == ENTITY_TYPE_TORCH) {
+              attachedEntity.health = Math.max(0, attachedEntity.health - delta / 1e5);
+              attachedEntity.joints[TORCH_PART_ID_HEAD].light = 
+                  (1 - Math.pow(1 - attachedEntity.health/attachedEntity.maxHealth,2)) * TORCH_BRIGHTNESS;
+            }
           }
         });
         if (entity.offsetAnim && entity.offsetAnim(worldTime)) {
@@ -1057,12 +1004,12 @@ const update = (now: number) => {
                   (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
               ) as Vector3;
               held.rotation = [...entity.rotation];
-              held.velocity = [0, 0, 0];
               levelAddEntity(level, held);
               joint.attachedEntity = 0;
             }
             if (pickedUp) {
               levelRemoveEntity(level, pickedUp);
+              pickedUp.velocity = [0, 0, 0];
               entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
             }
           }
@@ -1508,9 +1455,13 @@ function updateAndRenderLevel(
   
                   gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
                   gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
-                  // x = nothing
+                  // x = intrinsic lightness multiplier
                   // y = texture id of part
-                  gl.uniform2i(uniformModelAttributes, 0, textureId);
+                  gl.uniform2i(
+                      uniformModelAttributes,
+                      entity.entityType == ENTITY_TYPE_TORCH ? joint.light * 99/TORCH_BRIGHTNESS | 0 : 99,
+                      textureId,
+                  );
               
                   const [vao, count] = models[part.modelId];
                   gl.bindVertexArray(vao);
@@ -1544,7 +1495,7 @@ function updateAndRenderLevel(
       modelInstancedRenders.forEach(([transform, invertedTransform, textureId]) => {
         gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
         gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
-        gl.uniform2i(uniformModelAttributes, 0, textureId);
+        gl.uniform2i(uniformModelAttributes, 99, textureId);
     
         gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
       });
