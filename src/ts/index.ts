@@ -95,7 +95,7 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
-  uniform ivec2 ${U_MODEL_ATTRIBUTES};
+  uniform vec2 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
   uniform sampler3D ${U_TEXTURE_COLORS};
   uniform sampler3D ${U_TEXTURE_NORMALS};
@@ -108,7 +108,7 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   vec3 tx(vec3 p) {
-    return (vec3(float(${U_MODEL_ATTRIBUTES}.y), 0., 0.) + clamp(p, vec3(-.5), vec3(.5)) * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
+    return (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(p, vec3(-.5), vec3(.5)) * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
         / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
   }
 
@@ -198,7 +198,7 @@ const FRAGMENT_SHADER = `#version 300 es
 
     vec3 lightColor = vec3(
         color.w > .5
-            ? (color.w -.5) * .02 * float(${U_MODEL_ATTRIBUTES}.x)
+            ? (color.w -.5) * 2.
             : 0.
     );
     for (int i = ${MAX_LIGHTS}; i > 0;) {
@@ -240,14 +240,15 @@ const FRAGMENT_SHADER = `#version 300 es
         )
         * ${U_LIGHT_POSITIONS}[i].w
         * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
-        // * pow(max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.);
         if (length(delta) < d + bias && n < 0. || length(delta) < d) {
-          lightColor += light * (i == 0 ? vec3(.3, 1., .5) : mix(vec3(1., .4, .1), vec3(1., 1., .8), light));
+          lightColor += light * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), light));
         } else if (i == 0){
           lightColor = vec3(0.);
         }
         //l = depth;z
       }
+      lightColor *= 1. + min(${U_MODEL_ATTRIBUTES}.y, 0.) * vec3(.5, 1., 1.);
+      lightColor += max(${U_MODEL_ATTRIBUTES}.y, 0.);
     }
     ${OUT_RESULT} = vec4(pow(color.xyz * lightColor, vec3(.45)), 1.);
   }
@@ -502,11 +503,12 @@ const player: Entity<SkeletonPartId> = entityCreate({
   acc: .005,
   velocity: [0, 0, 0],
   rotation: [0, 0, 0],
-  health: 30,
+  maxHealth: 9,
+  health: 9,
   collisionGroup: COLLISION_GROUP_MONSTER,
   collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
 });
-player.joints[SKELETON_PART_ID_HEAD].light = .25;
+player.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
 levelAddEntity(level, player);
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
@@ -746,9 +748,9 @@ const update = (now: number) => {
           if (attachedEntity) {
             // update attached entity
             if (attachedEntity.entityType == ENTITY_TYPE_TORCH) {
-              attachedEntity.health = Math.max(0, attachedEntity.health - delta / 1e5);
+              attachedEntity.health = Math.max(0, attachedEntity.health - delta / TORCH_MS_PER_HEALTH);
               attachedEntity.joints[TORCH_PART_ID_HEAD].light = 
-                  (1 - Math.pow(1 - attachedEntity.health/attachedEntity.maxHealth,2)) * TORCH_BRIGHTNESS;
+                  (1 - Math.pow(1 - attachedEntity.health/attachedEntity.maxHealth, 9)) * TORCH_BRIGHTNESS;
             }
           }
         });
@@ -762,6 +764,7 @@ const update = (now: number) => {
           const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
           const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
           let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
+          let ignoreLateralAcceleration: Booleanish;
           let targetOrientation = entity.orientation;
           let interact = 0;
           const entityCenter = entityMidpoint(entity);
@@ -810,7 +813,7 @@ const update = (now: number) => {
             const walkingBackward = entity.orientation == targetCameraOrientation && left
                 || entity.orientation != targetCameraOrientation && right;
 
-            const targetPlayerVelocity = canWalk
+            let targetLateralSpeed = canWalk
                 ? (right - left) * (1 + (canRun ? running : 0)) * SKELETON_WALK_SPEED / (walkingBackward ? 2 : 1)
                 : 0;
             if (canIdle) {
@@ -840,18 +843,24 @@ const update = (now: number) => {
               action = ACTION_ID_ATTACK_HEAVY;
             }
 
+            if (action == ACTION_ID_JUMP) {
+              if (walkingBackward) {
+                targetLateralSpeed = (right - left) * SKELETON_WALK_SPEED * 2;
+                ignoreLateralAcceleration = 1;
+                targetVelocity[2] = .001;
+              } else {
+                targetVelocity[2] = .003;
+              }
+            }
+
             if (definitelyOnGround) {
               targetVelocity = vector3TransformMatrix4(
                   matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
-                  targetPlayerVelocity,
+                  targetLateralSpeed,
                   0,
-                  entity.velocity[2],
+                  targetVelocity[2],
               );
             }
-            if (action == ACTION_ID_JUMP) {
-              targetVelocity[2] = .003;
-            }
-
             if ((
                 cameraDelta
                     || entity.orientation == targetCameraOrientation && left
@@ -908,19 +917,39 @@ const update = (now: number) => {
                 entity.activeTarget = bestTarget;
                 entity.activePathTime = worldTime;
               }
-              if (entity.activeTarget) {
+              const activeTarget = entity.activeTarget;
+              if (activeTarget) {
                 // are we close enough to move directly to and/or interact with the target?
-                const delta = vectorNSubtract(entityMidpoint(entity.activeTarget), entityCenter);
-                const distance = vectorNLength(
-                    delta.map((v, i) => Math.max(0, Math.abs(v) - (entity.dimensions[i] + entity.activeTarget.dimensions[i])/2))
+                const delta = vectorNSubtract(entityMidpoint(activeTarget), entityCenter);
+                const distances = delta.map(
+                    (v, i) => Math.max(0, Math.abs(v) - (entity.dimensions[i] + activeTarget.dimensions[i])/2),
                 );
+                const distance = vectorNLength(distances);
                 if (distance < AI_DIRECT_MOVE_RADIUS) {
+                  // walk in that direction
+                  // account for target size and weapon range
+                  let targetAction: ActionId | undefined;
+
+                  let minActionRangeMultiplier = 0;
+                  if (activeTarget.entityType == ENTITY_TYPE_PLAYER) {
+                    // TODO find best attack for range
+                    targetAction = ACTION_ID_ATTACK_LIGHT;
+                    minActionRangeMultiplier = .8;
+                  } else {
+                    targetAction = ACTION_ID_DUCK;
+                  }
+                  const animations = entityGetActionAnims(entity, targetAction);
+                  const maxActionRange = animations.range || 0;
+                  const minActionRange = maxActionRange * minActionRangeMultiplier;
+                  const targetActionAvailable = !targetAction || (availableActions & targetAction);
+                  const inRange = distance <= maxActionRange && distance >= minActionRange;
+
                   // look at target
                   const validOrientations: Orientation[] = [];
-                  if (Math.abs(delta[0]) > .1) {
+                  if (distances[0] > maxActionRange) {
                     validOrientations.push(delta[0] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST);
                   }
-                  if (Math.abs(delta[1]) > .1) {
+                  if (distances[1] > maxActionRange) {
                     validOrientations.push(delta[1] > 0 ? ORIENTATION_NORTH : ORIENTATION_SOUTH);
                   }
 
@@ -928,20 +957,7 @@ const update = (now: number) => {
                     // array can be empty
                     targetOrientation = validOrientations[0];
                   }
-                  
-                  // walk in that direction
-                  // TODO account for target size and weapon range
-                  let targetAction: ActionId | undefined;
-                  if (entity.activeTarget.entityType == ENTITY_TYPE_PLAYER) {
-                    // TODO find best attack for range
-                    targetAction = ACTION_ID_ATTACK_LIGHT;
-                  } else {
-                    targetAction = ACTION_ID_DUCK;
-                  }
-                  const targetActionAvailable = !targetAction || (availableActions & targetAction);
-                  const animations = entityGetActionAnims(entity, targetAction);
-                  const actionRange = animations.range || 0;
-                  const inRange = distance < actionRange + .05 && distance > actionRange - .05;
+
                   if (animations && targetAction && targetActionAvailable && inRange) {
                     action = targetAction;
                     if (targetAction == ACTION_ID_DUCK) {
@@ -953,12 +969,12 @@ const update = (now: number) => {
                   ){
                     // stay back a bit if the desired action isn't available
                     const direction = targetActionAvailable
-                        ? (distance - actionRange)/Math.abs(distance - actionRange)
+                        ? (distance - minActionRange)/Math.abs(distance - minActionRange)
                         : -1;
-                    action = ACTION_ID_WALK;
+                    action = direction > 0 ? ACTION_ID_WALK : ACTION_ID_WALK_BACKWARD;
                     targetVelocity = vector3TransformMatrix4(
-                        matrix4Rotate(targetOrientation * direction * Math.PI/2, 0, 0, 1),
-                        direction > 0 ? SKELETON_WALK_SPEED : SKELETON_WALK_SPEED/2,
+                        matrix4Rotate(targetOrientation * Math.PI/2, 0, 0, 1),
+                        direction * (direction > 0 ? SKELETON_WALK_SPEED : SKELETON_WALK_SPEED/2),
                         0,
                         entity.velocity[2],
                     );
@@ -986,7 +1002,9 @@ const update = (now: number) => {
           if (interact) {
             // find any entities we might be able to pick up
             let pickedUp: Entity | undefined;
-            levelIterateEntitiesInBounds(level, entity.position, entity.dimensions, found => {
+            const pickUpDimensions = entity.dimensions.map(v => v + PICK_UP_ITEM_RADIUS * 2) as Vector3;
+            const pickUpPosition = entityCenter.map((v, i) => v - pickUpDimensions[i]/2) as Vector3;
+            levelIterateEntitiesInBounds(level, pickUpPosition, pickUpDimensions, found => {
               // NOTE: while 0 is a valid part id, we assume it's not used for extremities
               if (found.body.jointAttachmentHolderPartId) {
                 // TODO get the closest one
@@ -1011,6 +1029,7 @@ const update = (now: number) => {
               levelRemoveEntity(level, pickedUp);
               pickedUp.velocity = [0, 0, 0];
               entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
+              entity.activeTarget = 0;
             }
           }
 
@@ -1020,7 +1039,7 @@ const update = (now: number) => {
           arrayMapAndSet(movable.velocity, (c, i) => {
             const v = targetVelocity[i];
             let velocity = v;
-            if (i < 2 && entity.acc) {
+            if (i < 2 && entity.acc && !ignoreLateralAcceleration) {
               const diff = v - c;
               velocity = c + diff * entity.acc * delta;
             }
@@ -1066,8 +1085,9 @@ const update = (now: number) => {
               // work out the most appropriate action for each victim
               if (!victim.lastDamaged || victim.lastDamaged < worldTime - DAMAGE_INVULNERABILITY_DURATION) {
                 let maxDamage = 0;
+                let maxWeapon: Entity | undefined;
                 let blocked: Booleanish;
-                  entityIterateParts((e, entityPart, entityTransform, entityJoint, entityPartDamage) => {
+                  entityIterateParts((weaponEntity, entityPart, entityTransform, entityJoint, entityPartDamage) => {
                   if (entityPartDamage) {
                     const entityPartShape = shapes[entityPart.modelId];
                     const entityPartRadius = models[entityPart.modelId][2];
@@ -1095,8 +1115,17 @@ const update = (now: number) => {
                           overlap = shapeFromPlanes([...entityPartPlanes, ...victimPartPlanes]).length > 3;
                         }
                         if (overlap) {
-                          maxDamage = Math.max(maxDamage, entityPartDamage * (victimPart.incomingDamageMultiplier || 0));
-                          blocked = blocked || !!victimDamageMultiplier || victimPart.incomingDamageMultiplier < 0;
+                          const damage = entityPartDamage * (victimPart.incomingDamageMultiplier || 0);
+                          if (damage > maxDamage) {
+                            maxDamage = damage;
+                            maxWeapon = weaponEntity;
+                          }
+                          if (!blocked) {
+                            blocked = !!victimDamageMultiplier || victimPart.incomingDamageMultiplier < 0;
+                            if (blocked) {
+                              maxWeapon = weaponEntity;
+                            } 
+                          }
                         }
                       }
                     }, victim, victim.body);
@@ -1122,54 +1151,16 @@ const update = (now: number) => {
                   // start the damage received animation
                   victim.health -= maxDamage;
                   victim.lastDamaged = worldTime;
-                  if (victim.health > 0) {
-                    entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
-                  } else {
-                    // collapse
-                    levelRemoveEntity(level, victim);
-                    entityIterateParts((e, part, transform, joint) => {
-                      const position = vector3TransformMatrix4(transform, 0, 0, 0);
-                      let partEntity: Entity;
-                      if (e == victim) {
-                        // turn their body parts into items
-                        const [position, dimensions] = shapeBounds(shapes[part.modelId], transform, 1);
-                        partEntity = entityCreate({
-                          // create generic self-contained entity for each body part
-                          body: {
-                            ...part,
-                            id: 0,
-                            preRotationTransform: 0,
-                            children: [],
-                          },
-                          joints: [{ 
-                            ...joint,
-                            animAction: 0,
-                            attachedEntity: 0,
-                            rotation: [0, 0, 0],
-                          }],
-                          collisionGroup: COLLISION_GROUP_ITEM,
-                          // some stuff just fall through
-                          collisionMask: Math.random() < .5 ? COLLISION_GROUP_WALL : 0,
-                          dimensions,
-                          position,
-                          // TODO use current rotation 
-                          rotation: [0, 0, Math.random() * Math.PI * 2],
-                        });
-                      } else {
-                        // drop whatever they're holding
-                        partEntity = e;
-                        partEntity.position = position;
-                      }
-                      if (partEntity) {
-                        partEntity.velocity = victimVelocity
-                            .map(v => v + (Math.random() - .5) * .001) as Vector3;
-                        levelAddEntity(level, partEntity);
-                      }
-                    }, victim, victim.body);
-                  }
+                  entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
                 }
-                if (victim.velocity && (blocked || maxDamage)) {
-                  victim.velocity = victimVelocity;
+                if (blocked || maxDamage) {
+                  if (victim.velocity) {
+                    victim.velocity = victimVelocity;
+                  }
+                  if (maxWeapon && maxWeapon != entity && maxWeapon.maxHealth) {
+                    // damage the weapon
+                    maxWeapon.health--;
+                  }
                 }
               }
             });
@@ -1181,6 +1172,7 @@ const update = (now: number) => {
           let remainingDelta = delta;
           let maxIntersectionArea = 0;
           let verticalIntersectionCount = 0;
+
           do {
             const targetPosition = entity.position.map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
             const maximalPosition = entity.position.map((v, i) => Math.min(v, targetPosition[i]) - EPSILON) as Vector3;
@@ -1192,7 +1184,7 @@ const update = (now: number) => {
             // TODO might need initialisers for CC
             let maxCollisionEntity: Entity | Falsey;
             let hadSoftBodyCollision: Booleanish;
-            
+
             maxOverlapIndex = -1;
             levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions, collisionEntity => {
               // no need to check for ourselves since we have been removed from the level at this point
@@ -1282,9 +1274,6 @@ const update = (now: number) => {
                   }, 0);
                   if (overlap) {
                     const [overlapDelta, intersectionArea, overlapIndex] = overlap;
-                    if (overlapIndex != 2) {
-                      verticalIntersectionCount++;
-                    }
                     if (overlapDelta < remainingDelta && 
                         (overlapDelta > maxOverlapDelta
                             || overlapDelta > maxOverlapDelta - EPSILON && maxIntersectionArea < intersectionArea
@@ -1299,9 +1288,6 @@ const update = (now: number) => {
                 }
               }
             });
-            if (maxCollisionEntity && maxOverlapIndex != 2 && FLAG_DEBUG_COLLISIONS) {
-              console.log('questionable intersection');
-            }
             iterations ++;
             if (!hadSoftBodyCollision) {
               const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta) - EPSILON;
@@ -1328,12 +1314,9 @@ const update = (now: number) => {
                 // check if we can step up
                 // TODO: only do this if we are a creature
                 if (maxOverlapIndex != 2
-                    && verticalIntersectionCount == 1
                     && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
                 ) {
-                  entity.velocity[2] = Math.max(.001, entity.velocity[2]);
-                  // steps count as a z collision
-                  entity.lastZCollision = worldTime;
+                  verticalIntersectionCount++;
                 }
                 entity.velocity[maxOverlapIndex] = 0;
                 if (maxOverlapIndex == 2) {
@@ -1343,13 +1326,72 @@ const update = (now: number) => {
             }
           } while ((remainingDelta > EPSILON) && iterations < MAX_COLLISIONS);
 
+          if (verticalIntersectionCount == 1) {
+            entity.velocity[2] = Math.max(.0012, entity.velocity[2]);
+            // steps count as a z collision
+            entity.lastZCollision = worldTime;
+          }
+
           if (FLAG_DEBUG_COLLISIONS && iterations >= MAX_COLLISIONS) {
             console.log('too many collisions');
           }
 
-          // start new animations
-          entityStartAnimation(entity, action);
-          levelAddEntity(level, entity);
+          if (!entity.maxHealth || entity.health > 0) {
+            // start new animations
+            entityStartAnimation(entity, action);
+            levelAddEntity(level, entity);
+          } else {
+            // collapse
+            entityIterateParts((e, part, transform, joint) => {
+              const position = vector3TransformMatrix4(transform, 0, 0, 0);
+              let partEntity: Entity;
+              if (e == entity) {
+                // turn their body parts into items
+                const [position, dimensions] = shapeBounds(shapes[part.modelId], transform, 1);
+                partEntity = entityCreate({
+                  // create generic self-contained entity for each body part
+                  body: {
+                    ...part,
+                    id: 0,
+                    preRotationTransform: 0,
+                    children: [],
+                  },
+                  joints: [{ 
+                    ...joint,
+                    animAction: 0,
+                    attachedEntity: 0,
+                    rotation: [0, 0, 0],
+                  }],
+                  // inherit your parent health
+                  health: entity.maxHealth,
+                  maxHealth: entity.maxHealth,
+                  collisionGroup: COLLISION_GROUP_ITEM,
+                  // turn anything that can be held into an item (maybe)
+                  collisionMask: Math.random() < .5
+                      // only create objects for parts that do something
+                      && part.jointAttachmentHolderPartId
+                      // the zero'th part is assumed to be what we are held by if we are a tool
+                      // as result, we don't want to add the handle back into the world
+                      && part.id
+                      ? COLLISION_GROUP_WALL
+                      : 0,
+                  dimensions,
+                  position,
+                  // TODO use current rotation 
+                  rotation: [0, 0, Math.random() * Math.PI * 2],
+                });
+              } else {
+                // drop whatever they're holding
+                partEntity = e;
+                partEntity.position = position;
+              }
+              if (partEntity) {
+                partEntity.velocity = entity.velocity
+                    .map(v => v + (Math.random() - .5) * .001) as Vector3;
+                levelAddEntity(level, partEntity);
+              }
+            }, entity, entity.body);            
+          }
         }
 
         const entityCenter = entityMidpoint(carrier || entity);
@@ -1410,6 +1452,17 @@ function updateAndRenderLevel(
           entityIterateParts(
             (entity, part, transform, joint) => {
               const partPosition = vector3TransformMatrix4(transform, 0, 0, 0);
+
+              // if the attached entity is dead, drop it
+              const attachedEntity = joint.attachedEntity;
+              if (attachedEntity && attachedEntity.maxHealth && attachedEntity.health <= 0) {
+                attachedEntity.position = partPosition;
+                attachedEntity.velocity = [0, 0, 0];
+                joint.attachedEntity = 0;
+                // it will disintegrate on the next tick
+                levelAddEntity(level, attachedEntity);
+              }
+
               if (light) {
                 joint.entityLightTransforms = joint.entityLightTransforms || {};
                 // joint.entityLightTransforms[light.entityId] = matrix4Multiply(
@@ -1457,10 +1510,16 @@ function updateAndRenderLevel(
                   gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
                   // x = intrinsic lightness multiplier
                   // y = texture id of part
-                  gl.uniform2i(
+                  gl.uniform2f(
                       uniformModelAttributes,
-                      entity.entityType == ENTITY_TYPE_TORCH ? joint.light * 99/TORCH_BRIGHTNESS | 0 : 99,
                       textureId,
+                      entity.maxHealth && entity.health < Math.min(entity.maxHealth, HEALTH_FLASH)
+                          // flash indicating health
+                          ? (
+                              Math.sqrt(1 - (entity.health - 1) / HEALTH_FLASH) // should be zero when health is high, 1 when low
+                              * (Math.abs(Math.sin(worldTime * 199)) - 1) // oscilates -1 to 0, always -1 when health is 0
+                          )
+                          : 0,
                   );
               
                   const [vao, count] = models[part.modelId];
@@ -1495,7 +1554,7 @@ function updateAndRenderLevel(
       modelInstancedRenders.forEach(([transform, invertedTransform, textureId]) => {
         gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
         gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
-        gl.uniform2i(uniformModelAttributes, 99, textureId);
+        gl.uniform2f(uniformModelAttributes, textureId, 0);
     
         gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
       });

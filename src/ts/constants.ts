@@ -1,7 +1,7 @@
 ///<reference path="math/matrix.ts"/>
 
 const EPSILON = .00001;
-const GRAVITY = .00001;
+const GRAVITY = .000012;
 const RAIL_ALIGNMENT_VELOCITY = .01;
 const ONE_MINUS_EPSILON = 1 - EPSILON;
 const MAX_VELOCITY = .01;
@@ -13,6 +13,8 @@ const MAX_LIGHT_THROW = 6;
 const MAX_LIGHT_THROW_C = `${MAX_LIGHT_THROW}.`;
 const MIN_LIGHT_THROW_C = '2.';
 const LIGHT_Z_FUTZ = .1;
+const VERTICAL_INTERSECTION_IGNORE = .01;
+const PICK_UP_ITEM_RADIUS = .1;
 
 const VECTOR3_UP: [number, number, number] = [0, 0, 1];
 const VECTOR3_EAST: [number, number, number] = [1, 0, 0];
@@ -63,8 +65,9 @@ const DAMAGE_INVULNERABILITY_DURATION = 200;
 const SKELETON_WALK_SPEED = .001;
 const AI_RECALCULATION_TIME = 999;
 const AI_LOOK_RADIUS = 3;
-const AI_DIRECT_MOVE_RADIUS = 1.5;
+const AI_DIRECT_MOVE_RADIUS = .7;
 const LEVEL_DIMENSION = 9;
 const LEVEL_LAYER_CHUNK_SIZE = 4;
-const RENDER_DIMENSIONS: Vector3 = [MAX_LIGHT_THROW, MAX_LIGHT_THROW, 3];
+const RENDER_DIMENSIONS: Vector3 = [MAX_LIGHT_THROW*1.5, MAX_LIGHT_THROW*1.5, 3];
+const HEALTH_FLASH = 5;
 

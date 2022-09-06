@@ -90,6 +90,7 @@ type CollisionGroup =
     | typeof COLLISION_GROUP_ITEM
     ;
 
+const COLLISION_GROUP_NONE = 0;
 const COLLISION_GROUP_WALL = 1;
 const COLLISION_GROUP_MONSTER = 2;
 const COLLISION_GROUP_ITEM = 4;
@@ -141,7 +142,7 @@ type Oriented = {
 type Intelligent = {
   activePath?: Vector3[],
   activePathTime?: number,
-  activeTarget?: Entity,
+  activeTarget?: Entity | Falsey,
 };
 
 type Mindless = {
@@ -321,7 +322,7 @@ const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(ent
   const joints: Joint[] = [];
   entity.rotation = entity.rotation || [0, 0, 0];
   if (center) {
-    arrayMapAndSet(entity.position, (v, i) => (v | 0) + i < 2 ? (.5 - entity.dimensions[i]/2) : EPSILON);
+    arrayMapAndSet(entity.position, (v, i) => (v | 0) + (i < 2 ? (.5 - entity.dimensions[i]/2) : .01));
   }
   entityIterateParts((e, part) => {
     const defaultRotation = entity.body.defaultJointRotations?.[part.id];

@@ -133,9 +133,11 @@ const LEVEL_DESIGN_CELL_FLOOR = 8;
 
 const levelPrintLayer = (level: Level, tz: number) => {
   const [width, height, depth] = level.dimensions;
-  const chars: string[] = [];
+  const chars: string[] = new Array(level.dimensions[0]).fill(0).map((_, i) => `${i}`).concat('\n');
+  chars.unshift(' ');
   for (let ty=height; ty>0; ) {
     ty--;
+    chars.push(`${ty}`);
     for (let tx=0; tx<width; tx++) {
       const v = level.tiles[tx][ty][tz].cell;
       chars.push('>^<v #-|_'.charAt(v));
@@ -247,7 +249,7 @@ const levelAppendLayers = (level: Level, layers: number, startingX?: number, sta
           + Math.max(0, -dy) * (sy + 1);
       
       if (maxCorridorLength >= LEVEL_MIN_CORRIDOR_LENGTH || downHoles.length) {
-        const corridorLength = (Math.random() * (maxCorridorLength - LEVEL_MIN_CORRIDOR_LENGTH) | 0) + LEVEL_MIN_CORRIDOR_LENGTH;
+        const corridorLength = ((1 - Math.pow(Math.random(), 2)) * (maxCorridorLength - LEVEL_MIN_CORRIDOR_LENGTH) | 0) + LEVEL_MIN_CORRIDOR_LENGTH;
         const targetCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + (orientation % 2);
         const oppositeCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + ((orientation + 1) % 2);
         // ensure the corridor does not sit adjacent to, or atop, any other corridors
@@ -308,7 +310,7 @@ const levelAppendLayers = (level: Level, layers: number, startingX?: number, sta
           adjacency.forEach((a, i) => {
             const x = sx + i * dx;
             const y = sy + i * dy;
-            const cell = a == 3
+            const cell = a == 3 || a > 1 && downHole && !i
                 // always cover up holes
                 ? LEVEL_DESIGN_CELL_FLOOR
                 : !i && downHole?.[2] != null
@@ -322,7 +324,7 @@ const levelAppendLayers = (level: Level, layers: number, startingX?: number, sta
           const stairY = sy + dy * (corridorLength - 2);
 
           if (
-              (!downHole || Math.random() > .0)
+              (!downHole || Math.random() > .9)
               && corridorLength > 3
               && adjacency.slice(-2).every(i => i == 0)
               && adjacency[corridorLength - 3] < 2
@@ -361,6 +363,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
   levelIterateInBounds(level, [0, 0, layer], [width, height, 1], (tile: Tile, ...position: Vector3) => {
     const [x, y, z] = position;
 
+    let layerTorches = 0;
+
     const adjacentWalls: Orientation[] = [];
     let stairsIncoming: Booleanish = 0;
     for (let dz = 0; dz < 2; dz++) {
@@ -383,9 +387,6 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         }
       }  
     }
-    if (stairsIncoming) {
-      console.log(position);
-    }
 
     const cell = tile.cell;
     const cellBelow = z > 0 && level.tiles[x][y][z - 1].cell;
@@ -407,7 +408,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         dimensions,
         position, 
         rotation: [0, 0, Math.PI * 2 * Math.random()],
-        velocity: [0, 0, 0],
+        //velocity: [0, 0, 0],
         health: maxHealth,
         maxHealth,
         collisionGroup: COLLISION_GROUP_ITEM,
@@ -417,10 +418,15 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
 
     // torch
-    if (hasFloor && adjacentWalls.length && stairsIncoming && (Math.random() > (layer - 3)/layer)) {
+    if (hasFloor
+        && adjacentWalls.length
+        && stairsIncoming
+        // at least one torch per level
+        && (!layerTorches || Math.random() > (layer - 3)/layer)
+    ) {
       const orientation = adjacentWalls[Math.random() * adjacentWalls.length | 0];
       const [dx, dy] = ORIENTATION_OFFSETS[orientation];
-      const t = matrix4Translate(x + .5 + dx/2, y + .5 + dy/2, z + .5);
+      const t = matrix4Translate(x + .5 + dx/2.1, y + .5 + dy/2.1, z + .5);
       const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
       const torch: Entity<TorchPartId> = entityCreate({
         body: PART_TORCH,
@@ -442,6 +448,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         }],
       });
       levelAddEntity(level, torch);
+      layerTorches++;
     }
     if (hasFloor && adjacentWalls.length < 3) {
       const maxHealth = 3;
@@ -462,7 +469,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         collisionGroup: COLLISION_GROUP_MONSTER,
         collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
       }, 1);
-      enemy.joints[SKELETON_PART_ID_HEAD].light = .2;
+      enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
       validEnemies.push(enemy);   
     }
 
@@ -530,12 +537,13 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
   });
 
-  ([[validEnemies, Math.sqrt(layer) - 1], [validTreasure, 3]] as const).forEach(([entities, quantity]) => {
+  ([[validEnemies, Math.sqrt(layer) - 1], [validTreasure, 3]] as const).forEach(([entities, quantity], i) => {
     while (quantity > 0 && entities.length) {
       const index = Math.random() * entities.length | 0;
       const [entity] = entities.splice(index, 1);
       levelAddEntity(level, entity);
       quantity--;
+      console.log(i, entity.position);
     }
   });
 

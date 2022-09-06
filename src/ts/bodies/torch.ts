@@ -11,7 +11,9 @@ const TORCH_PART_ID_BODY = 0;
 const TORCH_PART_ID_HEAD = 1;
 
 const TORCH_BRIGHTNESS = .4;
-const TORCH_MAX_HEALTH = 4;
+const TORCH_MAX_HEALTH = 9;
+// ~30 seconds
+const TORCH_MS_PER_HEALTH = 4e3;
 
 type TorchPartId = 
     | typeof TORCH_PART_ID_BODY

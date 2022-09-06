@@ -8,7 +8,7 @@
 ///<reference path="models.ts"/>
 
 const SKELETON_DIMENSION = .2;
-const SKELETON_DEPTH = .4;
+const SKELETON_DEPTH = .5;
 
 const SKELETON_RIBCAGE_WIDTH = .1;
 const SKELETON_RIBCAGE_HEIGHT = .2;
@@ -43,7 +43,6 @@ const SKELETON_FOOT_WIDTH = .1;
 const SKELETON_FOOT_HEIGHT = .04;
 const SKELETON_FOOT_DEPTH = .04;
 
-
 const SKELETON_NECK_DIMENSION = .05;
 
 const SKELETON_PART_ID_RIBCAGE = 0;
@@ -61,6 +60,8 @@ const SKELETON_PART_ID_HAND_RIGHT = 11;
 const SKELETON_PART_ID_HAND_LEFT = 12;
 const SKELETON_PART_ID_FOOT_RIGHT = 13;
 const SKELETON_PART_ID_FOOT_LEFT = 14;
+
+const SKELETON_GLOW = .25;
 
 const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
   [SKELETON_PART_ID_HUMERUS_LEFT]: SKELETON_PART_ID_HUMERUS_RIGHT,
@@ -354,7 +355,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           | ACTION_ID_FALL
           | ACTION_ID_WALK
           | ACTION_ID_JUMP,
-      translate: [0, 0, -SKELETON_FEMUR_LENGTH],
+      //translate: [0, 0, -SKELETON_FEMUR_LENGTH],
       sequences: [{
         [SKELETON_PART_ID_HIPS]: [[
           [0, Math.PI/8, 0],
@@ -397,6 +398,9 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_DUCK]: {
       maxSpeed: .005,
+      // AI uses duck to pick things up, so the range indicates how far we need
+      // to be away
+      range: PICK_UP_ITEM_RADIUS,
       blockActions:
           ACTION_ID_IDLE
           | ACTION_ID_FALL
@@ -482,7 +486,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
       0,
-      SKELETON_FEMUR_LENGTH + SKELETON_SHIN_WIDTH - SKELETON_DEPTH/2,
+      SKELETON_FEMUR_LENGTH + SKELETON_SHIN_WIDTH + SKELETON_FOOT_DEPTH/2 - SKELETON_DEPTH/2,
   ),
   postRotationTransform: matrix4Translate(
       0,
