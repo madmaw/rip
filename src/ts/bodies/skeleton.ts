@@ -434,7 +434,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       maxSpeed: .007,
       blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
       translate: [.2, 0, 0],
-      range: .2,
+      range: .2, 
       sequences: [{
         ...SKELETON_LIGHT_ATTACK_SEQUENCE,
         // make the forearm damaging so the hand

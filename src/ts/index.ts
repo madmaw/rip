@@ -104,6 +104,15 @@ const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
 const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
 const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
 const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
+const L_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightColor' : 'p';
+const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
+const L_COS_LIGHT_ANGLE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCosLightAngleDelta' : 'r';
+const L_LIGHT_TEXEL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTexel' : 's';
+const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't';
+const L_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightNormal' : 'u';
+const L_LIGHT_TEXTURE_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTextureNormal' : 'U';
+const L_LIGHT_DISTANCE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDistance' : 'T';
+const L_BIAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lBias' : 'S';
 
 const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
@@ -211,7 +220,7 @@ const FRAGMENT_SHADER = `#version 300 es
     //${L_COLOR} = vec4(${L_TEXTURE_POSITION} + .5, 0.);
 
 
-    vec3 lightColor = vec3(
+    vec3 ${L_LIGHT_COLOR} = vec3(
         ${L_COLOR}.w > .5
             ? (${L_COLOR}.w -.5) * 2.
             : 0.
@@ -219,52 +228,54 @@ const FRAGMENT_SHADER = `#version 300 es
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        vec3 delta = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
-        vec3 deltan = normalize(delta);
-        vec3 pn = normalize(
-            abs(deltan.x) > abs(deltan.y) && abs(deltan.x) > abs(deltan.z)
-                ? vec3(deltan.x, 0, 0)
-                : abs(deltan.y) > abs(deltan.z)
-                    ? vec3(0, deltan.y, 0)
-                    : vec3(0, 0, deltan.z)
+        vec3 ${L_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
+        vec3 ${L_LIGHT_NORMAL} = normalize(${L_LIGHT_DELTA});
+        vec3 ${L_LIGHT_TEXTURE_NORMAL} = normalize(
+            abs(${L_LIGHT_NORMAL}.x) > abs(${L_LIGHT_NORMAL}.y) && abs(${L_LIGHT_NORMAL}.x) > abs(${L_LIGHT_NORMAL}.z)
+                ? vec3(${L_LIGHT_NORMAL}.x, 0, 0)
+                : abs(${L_LIGHT_NORMAL}.y) > abs(${L_LIGHT_NORMAL}.z)
+                    ? vec3(0, ${L_LIGHT_NORMAL}.y, 0)
+                    : vec3(0, 0, ${L_LIGHT_NORMAL}.z)
         );
-        float n = dot(${L_NORMAL}, deltan);
-        //${L_COLOR} = vec4(vec3(length(delta)/4.), 1.);
+        float ${L_COS_LIGHT_ANGLE_DELTA} = dot(${L_NORMAL}, ${L_LIGHT_NORMAL});
+        //${L_COLOR} = vec4(vec3(length(${L_LIGHT_DELTA})/4.), 1.);
         // cannot index into samplers!
-        vec4 tex = i == 0
-            ? texture(${U_LIGHT_TEXTURES}[0], deltan)
+        vec4 ${L_LIGHT_TEXEL} = i == 0
+            ? texture(${U_LIGHT_TEXTURES}[0], ${L_LIGHT_NORMAL})
             : i == 1
-                ? texture(${U_LIGHT_TEXTURES}[1], deltan)
+                ? texture(${U_LIGHT_TEXTURES}[1], ${L_LIGHT_NORMAL})
                 : i == 2
-                    ? texture(${U_LIGHT_TEXTURES}[2], deltan)
-                    : texture(${U_LIGHT_TEXTURES}[3], deltan);
-        // vec4 tex = texture(${U_LIGHT_TEXTURES}[0], deltan);
+                    ? texture(${U_LIGHT_TEXTURES}[2], ${L_LIGHT_NORMAL})
+                    : texture(${U_LIGHT_TEXTURES}[3], ${L_LIGHT_NORMAL});
+        // vec4 ${L_LIGHT_TEXEL} = texture(${U_LIGHT_TEXTURES}[0], ${L_LIGHT_NORMAL});
     
-        float d = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
-            / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * tex.x - 1.)
+        float ${L_LIGHT_DISTANCE} = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+            / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * ${L_LIGHT_TEXEL}.x - 1.)
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
-            ) * dot(deltan, pn))
+            ) * dot(${L_LIGHT_NORMAL}, ${L_LIGHT_TEXTURE_NORMAL}))
             // ensure bumps are not in shadow
-            + ${L_DEPTH} * 2. * ${L_TEXTURE_SCALE} / dot(normalize(${V_NORMAL}), deltan);
+            + ${L_DEPTH} * 2. * ${L_TEXTURE_SCALE} / dot(normalize(${V_NORMAL}), ${L_LIGHT_NORMAL});
         // TODO distance in bias seems wrong
-        float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
-        float light = mix(
-            max(0., -n),
-            1.,
-            pow(max(0., (${MIN_LIGHT_THROW_C} - length(delta))*${U_LIGHT_POSITIONS}[i].w), 2.)
-        )
-        * ${U_LIGHT_POSITIONS}[i].w
-        * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(delta))/${MAX_LIGHT_THROW_C}, 2.));
-        if (length(delta) < d + bias && n < 0. || length(delta) < d) {
-          lightColor += light * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), light));
+        float ${L_BIAS} = pow(${L_LIGHT_DISTANCE}, 2.)
+            * (2. - pow(${L_COS_LIGHT_ANGLE_DELTA}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
+        float ${L_LIGHT} = mix(
+                max(0., -${L_COS_LIGHT_ANGLE_DELTA}),
+                1.,
+                pow(max(0., (${MIN_LIGHT_THROW_C} - length(${L_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w), 2.)
+            )
+            * ${U_LIGHT_POSITIONS}[i].w
+            * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_LIGHT_DELTA}))/${MAX_LIGHT_THROW_C}, 2.));
+        if (length(${L_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE} + ${L_BIAS} && ${L_COS_LIGHT_ANGLE_DELTA} < 0. || length(${L_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}) {
+          ${L_LIGHT_COLOR} += ${L_LIGHT}
+              * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_LIGHT}))
+              + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.y, 0.) : 0.);
         } else if (i == 0){
-          lightColor = vec3(0.);
+          ${L_LIGHT_COLOR} = vec3(0.);
         }
       }
-      lightColor *= 1. + min(${U_MODEL_ATTRIBUTES}.y, 0.) * vec3(.5, 1., 1.);
-      lightColor += max(${U_MODEL_ATTRIBUTES}.y, 0.);
+      ${L_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.y, 0.) * vec3(.5, 1., 1.);
     }
-    ${OUT_RESULT} = vec4(pow(${L_COLOR}.xyz * lightColor, vec3(.45)), 1.);
+    ${OUT_RESULT} = vec4(pow(${L_COLOR}.xyz * ${L_LIGHT_COLOR}, vec3(.45)), 1.);
   }
 `;
 
@@ -526,7 +537,7 @@ player.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
 levelAddEntity(level, player);
 
 const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
-let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2;
+let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2.5;
 let cameraOffsetTransform: Matrix4;
 let projection: Matrix4;
 const resizeCanvas = () => {
@@ -942,7 +953,7 @@ const update = (now: number) => {
                 if (distance < AI_DIRECT_MOVE_RADIUS) {
                   // walk in that direction
                   // account for target size and weapon range
-                  let targetAction: ActionId | undefined;
+                  let targetAction: ActionId | 0 = 0;
 
                   let minActionRangeMultiplier = 0;
                   if (activeTarget.entityType == ENTITY_TYPE_PLAYER) {
@@ -1196,8 +1207,8 @@ const update = (now: number) => {
 
             let maxOverlapDelta = 0;
             // TODO might need initialisers for CC
-            let maxCollisionEntity: Entity | Falsey;
-            let hadSoftBodyCollision: Booleanish;
+            let maxCollisionEntity: Entity | Falsey = 0 as any;
+            let hadSoftBodyCollision: Booleanish = 0;
 
             maxOverlapIndex = -1;
             levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions, collisionEntity => {

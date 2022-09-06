@@ -420,8 +420,7 @@ const entityStartAnimation = <T extends number>(
 
     entity.offset = entity.offset || [0, 0, 0];
 
-    // TODO some?? Surely should be every?
-    if (entity.offset.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) < EPSILON)) {
+    if (entity.offset.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) > EPSILON)) {
       const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
       entity.offsetAnim = animLerp(
           worldTime,
