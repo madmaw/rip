@@ -407,6 +407,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         body: clubBody,
         dimensions,
         position, 
+        entityType: ENTITY_TYPE_ITEM,
         rotation: [0, 0, Math.PI * 2 * Math.random()],
         //velocity: [0, 0, 0],
         health: maxHealth,

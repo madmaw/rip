@@ -28,6 +28,7 @@ const ENTITY_TYPE_STAIR = 1;
 const ENTITY_TYPE_HOSTILE = 2;
 const ENTITY_TYPE_PLAYER = 3;
 const ENTITY_TYPE_TORCH = 4;
+const ENTITY_TYPE_ITEM = 5;
 
 type EntityType =
   | typeof ENTITY_TYPE_WALL
@@ -35,6 +36,7 @@ type EntityType =
   | typeof ENTITY_TYPE_HOSTILE
   | typeof ENTITY_TYPE_PLAYER
   | typeof ENTITY_TYPE_TORCH
+  | typeof ENTITY_TYPE_ITEM
   ;
 
 // action ids are also masks

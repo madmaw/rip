@@ -1,4 +1,5 @@
 const FLAG_SHOW_GL_ERRORS = true;
+const FLAG_LONG_GL_VARIABLE_NAMES = false;
 const FLAG_SHOW_FPS = true;
 const FLAG_THROTTLE_LIGHT_RENDERING = false;
 const FLAG_TEXTURE_CLAMP_TO_EDGE = true;

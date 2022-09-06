@@ -16,28 +16,28 @@
 ///<reference path="webgl.ts"/>
 
 
-const A_VERTEX_POSIITON = 'aVertexPosition';
-const A_VERTEX_NORMAL = 'aVertexNormal';
-const A_TEXTURE_POSITION = 'aTexturePosition';
+const A_VERTEX_POSIITON = FLAG_LONG_GL_VARIABLE_NAMES ? 'aVertexPosition' : 'Z';
+const A_VERTEX_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'aVertexNormal' : 'Y';
+const A_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'aTexturePosition' : 'X';
 
-const ATTRIBUTES = [
+const ATTRIBUTES = FLAG_LONG_GL_VARIABLE_NAMES ? [
   A_VERTEX_POSIITON,
   A_VERTEX_NORMAL,
   A_TEXTURE_POSITION,
-];
+] : 'ZYX'.split('');
 
-const U_MODEL_VIEW_MATRIX = 'uModelViewMatrix';
+const U_MODEL_VIEW_MATRIX = FLAG_LONG_GL_VARIABLE_NAMES ? 'uModelViewMatrix' : 'A';
 // inverting in the shader has performance issues
-const U_MODEL_VIEW_MATRIX_INVERSE = 'uModelViewMatrixInverse';
-const U_MODEL_ATTRIBUTES = 'uModelAttributes';
-const U_PROJECTION_MATRIX = 'uProjectionMatrix';
-const U_CAMERA_POSITION = 'uCameraPosition';
-const U_LIGHT_POSITIONS = 'uLightPositions';
-const U_LIGHT_TEXTURES = 'uLightTextures';
-const U_TEXTURE_COLORS = 'uTextureColors';
-const U_TEXTURE_NORMALS = 'uTextureNormals';
+const U_MODEL_VIEW_MATRIX_INVERSE = FLAG_LONG_GL_VARIABLE_NAMES ? 'uModelViewMatrixInverse' : 'B';
+const U_MODEL_ATTRIBUTES = FLAG_LONG_GL_VARIABLE_NAMES ? 'uModelAttributes' : 'C';
+const U_PROJECTION_MATRIX = FLAG_LONG_GL_VARIABLE_NAMES ? 'uProjectionMatrix' : 'D';
+const U_CAMERA_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'uCameraPosition' : 'E';
+const U_LIGHT_POSITIONS = FLAG_LONG_GL_VARIABLE_NAMES ? 'uLightPositions' : 'F';
+const U_LIGHT_TEXTURES = FLAG_LONG_GL_VARIABLE_NAMES ? 'uLightTextures' : 'G';
+const U_TEXTURE_COLORS = FLAG_LONG_GL_VARIABLE_NAMES ? 'uTextureColors' : 'H';
+const U_TEXTURE_NORMALS = FLAG_LONG_GL_VARIABLE_NAMES ? 'uTextureNormals' : 'I';
 
-const UNIFORMS = [
+const UNIFORMS = FLAG_LONG_GL_VARIABLE_NAMES ? [
   U_MODEL_VIEW_MATRIX,
   U_MODEL_VIEW_MATRIX_INVERSE,
   U_MODEL_ATTRIBUTES,
@@ -47,13 +47,15 @@ const UNIFORMS = [
   U_LIGHT_TEXTURES,
   U_TEXTURE_COLORS,
   U_TEXTURE_NORMALS,
-];
+] : 'ABCDEFGHI'.split('');
 
-const V_POSITION = 'vPosition';
-const V_NORMAL = 'vNormal';
-const V_MODEL_POSITION = 'vModelPosition';
-const V_MODEL_NORMAL = 'vModelNormal';
-const V_TEXTURE_POSITION = 'vTextureCoords';
+const V_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vPosition' : 'z';
+const V_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'vNormal' : 'y';
+const V_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vModelPosition' : 'x';
+const V_MODEL_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'vModelNormal' : 'w';
+const V_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vTextureCoords' : 'v';
+
+const L_POSITION_VS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lPosition' : 'a';
 
 const VERTEX_SHADER = `#version 300 es
   precision lowp float;
@@ -74,18 +76,34 @@ const VERTEX_SHADER = `#version 300 es
   void main() {
     ${V_MODEL_POSITION} = ${A_VERTEX_POSIITON}.xyz;
     ${V_TEXTURE_POSITION} = ${A_TEXTURE_POSITION};
-    vec4 position = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
-    ${V_POSITION} = position.xyz;
+    vec4 ${L_POSITION_VS} = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
+    ${V_POSITION} = ${L_POSITION_VS}.xyz;
     ${V_NORMAL} = normalize(
         ${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.)
         - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
     ).xyz;
     ${V_MODEL_NORMAL} = ${A_VERTEX_NORMAL};
-    gl_Position = ${U_PROJECTION_MATRIX} * position;
+    gl_Position = ${U_PROJECTION_MATRIX} * ${L_POSITION_VS};
   }
 `;
 
 const OUT_RESULT = 'result';
+
+const L_CAMERA_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCameraDelta' : 'a';
+const L_TEXTURE_SCALE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureScale' : 'b';
+const L_MODEL_CAMERA_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelCameraNormal' : 'c';
+const L_TEXTURE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureDelta' : 'd';
+const L_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTexturePosition' : 'e';
+const L_TEXTURE_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureNormal' : 'f';
+const L_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lPosition' : 'g';
+const L_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lNormal' : 'h';
+// intentionally left i
+const L_FOUND_TEXTURE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lFoundTexture' : 'j';
+const L_MINIMUM_TEXTURE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lMinTextureDelta' : 'k';
+const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
+const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
+const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
+const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
 
 const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
@@ -113,98 +131,95 @@ const FRAGMENT_SHADER = `#version 300 es
   }
 
   void main() {
-    vec3 cameraDelta = ${V_POSITION} - ${U_CAMERA_POSITION};
-    float textureScale = length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION});
-    vec3 modelCameraNormal = normalize(
-        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(cameraDelta, 1.) -
+    vec3 ${L_CAMERA_DELTA} = ${V_POSITION} - ${U_CAMERA_POSITION};
+    float ${L_TEXTURE_SCALE} = length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION});
+    vec3 ${L_MODEL_CAMERA_NORMAL} = normalize(
+        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_DELTA}, 1.) -
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
     ).xyz;
-    vec3 scaleVector = normalize(vec3(abs(${V_MODEL_NORMAL}).x, abs(${V_MODEL_NORMAL}.y), abs(${V_MODEL_NORMAL}.z)));
-    //vec3 textureCameraNormal = normalize(modelCameraNormal + modelCameraNormal * scaleVector / textureScale);
-    vec3 textureCameraNormal = modelCameraNormal;
     
-    float textureDelta = 0.;
-    vec3 texturePosition = ${V_TEXTURE_POSITION};
-    vec4 textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-    vec3 position = ${V_POSITION};
-    vec3 normal = normalize(${V_NORMAL});
+    float ${L_TEXTURE_DELTA} = 0.;
+    vec3 ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION};
+    vec4 ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tx(${L_TEXTURE_POSITION}));
+    vec3 ${L_POSITION} = ${V_POSITION};
+    vec3 ${L_NORMAL} = normalize(${V_NORMAL});
 
-    if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+    if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
-      bool foundTexture = false;
-      float minTextureDelta = 0.;
+      bool ${L_FOUND_TEXTURE} = false;
+      float ${L_MINIMUM_TEXTURE_DELTA} = 0.;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-        float test = foundTexture
-            ? (textureDelta + minTextureDelta)/2.
-            : textureDelta + ${TEXTURE_LOOP_STEP_SIZE};
-        texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * test;
-        textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
+        float ${L_TEST} = ${L_FOUND_TEXTURE}
+            ? (${L_TEXTURE_DELTA} + ${L_MINIMUM_TEXTURE_DELTA})/2.
+            : ${L_TEXTURE_DELTA} + ${TEXTURE_LOOP_STEP_SIZE};
+        ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEST};
+        ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tx(${L_TEXTURE_POSITION}));
         if (
-            textureNormal.w > ${TEXTURE_ALPHA_THRESHOLD}
+          ${L_TEXTURE_NORMAL}.w > ${TEXTURE_ALPHA_THRESHOLD}
         ) {
-          foundTexture = true;
-          textureDelta = test;
+          ${L_FOUND_TEXTURE} = true;
+          ${L_TEXTURE_DELTA} = ${L_TEST};
         } else {
-          if (foundTexture) {
-            minTextureDelta = test;
+          if (${L_FOUND_TEXTURE}) {
+            ${L_MINIMUM_TEXTURE_DELTA} = ${L_TEST};
           } else {
-            textureDelta = test;
+            ${L_TEXTURE_DELTA} = ${L_TEST};
           }
         }  
       }
-      texturePosition = ${V_TEXTURE_POSITION} + textureCameraNormal * textureDelta;
-      textureNormal = texture(${U_TEXTURE_NORMALS}, tx(texturePosition));
-      vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * textureDelta;
-      if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}
-          // || abs(modelPosition.x) > .5
-          // || abs(modelPosition.y) > .5
-          // || abs(modelPosition.z) > .5
+      ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
+      ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tx(${L_TEXTURE_POSITION}));
+      vec3 ${L_MODEL_POSITION} = ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
+      if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}
+          // || abs(${L_MODEL_POSITION}.x) > .5
+          // || abs(${L_MODEL_POSITION}.y) > .5
+          // || abs(${L_MODEL_POSITION}.z) > .5
       ) {
         discard;
       }
-      position = (${U_MODEL_VIEW_MATRIX} * vec4(modelPosition, 1.)).xyz;
-      normal = normalize(
-          abs(texturePosition.x) < .5 && abs(texturePosition.y) < .5 && abs(texturePosition.z) < .5
+      ${L_POSITION} = (${U_MODEL_VIEW_MATRIX} * vec4(${L_MODEL_POSITION}, 1.)).xyz;
+      ${L_NORMAL} = normalize(
+          abs(${L_TEXTURE_POSITION}.x) < .5 && abs(${L_TEXTURE_POSITION}.y) < .5 && abs(${L_TEXTURE_POSITION}.z) < .5
               ? (
-                  ${U_MODEL_VIEW_MATRIX} * vec4(textureNormal.xyz * 2. - 1., 1.)
+                  ${U_MODEL_VIEW_MATRIX} * vec4(${L_TEXTURE_NORMAL}.xyz * 2. - 1., 1.)
                   - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
               ).xyz
               : ${V_NORMAL}
       );
     }
 
-    float depth = textureDelta * dot(normalize(${V_NORMAL}), normalize(cameraDelta));
-    vec4 color = texture(${U_TEXTURE_COLORS}, tx(texturePosition));
-    // color = vec4((normal + 1.) / 2., length(normal));
-    // if (textureNormal.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-    //   color = vec4(vec3(textureDelta, 0., 0.), 1.);
+    float ${L_DEPTH} = ${L_TEXTURE_DELTA} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_DELTA}));
+    vec4 ${L_COLOR} = texture(${U_TEXTURE_COLORS}, tx(${L_TEXTURE_POSITION}));
+    // ${L_COLOR} = vec4((${L_NORMAL} + 1.) / 2., length(${L_NORMAL}));
+    // if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+    //   ${L_COLOR} = vec4(vec3(${L_TEXTURE_DELTA}, 0., 0.), 1.);
     // }
-    // vec3 modelPosition = ${V_MODEL_POSITION} + modelCameraNormal * textureDelta;
-    // if (abs(modelPosition.x) > .5
-    //     || abs(modelPosition.y) > .5
-    //     || abs(modelPosition.z) > .5
+    // vec3 ${L_MODEL_POSITION} = ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
+    // if (abs(${L_MODEL_POSITION}.x) > .5
+    //     || abs(${L_MODEL_POSITION}.y) > .5
+    //     || abs(${L_MODEL_POSITION}.z) > .5
     // ) {
-    //   color = vec4(vec3(0, 0., 1.), 1.);
+    //   ${L_COLOR} = vec4(vec3(0, 0., 1.), 1.);
     // }
 
 
-    //position = ${V_POSITION};
-    //position = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
-    //color = vec4(position / 3., 1.);
-    //color = vec4(${V_MODEL_POSITION} + modelCameraNormal * textureDelta + .5, 1.);
-    //color = vec4(vec3(.5 + textureDelta * 2.), 1.);
-    //color = vec4(texturePosition + .5, 0.);
+    //${L_POSITION} = ${V_POSITION};
+    //${L_POSITION} = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
+    //${L_COLOR} = vec4(${L_POSITION} / 3., 1.);
+    //${L_COLOR} = vec4(${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA} + .5, 1.);
+    //${L_COLOR} = vec4(vec3(.5 + ${L_TEXTURE_DELTA} * 2.), 1.);
+    //${L_COLOR} = vec4(${L_TEXTURE_POSITION} + .5, 0.);
 
 
     vec3 lightColor = vec3(
-        color.w > .5
-            ? (color.w -.5) * 2.
+        ${L_COLOR}.w > .5
+            ? (${L_COLOR}.w -.5) * 2.
             : 0.
     );
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        vec3 delta = position - ${U_LIGHT_POSITIONS}[i].xyz;
+        vec3 delta = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
         vec3 deltan = normalize(delta);
         vec3 pn = normalize(
             abs(deltan.x) > abs(deltan.y) && abs(deltan.x) > abs(deltan.z)
@@ -213,8 +228,8 @@ const FRAGMENT_SHADER = `#version 300 es
                     ? vec3(0, deltan.y, 0)
                     : vec3(0, 0, deltan.z)
         );
-        float n = dot(normal, deltan);
-        //color = vec4(vec3(length(delta)/4.), 1.);
+        float n = dot(${L_NORMAL}, deltan);
+        //${L_COLOR} = vec4(vec3(length(delta)/4.), 1.);
         // cannot index into samplers!
         vec4 tex = i == 0
             ? texture(${U_LIGHT_TEXTURES}[0], deltan)
@@ -230,7 +245,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(deltan, pn))
             // ensure bumps are not in shadow
-            + depth * 2. * textureScale / dot(normalize(${V_NORMAL}), deltan);
+            + ${L_DEPTH} * 2. * ${L_TEXTURE_SCALE} / dot(normalize(${V_NORMAL}), deltan);
         // TODO distance in bias seems wrong
         float bias = pow(d, 2.) * (2. - pow(n, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
         float light = mix(
@@ -245,12 +260,11 @@ const FRAGMENT_SHADER = `#version 300 es
         } else if (i == 0){
           lightColor = vec3(0.);
         }
-        //l = depth;z
       }
       lightColor *= 1. + min(${U_MODEL_ATTRIBUTES}.y, 0.) * vec3(.5, 1., 1.);
       lightColor += max(${U_MODEL_ATTRIBUTES}.y, 0.);
     }
-    ${OUT_RESULT} = vec4(pow(color.xyz * lightColor, vec3(.45)), 1.);
+    ${OUT_RESULT} = vec4(pow(${L_COLOR}.xyz * lightColor, vec3(.45)), 1.);
   }
 `;
 
@@ -1428,7 +1442,7 @@ function updateAndRenderLevel(
       cameraPosition,
   );
 
-  const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, TextureId][]>> = {};
+  const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, TextureId, number][]>> = {};
 
   levelIterateEntitiesInBounds(
       level,
@@ -1487,11 +1501,21 @@ function updateAndRenderLevel(
                 if (!invertedTransform) {
                   throw new Error(JSON.stringify(transform));
                 }
+                const luma = entity.maxHealth && entity.health < Math.min(entity.maxHealth, HEALTH_FLASH)
+                    // flash indicating health
+                    ? (
+                        Math.sqrt(1 - (entity.health - 1) / HEALTH_FLASH) // should be zero when health is high, 1 when low
+                        * (Math.abs(Math.sin(worldTime / 99)) - 1) // oscilates -1 to 0, always -1 when health is 0
+                    )
+                    // items with no velocity have never been picked up
+                    : !entity.velocity && entity.entityType == ENTITY_TYPE_ITEM
+                        ? (Math.abs(Math.sin(worldTime / 999 + entity.id)))/9
+                        : 0;
                 const textureId = part.textureId || TEXTURE_ID_WHITE;
                 if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
                   const modelInstancedRenders = instancedRenders[part.modelId]
                       || (instancedRenders[part.modelId] = []);
-                  modelInstancedRenders.push([transform, invertedTransform, textureId])
+                  modelInstancedRenders.push([transform, invertedTransform, textureId, luma])
                 } else {
                   const lightPositions = previousLights.map(l => {
                     const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
@@ -1513,13 +1537,7 @@ function updateAndRenderLevel(
                   gl.uniform2f(
                       uniformModelAttributes,
                       textureId,
-                      entity.maxHealth && entity.health < Math.min(entity.maxHealth, HEALTH_FLASH)
-                          // flash indicating health
-                          ? (
-                              Math.sqrt(1 - (entity.health - 1) / HEALTH_FLASH) // should be zero when health is high, 1 when low
-                              * (Math.abs(Math.sin(worldTime * 199)) - 1) // oscilates -1 to 0, always -1 when health is 0
-                          )
-                          : 0,
+                      luma,
                   );
               
                   const [vao, count] = models[part.modelId];
@@ -1548,13 +1566,14 @@ function updateAndRenderLevel(
     );
 
     for (let modelId in instancedRenders) {
-      const modelInstancedRenders: [Matrix4, Matrix4, TextureId][] = instancedRenders[modelId];
+      const modelInstancedRenders: [Matrix4, Matrix4, TextureId, number][] = instancedRenders[modelId];
       const [vao, count] = models[modelId];
       gl.bindVertexArray(vao);
-      modelInstancedRenders.forEach(([transform, invertedTransform, textureId]) => {
+      modelInstancedRenders.forEach(([transform, invertedTransform, textureId, luma]) => {
         gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
         gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
-        gl.uniform2f(uniformModelAttributes, textureId, 0);
+        
+        gl.uniform2f(uniformModelAttributes, textureId, luma);
     
         gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
       });
