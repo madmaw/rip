@@ -103,6 +103,7 @@ type EntityBase<T extends number> = {
   position: Vector3,
   offset?: Vector3,
   offsetAnim?: Anim | Falsey,
+  offsetAnimAction?: ActionId | 0,
   readonly dimensions: Vector3,
   readonly body: EntityBody<T>,
   joints: Joint[],
@@ -375,9 +376,9 @@ const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: Actio
 }
 
 const entityStartAnimation = <T extends number>(
+    worldTime: number,
     entity: Entity<T>,
     action: ActionId | 0,
-    onStepComplete?: (jointId: number, step: number) => void,
 ) => {
   const bodyAnimations: EntityBodyAnimation<number> | Falsey = action && entityGetActionAnims(entity, action);
   if (bodyAnimations) {
@@ -420,8 +421,11 @@ const entityStartAnimation = <T extends number>(
 
     entity.offset = entity.offset || [0, 0, 0];
 
-    if (entity.offset.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) > EPSILON)) {
+    if (entity.offsetAnimAction != action
+        && entity.offset.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) > EPSILON)
+    ) {
       const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
+      entity.offsetAnimAction = action;
       entity.offsetAnim = animLerp(
           worldTime,
           entity.offset,
@@ -464,7 +468,6 @@ const entityStartAnimation = <T extends number>(
                       0,
                       () => {
                         joint.animSequenceNumber = index + 1;
-                        onStepComplete && onStepComplete(jointId, index);
                       },
                   );
                 })

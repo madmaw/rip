@@ -10,6 +10,7 @@
 ///<reference path="math/shape.ts"/>
 ///<reference path="textures/textures.ts"/>
 ///<reference path="util/arrays.ts"/>
+///<reference path="util/hax.ts"/>
 ///<reference path="constants.ts"/>
 ///<reference path="flags.ts"/>
 ///<reference path="inputs.ts"/>
@@ -87,7 +88,7 @@ const VERTEX_SHADER = `#version 300 es
   }
 `;
 
-const OUT_RESULT = 'result';
+const OUT_RESULT = FLAG_LONG_GL_VARIABLE_NAMES ? 'result' : '_';
 
 const L_CAMERA_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCameraDelta' : 'a';
 const L_TEXTURE_SCALE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureScale' : 'b';
@@ -280,9 +281,32 @@ const FRAGMENT_SHADER = `#version 300 es
 `;
 
 const gl = Z.getContext('webgl2'/* , {antialias: false}*/);
+
 if (FLAG_SHOW_GL_ERRORS && gl == null) {
   throw new Error('no webgl2');
 }
+
+if (FLAG_SHORTEN_METHODS) {
+  haxShortenMethods(gl, 'gl');
+  haxShortenMethods(window, 'window');
+}
+if (FLAG_PRINT_GL_CONSTANTS) {
+  const constants: (keyof WebGL2RenderingContext)[] = [
+    'CLAMP_TO_EDGE',
+    'DEPTH_COMPONENT',
+    'TEXTURE_3D',
+    'TEXTURE_BASE_LEVEL',
+    'TEXTURE_CUBE_MAP_POSITIVE_X', 
+    'TEXTURE_CUBE_MAP',
+    'TEXTURE_MAX_LEVEL',
+    'TEXTURE_WRAP_R',
+    'TEXTURE_WRAP_S',
+    'TEXTURE_WRAP_T',
+    'UNSIGNED_BYTE',
+  ];
+  console.log(constants.map(c => `{ from: "gl.${c}", to: "${gl[c]}" }, `).join(''));
+}
+
 const vertexShader = loadShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
 const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
 
@@ -512,1083 +536,1100 @@ const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((
 
 const startX = 4;
 const startY = 4;
-const level = levelCreate(9, 9);
-levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE, startX, startY);
 
-// TODO enemy pathing
-//levelPopulateGraph(level);
+let animationFrame: number = 0;
+let player: Entity<SkeletonPartId>;
 
-// and a player
-const player: Entity<SkeletonPartId> = entityCreate({
-  position: [startX + .5 - SKELETON_DIMENSION/2, startY + .5 - SKELETON_DIMENSION/2, 1.1],
-  dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-  orientation: ORIENTATION_EAST,
-  body: PART_SKELETON_BODY,
-  entityType: ENTITY_TYPE_PLAYER,
-  acc: .005,
-  velocity: [0, 0, 0],
-  rotation: [0, 0, 0],
-  maxHealth: 9,
-  health: 9,
-  collisionGroup: COLLISION_GROUP_MONSTER,
-  collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-});
-player.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
-levelAddEntity(level, player);
-
-const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
-let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2.5;
-let cameraOffsetTransform: Matrix4;
-let projection: Matrix4;
-const resizeCanvas = () => {
-  const aspectRatio = innerWidth / innerHeight;
-  if (!TARGET_HORIZONTAL_RESOLUTION || !TARGET_VERTICAL_RESOLUTION) {
-    Z.width = innerWidth;
-    Z.height = innerHeight;  
+window.onload = window.onclick = () => {
+  if (player?.health > 0) {
+    return;
+  }
+  cancelAnimationFrame(animationFrame);
+  const level = levelCreate(9, 9);
+  levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE, startX, startY);
+  
+  // TODO enemy pathing
+  //levelPopulateGraph(level);
+  
+  // and a player
+  player = entityCreate({
+    position: [startX + .5 - SKELETON_DIMENSION/2, startY + .5 - SKELETON_DIMENSION/2, 1.1],
+    dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+    orientation: ORIENTATION_EAST,
+    body: PART_SKELETON_BODY,
+    entityType: ENTITY_TYPE_PLAYER,
+    acc: .005,
+    velocity: [0, 0, 0],
+    rotation: [0, 0, 0],
+    maxHealth: 9,
+    health: 9,
+    collisionGroup: COLLISION_GROUP_MONSTER,
+    collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+  });
+  player.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
+  levelAddEntity(level, player);
+  
+  const baseCameraRotation = matrix4Rotate(-Math.PI/2.5, 1, 0, 0);
+  let cameraOffset = FLAG_ALLOW_ZOOM ? 4 : 2.5;
+  let cameraOffsetTransform: Matrix4;
+  let projection: Matrix4;
+  const resizeCanvas = () => {
+    const aspectRatio = innerWidth / innerHeight;
+    if (!TARGET_HORIZONTAL_RESOLUTION || !TARGET_VERTICAL_RESOLUTION) {
+      Z.width = innerWidth;
+      Z.height = innerHeight;  
+    } else {
+      Z.width = Math.max(TARGET_HORIZONTAL_RESOLUTION, TARGET_VERTICAL_RESOLUTION * aspectRatio)
+      Z.height = Math.max(TARGET_VERTICAL_RESOLUTION, TARGET_HORIZONTAL_RESOLUTION / aspectRatio);
+    }
+    //projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
+    projection = matrix4Multiply(matrix4Perspective(.8, aspectRatio, .1, 99), baseCameraRotation);
+  }
+  resizeCanvas();
+  onresize = resizeCanvas;
+  if (FLAG_ALLOW_ZOOM) {
+    const zoom = (e?: WheelEvent) => {
+      cameraOffset = Math.min(6, Math.max(1, cameraOffset + (e?.deltaY || 0)/99));
+      cameraOffsetTransform = matrix4Translate(0, Math.pow(2, cameraOffset)/8, -cameraOffset/8);
+    };
+    window.onwheel = zoom;
+    zoom();  
   } else {
-    Z.width = Math.max(TARGET_HORIZONTAL_RESOLUTION, TARGET_VERTICAL_RESOLUTION * aspectRatio)
-    Z.height = Math.max(TARGET_VERTICAL_RESOLUTION, TARGET_HORIZONTAL_RESOLUTION / aspectRatio);
+    cameraOffsetTransform = matrix4Translate(0, cameraOffset, -.5);
   }
-  //projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
-  projection = matrix4Multiply(matrix4Perspective(.8, aspectRatio, .1, 99), baseCameraRotation);
-}
-resizeCanvas();
-onresize = resizeCanvas;
-if (FLAG_ALLOW_ZOOM) {
-  const zoom = (e?: WheelEvent) => {
-    cameraOffset = Math.min(6, Math.max(1, cameraOffset + (e?.deltaY || 0)/99));
-    cameraOffsetTransform = matrix4Translate(0, Math.pow(2, cameraOffset)/8, -cameraOffset/8);
-  };
-  onwheel = zoom;
-  zoom();  
-} else {
-  cameraOffsetTransform = matrix4Translate(0, cameraOffset, -.5);
-}
-
-// NOTE that camera orientation is not exactly the same as camera rotation
-// the relationship (I think) is camera rotation = (1 - cameraOrientation) * Math.PI/2
-let targetCameraOrientation: Orientation = player.orientation;
-let cameraZRotation = 0;
-
-let then = 0;
-let worldTime = 0;
-let updateCount = 0;
-let previousLights: Light[] = [];
-let previousPreviousLights: Light[] = [];
-const getLightAppeal = (light: Light, playerMidPoint: Vector3): number => {
-  // always have player light first
-  // prioritise brighter lights
-  // prioritise already visible lights to avoid flicker
-  return light.entityId == player.id
-      ? 0
-      : vectorNLength(vectorNSubtract(playerMidPoint, light.pos))
-          / (light.luminosity * Math.min(previousPreviousLights.findIndex(l => l.entityId == light.entityId))+2, 2)
-}
-
-const lightRenders: Record<EntityId, [number, number, Vector3]> = {};
-
-const update = (now: number) => {
-  const delta = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
-  worldTime += delta;
-  then = now;
-  updateCount++;
-
-  if (FLAG_SHOW_FPS && fps) {
-    fps.innerText = `${Math.floor(updateCount*1000/worldTime)} FPS`;
+  window.onkeydown = (e: KeyboardEvent) => {
+    keySet(e.keyCode as KeyCode, then, 1);
+    e.preventDefault();
+  };  
+  window.onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);
+  
+  // NOTE that camera orientation is not exactly the same as camera rotation
+  // the relationship (I think) is camera rotation = (1 - cameraOrientation) * Math.PI/2
+  let targetCameraOrientation: Orientation = player.orientation;
+  let cameraZRotation = 0;
+  
+  let then = 0;
+  let worldTime = 0;
+  let updateCount = 0;
+  let previousLights: Light[] = [];
+  let previousPreviousLights: Light[] = [];
+  const getLightAppeal = (light: Light, playerMidPoint: Vector3): number => {
+    // always have player light first
+    // prioritise brighter lights
+    // prioritise already visible lights to avoid flicker
+    return light.entityId == player.id
+        ? 0
+        : vectorNLength(vectorNSubtract(playerMidPoint, light.pos))
+            / (light.luminosity * Math.min(previousPreviousLights.findIndex(l => l.entityId == light.entityId))+2, 2)
   }
-
-  const playerCenter = entityMidpoint(player);
-  const targetCameraZRotation = (-targetCameraOrientation) * Math.PI/2;
-  const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
-  // TODO can we tween this?
-  cameraZRotation += cameraZDelta * delta / 100;
-  const cameraRotation = matrix4Rotate(cameraZRotation, 0, 0, 1);
-  const negatedPlayerCenter = vectorNScale(playerCenter, -1);
-  const cameraPositionMatrix = matrix4Multiply(
-      cameraOffsetTransform,
-      cameraRotation,
-      matrix4Translate(...negatedPlayerCenter),
-  );
-  const cameraPosition = vector3TransformMatrix4(matrix4Invert(cameraPositionMatrix), 0, 0, 0);
-  const cameraRenderCutoffTransform = matrix4Multiply(
-    matrix4Translate(0, .5, .2),
-    matrix4Rotate(cameraZRotation, 0, 0, 1),
-    matrix4Translate(...negatedPlayerCenter),
-  );
-  const cameraProjectionMatrix = matrix4Multiply(projection, cameraPositionMatrix);
-
-  // sort from closest to furthest, with player at 0
-  previousLights
-      .sort((l1, l2) => {
-        const d1 = getLightAppeal(l1, playerCenter);
-        const d2 = getLightAppeal(l2, playerCenter);
-        return d1 - d2;
-      });
-  // find the oldest texture
-  let light: Light | undefined;
-  const lightRender: [number, number, number, Vector3] | 0 = previousLights.length > 0
-      && (
-          !FLAG_THROTTLE_LIGHT_RENDERING
-              || !(updateCount % Math.max(1, MAX_LIGHTS - Math.min(previousLights.length, MAX_LIGHTS)))
-      )
-      && previousLights.slice(0, MAX_LIGHTS).reduce<[number, number, number, Vector3] | 0>((acc, l, i) => {
-        const lightRender = lightRenders[l.entityId];
-        // find an unused texture
-        let availableTextureIndex = 0;
-        // there is no accumulator or the accumulator age is > 0
-        const needsNewLightRender = !lightRender && (!acc || acc[2]);
-        if (needsNewLightRender) {
-          const availableTextureIndices = new Set(CUBE_MAP_LIGHTS_TEXTURE_INDICES);
-          let oldestEntityId: string | undefined;
-          for (let entityId in lightRenders) {
-            const lightRender = lightRenders[entityId];
-            availableTextureIndices.delete(lightRender[0]);
-            if (!oldestEntityId || lightRender[1] < lightRenders[oldestEntityId][1]) {
-              // TODO we may also want to verify that this isn't one of the first lights, although
-              // I think being the oldest will functionally do that in 99% of cases
-              oldestEntityId = entityId;
-            }
-          }
-          if (availableTextureIndices.size) {
-            availableTextureIndex = [...availableTextureIndices][0];
-          } else {
-            availableTextureIndex = lightRenders[oldestEntityId][0];
-            delete lightRenders[oldestEntityId];
-          }
-        }
-        return needsNewLightRender
-            ? [i, availableTextureIndex, 0, l.pos]
-            : !lightRender || acc && lightRender[1] > acc[2]
-                ? acc
-                : [i, ...lightRender];
-      }, 0);
   
-  if (lightRender) {
-    const [lightIndex, targetLightTextureIndex] = lightRender;
-    light = previousLights[lightIndex];
-    lightRenders[light.entityId] = [targetLightTextureIndex, worldTime, light.pos];
-    // generate light cube map
-    gl.activeTexture(gl.TEXTURE0 + targetLightTextureIndex);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTextures[targetLightTextureIndex]);
-    gl.viewport(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
-    // set lights to empty texture to avoid output being an input texture
-    gl.uniform1iv(uniformLightTexures, CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES);
-    gl.uniform4fv(uniformLightPositions, CUBE_MAP_LIGHTS_FAKE);
-
-    CUBE_MAP_ROTATION_TRANSFORMS.forEach((rotationTransform, i) => {
-      // write to the cube map
-      gl.framebufferTexture2D(
-          gl.FRAMEBUFFER,
-          gl.DEPTH_ATTACHMENT,
-          gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
-          cubeTextures[targetLightTextureIndex],
-          0,
-      );
+  const lightRenders: Record<EntityId, [number, number, Vector3]> = {};
   
-      // gl.framebufferTexture2D(
-      //     gl.FRAMEBUFFER,
-      //     gl.COLOR_ATTACHMENT0,
-      //     gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
-      //     visionTexture,
-      //     0,
-      // );
+  const update = (now: number) => {
+    const delta = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
+    worldTime += delta;
+    then = now;
+    updateCount++;
   
-      const faceCameraTransform = matrix4Multiply(
-          CUBE_MAP_PERPSECTIVE_TRANSFORM,
-          rotationTransform,
-          matrix4Translate(...vectorNScale(light.pos, -1)),
-      );
-      const lightBoundsDimensions = lightIndex
-          ? RENDER_DIMENSIONS.map(v => Math.min(v, light.luminosity * 2 * MAX_LIGHT_THROW)) as Vector3
-          : RENDER_DIMENSIONS;
-      const lightBoundsPosition = light.pos.map(
-          (v, i) => v - lightBoundsDimensions[i]/2,
-      ) as Vector3;
-      updateAndRenderLevel(
-          faceCameraTransform,
-          light.pos,
-          lightBoundsPosition,
-          lightBoundsDimensions,
-          [],
-          // first index is the player line of sight, so it's a special case
-          // for everything else, just exclude the actual lit object
-          e => e.collisionGroup != COLLISION_GROUP_WALL && !lightIndex
-              || e.id == light.entityId
-              || FLAG_EXCLUDE_UNLIT_FROM_RENDER
-                  && lightIndex
-                  && vectorNLength(vectorNSubtract(entityMidpoint(e), light.pos)) > light.luminosity * MAX_LIGHT_THROW,
-      );
-    });
-  }
-
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, Z.width, Z.height);
-
-//   const faceCameraTransform = matrix4Multiply(
-//     CUBE_MAP_PERPSECTIVE_TRANSFORM,
-//     CUBE_MAP_ROTATION_TRANSFORMS[0],
-//     // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
-//     matrix4Translate(...vectorNScale(playerCenter, -1)),
-// );
-  previousLights = previousLights
-      .filter(l => lightRenders[l.entityId])
-      .slice(0, MAX_LIGHTS);
-  gl.uniform1iv(
-      uniformLightTexures,
-      previousLights.map<number>(l => {
-        return lightRenders[l.entityId][0];
-      }).concat(
-          ...new Array(MAX_LIGHTS - previousLights.length).fill(MAX_LIGHTS),
-      ),
-  );
-
-  const renderPosition = RENDER_DIMENSIONS.map((v, i) => playerCenter[i] - v/2) as Vector3;
-  if (renderPosition[2] + RENDER_DIMENSIONS[2] > level.dimensions[2]) {
-    // time to generate some more layers
-    levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE);
-  }
-
-  previousPreviousLights = previousLights;
-  previousLights = updateAndRenderLevel(
-      cameraProjectionMatrix,
-      cameraPosition,
-      renderPosition,
-      RENDER_DIMENSIONS,
-      previousLights,
-      (entity: Entity, carrier?: Entity) => {
-        // update animations
-        if (!entity.joints && entity.body.defaultJointRotations) {
-          entity.joints = entity.body.defaultJointRotations.map(rotation => ({
-            rotation: [...rotation],
-          }));
-        }
-        [...(entity.joints || []), entity].forEach((joint: Joint) => {
-          if (joint.anim && joint.anim?.(worldTime)) {
-            joint.anim = 0;
-            joint.animAction = 0;
-          }
-          const attachedEntity = joint.attachedEntity;
-          if (attachedEntity) {
-            // update attached entity
-            if (attachedEntity.entityType == ENTITY_TYPE_TORCH) {
-              attachedEntity.health = Math.max(0, attachedEntity.health - delta / TORCH_MS_PER_HEALTH);
-              attachedEntity.joints[TORCH_PART_ID_HEAD].light = 
-                  (1 - Math.pow(1 - attachedEntity.health/attachedEntity.maxHealth, 9)) * TORCH_BRIGHTNESS;
-            }
-          }
-        });
-        if (entity.offsetAnim && entity.offsetAnim(worldTime)) {
-          entity.offsetAnim = 0;
-        }
-
-        if (entity.velocity && !carrier) {
-          let action: ActionId | 0 = 0;
-          const availableActions = entityAvailableActions(entity);
-          const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
-          const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
-          let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
-          let ignoreLateralAcceleration: Booleanish;
-          let targetOrientation = entity.orientation;
-          let interact = 0;
-          const entityCenter = entityMidpoint(entity);
-
-          levelRemoveEntity(level, entity);
-
-          if (entity == player) {
-            const canIdle = availableActions & ACTION_ID_IDLE;
-            const canWalk = availableActions & ACTION_ID_WALK;
-            const canRun = availableActions & ACTION_ID_RUN;
-            const canJump = availableActions & ACTION_ID_JUMP;
-            const canFall = availableActions & ACTION_ID_FALL;
-            const canDuck = availableActions & ACTION_ID_DUCK;
-            const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
-            const canHeavyAttack = availableActions & ACTION_ID_ATTACK_HEAVY;
-    
-            const right = inputRead(INPUT_RIGHT);
-            const left = inputRead(INPUT_LEFT);
-            const up = canJump && probablyOnGround && inputRead(INPUT_UP, now);
-            const down = inputRead(INPUT_DOWN);
-            const rotateCameraRight = inputRead(INPUT_ROTATE_CAMERA_RIGHT, now);
-            const rotateCameraLeft = inputRead(INPUT_ROTATE_CAMERA_LEFT, now);
-            const lightAttack = inputRead(INPUT_ATTACK_LIGHT, now);
-            const heavyAttack = inputRead(INPUT_ATTACK_HEAVY, now);
-
-            let running = 0;
-            let moving = 0;
-            // running and interact share keys, so we want to avoid collisions
-            if (down) {
-              interact = inputRead(INPUT_INTERACT, now);
-            }
-            if (canRun) {
-              running = inputRead(INPUT_RUN, now, 1);
-            }
-
-            if (rotateCameraLeft) {
-              targetCameraOrientation = mathSafeMod(targetCameraOrientation - 1, 4) as Orientation;
-            }
-            if (rotateCameraRight) {
-              targetCameraOrientation = ((targetCameraOrientation + 1) % 4) as Orientation;
-            }
-
-            const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
-            const canTurn = availableActions & ACTION_ID_TURN && (cameraDelta || running);
-
-            const walkingBackward = entity.orientation == targetCameraOrientation && left
-                || entity.orientation != targetCameraOrientation && right;
-
-            let targetLateralSpeed = canWalk
-                ? (right - left) * (1 + (canRun ? running : 0)) * SKELETON_WALK_SPEED / (walkingBackward ? 2 : 1)
-                : 0;
-            if (canIdle) {
-              action = ACTION_ID_IDLE;
-            }
-            if (canWalk && (left || right) && probablyOnGround) {
-              action = walkingBackward ? ACTION_ID_WALK_BACKWARD : ACTION_ID_WALK;
-              moving = 1;
-            }
-            if (canRun && running && (left || right) && probablyOnGround) {
-              action = ACTION_ID_RUN;
-            }  
-
-            if (canJump && up && probablyOnGround) {
-              action = ACTION_ID_JUMP;
-            }
-            if (canDuck && down && probablyOnGround) {
-              action = ACTION_ID_DUCK;
-            }
-            if (canFall && !probablyOnGround) {
-              action = ACTION_ID_FALL;
-            }
-            if (canLightAttack && lightAttack) {
-              action = ACTION_ID_ATTACK_LIGHT;
-            }
-            if (canHeavyAttack && heavyAttack) {
-              action = ACTION_ID_ATTACK_HEAVY;
-            }
-
-            if (action == ACTION_ID_JUMP) {
-              if (walkingBackward) {
-                targetLateralSpeed = (right - left) * SKELETON_WALK_SPEED * 2;
-                ignoreLateralAcceleration = 1;
-                targetVelocity[2] = .001;
-              } else {
-                targetVelocity[2] = .003;
-              }
-            }
-
-            if (definitelyOnGround) {
-              targetVelocity = vector3TransformMatrix4(
-                  matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
-                  targetLateralSpeed,
-                  0,
-                  targetVelocity[2],
-              );
-            }
-            if ((
-                cameraDelta
-                    || entity.orientation == targetCameraOrientation && left
-                    || (entity.orientation + 2) % 4 == targetCameraOrientation && right
-                )
-                && canTurn
-                && moving
-            ) {
-              targetOrientation = left
-                      ? (targetCameraOrientation + 2) % 4 as Orientation
-                      : targetCameraOrientation;
-            }
-          } else {
-            action = ACTION_ID_IDLE;
-            if (entity.entityType == ENTITY_TYPE_HOSTILE) {
-              // AI
-              
-              if (!entity.activePathTime || entity.activePathTime < worldTime - AI_RECALCULATION_TIME){
-                // look around
-                let bestTarget: Entity;
-                let bestTargetValue = 0;
-                levelIterateEntitiesInBounds(
-                    level,
-                    // TODO adjust look radius to account for orientation (i.e don't look
-                    // behind)
-                    entityCenter.map(v => v - AI_LOOK_RADIUS) as Vector3,
-                    new Array(3).fill(AI_LOOK_RADIUS*2) as Vector3,
-                    target => {
-                      let targetValue = 0;
-                      if (target.entityType == ENTITY_TYPE_PLAYER) {
-                        // TODO aggro
-                        targetValue = 2;
-                      }
-                      if (
-                          target.body.jointAttachmentHolderPartId
-                              && !entity.joints[target.body.jointAttachmentHolderPartId].attachedEntity
-                      ) {
-                        targetValue = 1;
-                      }
-                      if (target == entity.activeTarget) {
-                        targetValue++;
-                      }
-                      if (targetValue) {
-                        // account for proximity (closer items are more attractive)
-                        targetValue -= vectorNLength(vectorNSubtract(entityCenter, entityMidpoint(target)))*2/AI_LOOK_RADIUS;
-                      }
-                      if (targetValue > bestTargetValue) {
-                        bestTarget = target;
-                        bestTargetValue = targetValue;
-                      }
-                    }
-                );
-                // TODO recalculate activePath
-                entity.activeTarget = bestTarget;
-                entity.activePathTime = worldTime;
-              }
-              const activeTarget = entity.activeTarget;
-              if (activeTarget) {
-                // are we close enough to move directly to and/or interact with the target?
-                const delta = vectorNSubtract(entityMidpoint(activeTarget), entityCenter);
-                const distances = delta.map(
-                    (v, i) => Math.max(0, Math.abs(v) - (entity.dimensions[i] + activeTarget.dimensions[i])/2),
-                );
-                const distance = vectorNLength(distances);
-                if (distance < AI_DIRECT_MOVE_RADIUS) {
-                  // walk in that direction
-                  // account for target size and weapon range
-                  let targetAction: ActionId | 0 = 0;
-
-                  let minActionRangeMultiplier = 0;
-                  if (activeTarget.entityType == ENTITY_TYPE_PLAYER) {
-                    // TODO find best attack for range
-                    targetAction = ACTION_ID_ATTACK_LIGHT;
-                    minActionRangeMultiplier = .8;
-                  } else {
-                    targetAction = ACTION_ID_DUCK;
-                  }
-                  const animations = entityGetActionAnims(entity, targetAction);
-                  const maxActionRange = animations.range || 0;
-                  const minActionRange = maxActionRange * minActionRangeMultiplier;
-                  const targetActionAvailable = !targetAction || (availableActions & targetAction);
-                  const inRange = distance <= maxActionRange && distance >= minActionRange;
-
-                  // look at target
-                  const validOrientations: Orientation[] = [];
-                  if (distances[0] > maxActionRange) {
-                    validOrientations.push(delta[0] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST);
-                  }
-                  if (distances[1] > maxActionRange) {
-                    validOrientations.push(delta[1] > 0 ? ORIENTATION_NORTH : ORIENTATION_SOUTH);
-                  }
-
-                  if (validOrientations.indexOf(targetOrientation) < 0 && validOrientations.length) {
-                    // array can be empty
-                    targetOrientation = validOrientations[0];
-                  }
-
-                  if (animations && targetAction && targetActionAvailable && inRange) {
-                    action = targetAction;
-                    if (targetAction == ACTION_ID_DUCK) {
-                      interact = 1;
-                    }
-                  } else if ((availableActions & ACTION_ID_WALK)
-                      && definitelyOnGround
-                      && (!inRange || !targetActionAvailable)
-                  ){
-                    // stay back a bit if the desired action isn't available
-                    const direction = targetActionAvailable
-                        ? (distance - minActionRange)/Math.abs(distance - minActionRange)
-                        : -1;
-                    action = direction > 0 ? ACTION_ID_WALK : ACTION_ID_WALK_BACKWARD;
-                    targetVelocity = vector3TransformMatrix4(
-                        matrix4Rotate(targetOrientation * Math.PI/2, 0, 0, 1),
-                        direction * (direction > 0 ? SKELETON_WALK_SPEED : SKELETON_WALK_SPEED/2),
-                        0,
-                        entity.velocity[2],
-                    );
-                  }
-                }
-              }
-            }
-          }
-
-          if (targetOrientation != entity.orientation) {
-            entity.orientation = targetOrientation;
-            const targetAngle = targetOrientation * Math.PI/2;
-            const to: Vector3 = [0, 0, targetAngle];
-            entity.anim = animLerp(
-                worldTime,
-                entity.rotation,
-                to,
-                299,
-                EASE_IN_OUT_QUAD,
-                1,
-            );
-            // action = ACTION_ID_TURN;
-          }
-
-          if (interact) {
-            // find any entities we might be able to pick up
-            let pickedUp: Entity | undefined;
-            const pickUpDimensions = entity.dimensions.map(v => v + PICK_UP_ITEM_RADIUS * 2) as Vector3;
-            const pickUpPosition = entityCenter.map((v, i) => v - pickUpDimensions[i]/2) as Vector3;
-            levelIterateEntitiesInBounds(level, pickUpPosition, pickUpDimensions, found => {
-              // NOTE: while 0 is a valid part id, we assume it's not used for extremities
-              if (found.body.jointAttachmentHolderPartId) {
-                // TODO get the closest one
-                pickedUp = found;
-              }
-            });
-            // drop whatever we are carrying
-            const joint = entity.joints.find(
-                (joint, partId) => joint.attachedEntity && (!pickedUp || partId == pickedUp.body.jointAttachmentHolderPartId),
-            );
-            if (joint) {
-              // add the attached entity back into the world
-              const held = joint.attachedEntity as Entity;
-              held.position = entity.position.map(
-                  (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
-              ) as Vector3;
-              held.rotation = [...entity.rotation];
-              levelAddEntity(level, held);
-              joint.attachedEntity = 0;
-            }
-            if (pickedUp) {
-              levelRemoveEntity(level, pickedUp);
-              pickedUp.velocity = [0, 0, 0];
-              entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
-              entity.activeTarget = 0;
-            }
-          }
-
-          const movable = entity as Moveable;
-          
-          // limit velocity
-          arrayMapAndSet(movable.velocity, (c, i) => {
-            const v = targetVelocity[i];
-            let velocity = v;
-            if (i < 2 && entity.acc && !ignoreLateralAcceleration) {
-              const diff = v - c;
-              velocity = c + diff * entity.acc * delta;
-            }
-            return Math.min(
-                MAX_VELOCITY,
-                Math.max(
-                    -MAX_VELOCITY,
-                    velocity,
-                )
-            );
-          });
-
-          // move toward centerline of cross-orientation
-          if (entity.orientation != null && delta) {
-            const crossAxis = (entity.orientation + 1) % 2;
-            
-            const center = entityCenter[crossAxis]; 
-            const rail = (center | 0) + .5;
-            const diff = rail - center;
-            entity.velocity[crossAxis] = Math.max(
-                -Math.abs(diff/delta), 
-                Math.min(
-                    Math.abs(diff/delta),
-                    diff * RAIL_ALIGNMENT_VELOCITY,
-                ),
-            );
-          }
-          // add in gravity
-          movable.velocity[2] -= delta * GRAVITY;
-
-          // check attacking
-          const attacking = entity.joints.some((joint, jointId) => {
-            return joint.animAction && entityGetActionAnims(entity, joint.animAction)
-                ?.sequences[joint.animActionIndex]
-                ?.[jointId]
-                ?.[ENTITY_CHILD_PART_ANIMATION_DAMAGE_INDEX]
-          });
-          if (attacking) {
-            // get a big area (we don't know how large the animations are)
-            const position = entity.position.map(v => v - MAX_ATTACK_RADIUS) as Vector3;
-            const dimensions = entity.dimensions.map(v => v + MAX_ATTACK_RADIUS * 2) as Vector3;
-            levelIterateEntitiesInBounds(level, position, dimensions, victim => {
-              // work out the most appropriate action for each victim
-              if (!victim.lastDamaged || victim.lastDamaged < worldTime - DAMAGE_INVULNERABILITY_DURATION) {
-                let maxDamage = 0;
-                let maxWeapon: Entity | undefined;
-                let blocked: Booleanish;
-                  entityIterateParts((weaponEntity, entityPart, entityTransform, entityJoint, entityPartDamage) => {
-                  if (entityPartDamage) {
-                    const entityPartShape = shapes[entityPart.modelId];
-                    const entityPartRadius = models[entityPart.modelId][2];
-                    const entityPartPosition = vector3TransformMatrix4(entityTransform, 0, 0, 0);
-                    const entityPartPlanes = entityPartShape.map(f => planeTransform(f.plane, entityTransform));
-                    // could split this out, but there should only be a very small number (ideally 1) of
-                    // damaging body parts for a given entity
-                    entityIterateParts((v, victimPart, victimTransform, victimJoint, victimDamageMultiplier) => {
-                      // do the shapes overlap?
-                      const victimPartShape = shapes[victimPart.modelId];
-                      const victimPartRadius = models[victimPart.modelId][2];
-                      const victimPartPosition = vector3TransformMatrix4(victimTransform, 0, 0, 0);
-                      // shapeFromPlanes is very expensive, so check the bounds first
-                      if (
-                          (victimDamageMultiplier || victimPart.incomingDamageMultiplier) 
-                          && victimPartRadius + entityPartRadius > vectorNLength(vectorNSubtract(victimPartPosition, entityPartPosition))
-                      ) {
-                        let overlap: Booleanish;
-                        if (FLAG_FAST_COLLISIONS) {
-                          // are any points contained in the shapes
-                          overlap = shapeContainsPointsFromShape(victimPartShape, victimTransform, entityPartShape, entityTransform)
-                              || shapeContainsPointsFromShape(entityPartShape, entityTransform, victimPartShape, victimTransform);
-                        } else {
-                          const victimPartPlanes = victimPartShape.map(f => planeTransform(f.plane, victimTransform));
-                          overlap = shapeFromPlanes([...entityPartPlanes, ...victimPartPlanes]).length > 3;
-                        }
-                        if (overlap) {
-                          const damage = entityPartDamage * (victimPart.incomingDamageMultiplier || 0);
-                          if (damage > maxDamage) {
-                            maxDamage = damage;
-                            maxWeapon = weaponEntity;
-                          }
-                          if (!blocked) {
-                            blocked = !!victimDamageMultiplier || victimPart.incomingDamageMultiplier < 0;
-                            if (blocked) {
-                              maxWeapon = weaponEntity;
-                            } 
-                          }
-                        }
-                      }
-                    }, victim, victim.body);
-                  }
-                }, entity, entity.body);
+    if (FLAG_SHOW_FPS && fps) {
+      fps.innerText = `${Math.floor(updateCount*1000/worldTime)} FPS`;
+    }
   
-                const victimVelocity = vectorNAdd<Vector3>(
-                    victim.velocity || [0, 0, 0],
-                    vectorNScale(
-                        vectorNNormalize(
-                          vectorNSubtract(
-                              entityMidpoint(victim),
-                              entityMidpoint(entity),
-                          )
-                        ),
-                        .001 * (maxDamage || 1),
-                    )
-                );
-                if (blocked) {
-                  // start the attack cancel animation
-                  action = ACTION_ID_CANCEL;
-                } else if (maxDamage) {
-                  // start the damage received animation
-                  victim.health -= maxDamage;
-                  victim.lastDamaged = worldTime;
-                  entityStartAnimation(victim, ACTION_ID_TAKE_DAMAGE);
-                }
-                if (blocked || maxDamage) {
-                  if (victim.velocity) {
-                    victim.velocity = victimVelocity;
-                  }
-                  if (maxWeapon && maxWeapon != entity && maxWeapon.maxHealth) {
-                    // damage the weapon
-                    maxWeapon.health--;
-                  }
-                }
-              }
-            });
-          }
-
-          // check collisions
-          let iterations = 0;
-          let maxOverlapIndex: number;
-          let remainingDelta = delta;
-          let maxIntersectionArea = 0;
-          let verticalIntersectionCount = 0;
-
-          do {
-            const targetPosition = entity.position.map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
-            const maximalPosition = entity.position.map((v, i) => Math.min(v, targetPosition[i]) - EPSILON) as Vector3;
-            const maximalDimensions = entity.dimensions.map(
-                (v, i) => v + Math.abs(targetPosition[i] - entity.position[i]) + EPSILON * 2,
-            ) as Vector3;
-
-            let maxOverlapDelta = 0;
-            // TODO might need initialisers for CC
-            let maxCollisionEntity: Entity | Falsey = 0 as any;
-            let hadSoftBodyCollision: Booleanish = 0;
-
-            maxOverlapIndex = -1;
-            levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions, collisionEntity => {
-              // no need to check for ourselves since we have been removed from the level at this point
-              if (!(collisionEntity.collisionGroup & entity.collisionMask)) {
-                return;
-              }
-              const startingIntersection = rect3Intersection(
-                entity.position,
-                entity.dimensions,
-                collisionEntity.position,
-                collisionEntity.dimensions,
-              );
-              if (FLAG_DEBUG_COLLISIONS && startingIntersection.every(v => v > 0)) {
-                  console.log('collions', iterations);
-                  console.log('started inside');
-                  console.log('position', entity.position);
-                  console.log('dimensions', entity.dimensions);
-                  console.log('velocity', entity.velocity);
-                  console.log('collision position', collisionEntity.position);
-                  console.log('collision dimensions' , collisionEntity.dimensions);
-                  console.log('intersection', startingIntersection);
-                  console.log('previous collision', entity.previousCollision);
-                  console.log('previous position', entity['previousPosition']);
-                  console.log('previous velocity', entity['previousVelocity']);
-                  console.log('previous move delta', entity['previousMoveDelta']);
-                  console.log('previous maximalPosition', entity['previousMaximalPosition']);
-                  console.log('previous maximalDimensions', entity['previousMaximalDimensions']);
-                  console.log('previous targetPosition', entity['previousTargetPosition']);
-              }
-
-              // do we overlap?
-              const intersection = rect3Intersection(
-                  maximalPosition,
-                  maximalDimensions,
-                  collisionEntity.position,
-                  collisionEntity.dimensions,
-              );
-              if (FLAG_DEBUG_COLLISIONS) {
-                if (!entity['previousIntersection']) {
-                  entity['previousIntersection'] = {};
-                }
-                entity['previousIntersection'][collisionEntity.id] = intersection;
-              }
-
-              if (intersection.every(v => v >= 0)) {
-                if (collisionEntity.velocity) {
-                  // only do soft collisions in first iteration
-                  if (!iterations) {
-                    // soft collisions with other movable objects
-                    const entityCenter = entityMidpoint(entity);
-                    const collisionEntityCenter = entityMidpoint(collisionEntity);
-                    const diffs = vectorNSubtract(entityCenter, collisionEntityCenter);
-                    diffs.forEach((diff, i) => {
-                      const maxDiff = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;
-                      const dv = (1 - diff/maxDiff)/4999;
-                      entity.velocity[i] -= dv;
-                      // TODO why does the collision entity not apply this to itself when it
-                      // detects a collision?
-                      collisionEntity.velocity[i] += dv;
-                    });
-                    // because the velocity has changed, we need to redo all the collisions here
-                    hadSoftBodyCollision = 1;
-                  }
-                } else {
-                  // scale by velocity to get collision time
-                  const overlap = intersection.reduce<[number, number, number] | Falsey>((acc, intersectionDimension, i) => {
-                    const velocity = entity.velocity[i];
-                    if (velocity) {
-                      const overlapDelta = intersectionDimension/Math.abs(velocity);
-
-                      // unclear if this actually has any effect
-                      const intersectionArea = intersection.reduce((a, v, j) => a * (j == i ? 1 : v), 1);
-                      // if ((i != 2 || maxOverlapIndex >= 0 && maxOverlapIndex < 2) && overlapDelta <= remainingDelta) {
-                      //   console.log('trip', intersection, i, velocity, intersectionArea);
-                      // }
-                      
-                      if (overlapDelta < remainingDelta + EPSILON && 
-                          (!acc
-                              || overlapDelta > acc[0]
-                              || overlapDelta > acc[0] - EPSILON && acc[1] < intersectionArea
-                          )
-                      ) {
-                        return [overlapDelta, intersectionArea, i];
-                      }  
-                    }
-                    return acc;
-                  }, 0);
-                  if (overlap) {
-                    const [overlapDelta, intersectionArea, overlapIndex] = overlap;
-                    if (overlapDelta < remainingDelta && 
-                        (overlapDelta > maxOverlapDelta
-                            || overlapDelta > maxOverlapDelta - EPSILON && maxIntersectionArea < intersectionArea
-                        )
-                    ) {
-                      maxOverlapDelta = overlapDelta;
-                      maxIntersectionArea = intersectionArea;
-                      maxOverlapIndex = overlapIndex;
-                      maxCollisionEntity = collisionEntity;
-                    }
-                  }
-                }
-              }
-            });
-            iterations ++;
-            if (!hadSoftBodyCollision) {
-              const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta) - EPSILON;
-              remainingDelta = maxOverlapDelta;
-              if (FLAG_DEBUG_COLLISIONS) {
-                entity['previousPosition'] = [...entity.position];
-                entity['previousVelocity'] = [...entity.velocity];
-                entity['previousMoveDelta'] = moveDelta;
-                entity['previousCollisions'] = iterations;
-                entity['previousMaximalPosition'] = maximalPosition;
-                entity['previousMaximalDimensions'] = maximalDimensions;  
-                entity['previousTargetPosition'] = targetPosition;
-              }
-              arrayMapAndSet(entity.position, (v, i) => v + entity.velocity[i] * moveDelta);
-              if (maxCollisionEntity) {
-                if (FLAG_DEBUG_COLLISIONS) {
-                  entity.previousCollision = {
-                    maxCollisionEntity,
-                    maxIntersectionArea,
-                    maxOverlapIndex,
-                    worldTime,
-                  };  
-                }
-                // check if we can step up
-                // TODO: only do this if we are a creature
-                if (maxOverlapIndex != 2
-                    && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
-                ) {
-                  verticalIntersectionCount++;
-                }
-                entity.velocity[maxOverlapIndex] = 0;
-                if (maxOverlapIndex == 2) {
-                  entity.lastZCollision = worldTime;
-                }
-              }
-            }
-          } while ((remainingDelta > EPSILON) && iterations < MAX_COLLISIONS);
-
-          if (verticalIntersectionCount == 1) {
-            entity.velocity[2] = Math.max(.0012, entity.velocity[2]);
-            // steps count as a z collision
-            entity.lastZCollision = worldTime;
-          }
-
-          if (FLAG_DEBUG_COLLISIONS && iterations >= MAX_COLLISIONS) {
-            console.log('too many collisions');
-          }
-
-          if (!entity.maxHealth || entity.health > 0) {
-            // start new animations
-            entityStartAnimation(entity, action);
-            levelAddEntity(level, entity);
-          } else {
-            // collapse
-            entityIterateParts((e, part, transform, joint) => {
-              const position = vector3TransformMatrix4(transform, 0, 0, 0);
-              let partEntity: Entity;
-              if (e == entity) {
-                // turn their body parts into items
-                const [position, dimensions] = shapeBounds(shapes[part.modelId], transform, 1);
-                partEntity = entityCreate({
-                  // create generic self-contained entity for each body part
-                  body: {
-                    ...part,
-                    id: 0,
-                    preRotationTransform: 0,
-                    children: [],
-                  },
-                  joints: [{ 
-                    ...joint,
-                    animAction: 0,
-                    attachedEntity: 0,
-                    rotation: [0, 0, 0],
-                  }],
-                  // inherit your parent health
-                  health: entity.maxHealth,
-                  maxHealth: entity.maxHealth,
-                  collisionGroup: COLLISION_GROUP_ITEM,
-                  // turn anything that can be held into an item (maybe)
-                  collisionMask: Math.random() < .5
-                      // only create objects for parts that do something
-                      && part.jointAttachmentHolderPartId
-                      // the zero'th part is assumed to be what we are held by if we are a tool
-                      // as result, we don't want to add the handle back into the world
-                      && part.id
-                      ? COLLISION_GROUP_WALL
-                      : 0,
-                  dimensions,
-                  position,
-                  // TODO use current rotation 
-                  rotation: [0, 0, Math.random() * Math.PI * 2],
-                });
-              } else {
-                // drop whatever they're holding
-                partEntity = e;
-                partEntity.position = position;
-              }
-              if (partEntity) {
-                partEntity.velocity = entity.velocity
-                    .map(v => v + (Math.random() - .5) * .001) as Vector3;
-                levelAddEntity(level, partEntity);
-              }
-            }, entity, entity.body);            
-          }
-        }
-
-        const entityCenter = entityMidpoint(carrier || entity);
-        const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
-        return cy < 0 && (cz > 0 && !entity.velocity || cz > 1);
-      },
-      light,
-  );
-
-  requestAnimationFrame(update);
-};
-update(0);
-
-function updateAndRenderLevel(
-    cameraProjectionMatrix: Matrix4,
-    cameraPosition: Vector3,
-    position: Vector3,
-    dimensions: Vector3,
-    previousLights: Light[],
-    // return false if want to render
-    updateEntity: (e: Entity, carrier?: Entity) => Booleanish,
-    // the light we just rendered that we want to store the offsets for
-    light?: Light,
-): Light[] {
-  const lights = [];
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.uniformMatrix4fv(
-      uniformProjectionMatrix,
-      false,
-      cameraProjectionMatrix,
-  );
-  gl.uniform3fv(
-      uniformCameraPosition,
-      cameraPosition,
-  );
-
-  const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, TextureId, number][]>> = {};
-
-  levelIterateEntitiesInBounds(
-      level,
-      position,
-      dimensions,
-      entity => {
-        // do we need to render?
-        const ignoreRendering = updateEntity(entity);
-        const renderEntities: Record<EntityId, Booleanish> = {[entity.id]: !ignoreRendering};
-        const predicate = (j: Joint) =>
-                (j.attachedEntity
-                    && ((renderEntities[j.attachedEntity.id] = !updateEntity(j.attachedEntity, entity))
-                        || j.attachedEntity.joints.map(predicate).some(l => l)
-                    )
-                ) || j.light;
-        
-        const shouldIterateJoints = entity.joints.map(predicate);
-        const shouldIterateParts = !ignoreRendering || shouldIterateJoints.some(l => l); 
-
-        if (shouldIterateParts) {
-          entityIterateParts(
-            (entity, part, transform, joint) => {
-              const partPosition = vector3TransformMatrix4(transform, 0, 0, 0);
-
-              // if the attached entity is dead, drop it
-              const attachedEntity = joint.attachedEntity;
-              if (attachedEntity && attachedEntity.maxHealth && attachedEntity.health <= 0) {
-                attachedEntity.position = partPosition;
-                attachedEntity.velocity = [0, 0, 0];
-                joint.attachedEntity = 0;
-                // it will disintegrate on the next tick
-                levelAddEntity(level, attachedEntity);
-              }
-
-              if (light) {
-                joint.entityLightTransforms = joint.entityLightTransforms || {};
-                // joint.entityLightTransforms[light.entityId] = matrix4Multiply(
-                //     matrix4Translate(...vectorNScale(light.pos, -1)),
-                //     transform,
-                // );
-                joint.entityLightTransforms[light.entityId] = partPosition;
-              }
-      
-              if (joint.light) {
-                const pos = [...partPosition];
-                pos[2] += LIGHT_Z_FUTZ;
-                lights.push({
-                  pos,
-                  entityId: entity.id,
-                  luminosity: joint.light,
-                });
-              }
-              if (renderEntities[entity.id]) {
-                // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
-                const invertedTransform = matrix4Invert(transform);
-                if (!invertedTransform) {
-                  throw new Error(JSON.stringify(transform));
-                }
-                const luma = entity.maxHealth && entity.health < Math.min(entity.maxHealth, HEALTH_FLASH)
-                    // flash indicating health
-                    ? (
-                        Math.sqrt(1 - (entity.health - 1) / HEALTH_FLASH) // should be zero when health is high, 1 when low
-                        * (Math.abs(Math.sin(worldTime / 99)) - 1) // oscilates -1 to 0, always -1 when health is 0
-                    )
-                    // items with no velocity have never been picked up
-                    : !entity.velocity && entity.entityType == ENTITY_TYPE_ITEM
-                        ? (Math.abs(Math.sin(worldTime / 999 + entity.id)))/9
-                        : 0;
-                const textureId = part.textureId || TEXTURE_ID_WHITE;
-                if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
-                  const modelInstancedRenders = instancedRenders[part.modelId]
-                      || (instancedRenders[part.modelId] = []);
-                  modelInstancedRenders.push([transform, invertedTransform, textureId, luma])
-                } else {
-                  const lightPositions = previousLights.map(l => {
-                    const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
-                    const render = lightRenders[l.entityId];
-                    const position = partPositionAtLightRenderTime
-                        ? vectorNSubtract(render[2], vectorNSubtract(partPositionAtLightRenderTime, partPosition))
-                        : render[2];
-                    return [...position, l.luminosity];
-                  });
-                  gl.uniform4fv(
-                      uniformLightPositions,
-                      lightPositions.flat(2).concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)),
-                  );
-  
-                  gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
-                  gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
-                  // x = intrinsic lightness multiplier
-                  // y = texture id of part
-                  gl.uniform2f(
-                      uniformModelAttributes,
-                      textureId,
-                      luma,
-                  );
-              
-                  const [vao, count] = models[part.modelId];
-                  gl.bindVertexArray(vao);
-                  gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);  
-                }
-              }
-            },
-            entity,
-            entity.body,
-          );
-        }        
-      },
-  );
-  if (FLAG_INSTANCED_RENDERING) {
-    // these things don't move, so we don't need to check the light deltas
-    gl.uniform4fv(
-        uniformLightPositions,
-        previousLights
-            .map(l => {
-              const render = lightRenders[l.entityId];
-              return [...render[2], l.luminosity];
-            })
-            .flat(2)
-            .concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0))
+    const playerCenter = entityMidpoint(player);
+    const targetCameraZRotation = (-targetCameraOrientation) * Math.PI/2;
+    const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
+    // TODO can we tween this?
+    cameraZRotation += cameraZDelta * delta / 100;
+    const cameraRotation = matrix4Rotate(cameraZRotation, 0, 0, 1);
+    const negatedPlayerCenter = vectorNScale(playerCenter, -1);
+    const cameraPositionMatrix = matrix4Multiply(
+        cameraOffsetTransform,
+        cameraRotation,
+        matrix4Translate(...negatedPlayerCenter),
     );
-
-    for (let modelId in instancedRenders) {
-      const modelInstancedRenders: [Matrix4, Matrix4, TextureId, number][] = instancedRenders[modelId];
-      const [vao, count] = models[modelId];
-      gl.bindVertexArray(vao);
-      modelInstancedRenders.forEach(([transform, invertedTransform, textureId, luma]) => {
-        gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
-        gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
-        
-        gl.uniform2f(uniformModelAttributes, textureId, luma);
+    const cameraPosition = vector3TransformMatrix4(matrix4Invert(cameraPositionMatrix), 0, 0, 0);
+    const cameraRenderCutoffTransform = matrix4Multiply(
+      matrix4Translate(0, .5, .2),
+      matrix4Rotate(cameraZRotation, 0, 0, 1),
+      matrix4Translate(...negatedPlayerCenter),
+    );
+    const cameraProjectionMatrix = matrix4Multiply(projection, cameraPositionMatrix);
+  
+    // sort from closest to furthest, with player at 0
+    previousLights
+        .sort((l1, l2) => {
+          const d1 = getLightAppeal(l1, playerCenter);
+          const d2 = getLightAppeal(l2, playerCenter);
+          return d1 - d2;
+        });
+    // find the oldest texture
+    let light: Light | undefined;
+    const lightRender: [number, number, number, Vector3] | 0 = previousLights.length > 0
+        && (
+            !FLAG_THROTTLE_LIGHT_RENDERING
+                || !(updateCount % Math.max(1, MAX_LIGHTS - Math.min(previousLights.length, MAX_LIGHTS)))
+        )
+        && previousLights.slice(0, MAX_LIGHTS).reduce<[number, number, number, Vector3] | 0>((acc, l, i) => {
+          const lightRender = lightRenders[l.entityId];
+          // find an unused texture
+          let availableTextureIndex = 0;
+          // there is no accumulator or the accumulator age is > 0
+          const needsNewLightRender = !lightRender && (!acc || acc[2]);
+          if (needsNewLightRender) {
+            const availableTextureIndices = new Set(CUBE_MAP_LIGHTS_TEXTURE_INDICES);
+            let oldestEntityId: string | undefined;
+            for (let entityId in lightRenders) {
+              const lightRender = lightRenders[entityId];
+              availableTextureIndices.delete(lightRender[0]);
+              if (!oldestEntityId || lightRender[1] < lightRenders[oldestEntityId][1]) {
+                // TODO we may also want to verify that this isn't one of the first lights, although
+                // I think being the oldest will functionally do that in 99% of cases
+                oldestEntityId = entityId;
+              }
+            }
+            if (availableTextureIndices.size) {
+              availableTextureIndex = [...availableTextureIndices][0];
+            } else {
+              availableTextureIndex = lightRenders[oldestEntityId][0];
+              delete lightRenders[oldestEntityId];
+            }
+          }
+          return needsNewLightRender
+              ? [i, availableTextureIndex, 0, l.pos]
+              : !lightRender || acc && lightRender[1] > acc[2]
+                  ? acc
+                  : [i, ...lightRender];
+        }, 0);
     
-        gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+    if (lightRender) {
+      const [lightIndex, targetLightTextureIndex] = lightRender;
+      light = previousLights[lightIndex];
+      lightRenders[light.entityId] = [targetLightTextureIndex, worldTime, light.pos];
+      // generate light cube map
+      gl.activeTexture(gl.TEXTURE0 + targetLightTextureIndex);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, visionFramebuffer);
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTextures[targetLightTextureIndex]);
+      gl.viewport(0, 0, CUBE_MAP_DIMENSION, CUBE_MAP_DIMENSION);
+      // set lights to empty texture to avoid output being an input texture
+      gl.uniform1iv(uniformLightTexures, CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES);
+      gl.uniform4fv(uniformLightPositions, CUBE_MAP_LIGHTS_FAKE);
+  
+      CUBE_MAP_ROTATION_TRANSFORMS.forEach((rotationTransform, i) => {
+        // write to the cube map
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.DEPTH_ATTACHMENT,
+            gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            cubeTextures[targetLightTextureIndex],
+            0,
+        );
+    
+        // gl.framebufferTexture2D(
+        //     gl.FRAMEBUFFER,
+        //     gl.COLOR_ATTACHMENT0,
+        //     gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+        //     visionTexture,
+        //     0,
+        // );
+    
+        const faceCameraTransform = matrix4Multiply(
+            CUBE_MAP_PERPSECTIVE_TRANSFORM,
+            rotationTransform,
+            matrix4Translate(...vectorNScale(light.pos, -1)),
+        );
+        const lightBoundsDimensions = lightIndex
+            ? RENDER_DIMENSIONS.map(v => Math.min(v, light.luminosity * 2 * MAX_LIGHT_THROW)) as Vector3
+            : RENDER_DIMENSIONS;
+        const lightBoundsPosition = light.pos.map(
+            (v, i) => v - lightBoundsDimensions[i]/2,
+        ) as Vector3;
+        updateAndRenderLevel(
+            faceCameraTransform,
+            light.pos,
+            lightBoundsPosition,
+            lightBoundsDimensions,
+            [],
+            // first index is the player line of sight, so it's a special case
+            // for everything else, just exclude the actual lit object
+            e => e.collisionGroup != COLLISION_GROUP_WALL && !lightIndex
+                || e.id == light.entityId
+                || FLAG_EXCLUDE_UNLIT_FROM_RENDER
+                    && lightIndex
+                    && vectorNLength(vectorNSubtract(entityMidpoint(e), light.pos)) > light.luminosity * MAX_LIGHT_THROW,
+        );
       });
     }
+  
+  
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, Z.width, Z.height);
+  
+  //   const faceCameraTransform = matrix4Multiply(
+  //     CUBE_MAP_PERPSECTIVE_TRANSFORM,
+  //     CUBE_MAP_ROTATION_TRANSFORMS[0],
+  //     // TODO probably should position this a bit above player so the raised camera doesn't see hidden bits
+  //     matrix4Translate(...vectorNScale(playerCenter, -1)),
+  // );
+    previousLights = previousLights
+        .filter(l => lightRenders[l.entityId])
+        .slice(0, MAX_LIGHTS);
+    gl.uniform1iv(
+        uniformLightTexures,
+        previousLights.map<number>(l => {
+          return lightRenders[l.entityId][0];
+        }).concat(
+            ...new Array(MAX_LIGHTS - previousLights.length).fill(MAX_LIGHTS),
+        ),
+    );
+  
+    const renderPosition = RENDER_DIMENSIONS.map((v, i) => playerCenter[i] - v/2) as Vector3;
+    if (renderPosition[2] + RENDER_DIMENSIONS[2] > level.dimensions[2]) {
+      // time to generate some more layers
+      levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE);
+    }
+  
+    previousPreviousLights = previousLights;
+    previousLights = updateAndRenderLevel(
+        cameraProjectionMatrix,
+        cameraPosition,
+        renderPosition,
+        RENDER_DIMENSIONS,
+        previousLights,
+        (entity: Entity, carrier?: Entity) => {
+          // update animations
+          if (!entity.joints && entity.body.defaultJointRotations) {
+            entity.joints = entity.body.defaultJointRotations.map(rotation => ({
+              rotation: [...rotation],
+            }));
+          }
+          [...(entity.joints || []), entity].forEach((joint: Joint) => {
+            if (joint.anim && joint.anim?.(worldTime)) {
+              joint.anim = 0;
+              joint.animAction = 0;
+            }
+            const attachedEntity = joint.attachedEntity;
+            if (attachedEntity) {
+              // update attached entity
+              if (attachedEntity.entityType == ENTITY_TYPE_TORCH) {
+                attachedEntity.health = Math.max(0, attachedEntity.health - delta / TORCH_MS_PER_HEALTH);
+                attachedEntity.joints[TORCH_PART_ID_HEAD].light = 
+                    (1 - Math.pow(1 - attachedEntity.health/attachedEntity.maxHealth, 9)) * TORCH_BRIGHTNESS;
+              }
+            }
+          });
+          if (entity.offsetAnim && entity.offsetAnim(worldTime)) {
+            entity.offsetAnim = 0;
+          }
+  
+          if (entity.velocity && !carrier) {
+            let action: ActionId | 0 = 0;
+            const availableActions = entityAvailableActions(entity);
+            const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
+            const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
+            let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
+            let ignoreLateralAcceleration: Booleanish;
+            let targetOrientation = entity.orientation;
+            let interact = 0;
+            const entityCenter = entityMidpoint(entity);
+  
+            levelRemoveEntity(level, entity);
+  
+            if (entity == player) {
+              const canIdle = availableActions & ACTION_ID_IDLE;
+              const canWalk = availableActions & ACTION_ID_WALK;
+              const canRun = availableActions & ACTION_ID_RUN;
+              const canJump = availableActions & ACTION_ID_JUMP;
+              const canFall = availableActions & ACTION_ID_FALL;
+              const canDuck = availableActions & ACTION_ID_DUCK;
+              const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
+              const canHeavyAttack = availableActions & ACTION_ID_ATTACK_HEAVY;
+      
+              const right = inputRead(INPUT_RIGHT);
+              const left = inputRead(INPUT_LEFT);
+              const up = canJump && probablyOnGround && inputRead(INPUT_UP, now);
+              const down = inputRead(INPUT_DOWN);
+              const rotateCameraRight = inputRead(INPUT_ROTATE_CAMERA_RIGHT, now);
+              const rotateCameraLeft = inputRead(INPUT_ROTATE_CAMERA_LEFT, now);
+              const lightAttack = inputRead(INPUT_ATTACK_LIGHT, now);
+              const heavyAttack = inputRead(INPUT_ATTACK_HEAVY, now);
+  
+              let running = 0;
+              let moving = 0;
+              // running and interact share keys, so we want to avoid collisions
+              if (down) {
+                interact = inputRead(INPUT_INTERACT, now);
+              }
+              if (canRun) {
+                running = inputRead(INPUT_RUN, now, 1);
+              }
+  
+              if (rotateCameraLeft) {
+                targetCameraOrientation = mathSafeMod(targetCameraOrientation - 1, 4) as Orientation;
+              }
+              if (rotateCameraRight) {
+                targetCameraOrientation = ((targetCameraOrientation + 1) % 4) as Orientation;
+              }
+  
+              const cameraDelta = entity.orientation % 2 - targetCameraOrientation % 2
+              const canTurn = availableActions & ACTION_ID_TURN && (cameraDelta || running);
+  
+              const walkingBackward = entity.orientation == targetCameraOrientation && left
+                  || entity.orientation != targetCameraOrientation && right;
+  
+              let targetLateralSpeed = canWalk
+                  ? (right - left) * (1 + (canRun ? running : 0)) * SKELETON_WALK_SPEED / (walkingBackward ? 2 : 1)
+                  : 0;
+              if (canIdle) {
+                action = ACTION_ID_IDLE;
+              }
+              if (canWalk && (left || right) && probablyOnGround) {
+                action = walkingBackward ? ACTION_ID_WALK_BACKWARD : ACTION_ID_WALK;
+                moving = 1;
+              }
+              if (canRun && running && (left || right) && probablyOnGround) {
+                action = ACTION_ID_RUN;
+              }  
+  
+              if (canJump && up && probablyOnGround) {
+                action = ACTION_ID_JUMP;
+              }
+              if (canDuck && down && probablyOnGround) {
+                action = ACTION_ID_DUCK;
+              }
+              if (canFall && !probablyOnGround) {
+                action = ACTION_ID_FALL;
+              }
+              if (canLightAttack && lightAttack) {
+                action = ACTION_ID_ATTACK_LIGHT;
+              }
+              if (canHeavyAttack && heavyAttack) {
+                action = ACTION_ID_ATTACK_HEAVY;
+              }
+  
+              if (action == ACTION_ID_JUMP) {
+                if (walkingBackward) {
+                  targetLateralSpeed = (right - left) * SKELETON_WALK_SPEED * 2;
+                  ignoreLateralAcceleration = 1;
+                  targetVelocity[2] = .001;
+                } else {
+                  targetVelocity[2] = .003;
+                }
+              }
+  
+              if (definitelyOnGround) {
+                targetVelocity = vector3TransformMatrix4(
+                    matrix4Rotate(-targetCameraZRotation, 0, 0, 1),
+                    targetLateralSpeed,
+                    0,
+                    targetVelocity[2],
+                );
+              }
+              if ((
+                  cameraDelta
+                      || entity.orientation == targetCameraOrientation && left
+                      || (entity.orientation + 2) % 4 == targetCameraOrientation && right
+                  )
+                  && canTurn
+                  && moving
+              ) {
+                targetOrientation = left
+                        ? (targetCameraOrientation + 2) % 4 as Orientation
+                        : targetCameraOrientation;
+              }
+            } else {
+              action = ACTION_ID_IDLE;
+              if (entity.entityType == ENTITY_TYPE_HOSTILE) {
+                // AI
+                
+                if (!entity.activePathTime || entity.activePathTime < worldTime - AI_RECALCULATION_TIME){
+                  // look around
+                  let bestTarget: Entity;
+                  let bestTargetValue = 0;
+                  levelIterateEntitiesInBounds(
+                      level,
+                      // TODO adjust look radius to account for orientation (i.e don't look
+                      // behind)
+                      entityCenter.map(v => v - AI_LOOK_RADIUS) as Vector3,
+                      new Array(3).fill(AI_LOOK_RADIUS*2) as Vector3,
+                      target => {
+                        let targetValue = 0;
+                        if (target.entityType == ENTITY_TYPE_PLAYER) {
+                          // TODO aggro
+                          targetValue = 2;
+                        }
+                        if (
+                            target.body.jointAttachmentHolderPartId
+                                && !entity.joints[target.body.jointAttachmentHolderPartId].attachedEntity
+                        ) {
+                          targetValue = 1;
+                        }
+                        if (target == entity.activeTarget) {
+                          targetValue++;
+                        }
+                        if (targetValue) {
+                          // account for proximity (closer items are more attractive)
+                          targetValue -= vectorNLength(vectorNSubtract(entityCenter, entityMidpoint(target)))*2/AI_LOOK_RADIUS;
+                        }
+                        if (targetValue > bestTargetValue) {
+                          bestTarget = target;
+                          bestTargetValue = targetValue;
+                        }
+                      }
+                  );
+                  // TODO recalculate activePath
+                  entity.activeTarget = bestTarget;
+                  entity.activePathTime = worldTime;
+                }
+                const activeTarget = entity.activeTarget;
+                if (activeTarget) {
+                  // are we close enough to move directly to and/or interact with the target?
+                  const delta = vectorNSubtract(entityMidpoint(activeTarget), entityCenter);
+                  const distances = delta.map(
+                      (v, i) => Math.max(0, Math.abs(v) - (entity.dimensions[i] + activeTarget.dimensions[i])/2),
+                  );
+                  const distance = vectorNLength(distances);
+                  if (distance < AI_DIRECT_MOVE_RADIUS) {
+                    // walk in that direction
+                    // account for target size and weapon range
+                    let targetAction: ActionId | 0 = 0;
+  
+                    let minActionRangeMultiplier = 0;
+                    if (activeTarget.entityType == ENTITY_TYPE_PLAYER) {
+                      // TODO find best attack for range
+                      targetAction = ACTION_ID_ATTACK_LIGHT;
+                      minActionRangeMultiplier = .8;
+                    } else {
+                      targetAction = ACTION_ID_DUCK;
+                    }
+                    const animations = entityGetActionAnims(entity, targetAction);
+                    const maxActionRange = animations.range || 0;
+                    const minActionRange = maxActionRange * minActionRangeMultiplier;
+                    const targetActionAvailable = !targetAction || (availableActions & targetAction);
+                    const inRange = distance <= maxActionRange && distance >= minActionRange;
+  
+                    // look at target
+                    const validOrientations: Orientation[] = [];
+                    if (distances[0] > maxActionRange) {
+                      validOrientations.push(delta[0] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST);
+                    }
+                    if (distances[1] > maxActionRange) {
+                      validOrientations.push(delta[1] > 0 ? ORIENTATION_NORTH : ORIENTATION_SOUTH);
+                    }
+  
+                    if (validOrientations.indexOf(targetOrientation) < 0 && validOrientations.length) {
+                      // array can be empty
+                      targetOrientation = validOrientations[0];
+                    }
+  
+                    if (animations && targetAction && targetActionAvailable && inRange) {
+                      action = targetAction;
+                      if (targetAction == ACTION_ID_DUCK) {
+                        interact = 1;
+                      }
+                    } else if ((availableActions & ACTION_ID_WALK)
+                        && definitelyOnGround
+                        && (!inRange || !targetActionAvailable)
+                    ){
+                      // stay back a bit if the desired action isn't available
+                      const direction = targetActionAvailable
+                          ? (distance - minActionRange)/Math.abs(distance - minActionRange)
+                          : -1;
+                      action = direction > 0 ? ACTION_ID_WALK : ACTION_ID_WALK_BACKWARD;
+                      targetVelocity = vector3TransformMatrix4(
+                          matrix4Rotate(targetOrientation * Math.PI/2, 0, 0, 1),
+                          direction * (direction > 0 ? SKELETON_WALK_SPEED : SKELETON_WALK_SPEED/2),
+                          0,
+                          entity.velocity[2],
+                      );
+                    }
+                  }
+                }
+              }
+            }
+  
+            if (targetOrientation != entity.orientation) {
+              entity.orientation = targetOrientation;
+              const targetAngle = targetOrientation * Math.PI/2;
+              const to: Vector3 = [0, 0, targetAngle];
+              entity.anim = animLerp(
+                  worldTime,
+                  entity.rotation,
+                  to,
+                  299,
+                  EASE_IN_OUT_QUAD,
+                  1,
+              );
+              // action = ACTION_ID_TURN;
+            }
+  
+            if (interact) {
+              // find any entities we might be able to pick up
+              let pickedUp: Entity | undefined;
+              const pickUpDimensions = entity.dimensions.map(v => v + PICK_UP_ITEM_RADIUS * 2) as Vector3;
+              const pickUpPosition = entityCenter.map((v, i) => v - pickUpDimensions[i]/2) as Vector3;
+              levelIterateEntitiesInBounds(level, pickUpPosition, pickUpDimensions, found => {
+                // NOTE: while 0 is a valid part id, we assume it's not used for extremities
+                if (found.body.jointAttachmentHolderPartId) {
+                  // TODO get the closest one
+                  pickedUp = found;
+                }
+              });
+              // drop whatever we are carrying
+              const joint = entity.joints.find(
+                  (joint, partId) => joint.attachedEntity && (!pickedUp || partId == pickedUp.body.jointAttachmentHolderPartId),
+              );
+              if (joint) {
+                // add the attached entity back into the world
+                const held = joint.attachedEntity as Entity;
+                held.position = entity.position.map(
+                    (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
+                ) as Vector3;
+                held.rotation = [...entity.rotation];
+                levelAddEntity(level, held);
+                joint.attachedEntity = 0;
+              }
+              if (pickedUp) {
+                levelRemoveEntity(level, pickedUp);
+                pickedUp.velocity = [0, 0, 0];
+                entity.joints[pickedUp.body.jointAttachmentHolderPartId].attachedEntity = pickedUp;
+                entity.activeTarget = 0;
+              }
+            }
+  
+            const movable = entity as Moveable;
+            
+            // limit velocity
+            arrayMapAndSet(movable.velocity, (c, i) => {
+              const v = targetVelocity[i];
+              let velocity = v;
+              if (i < 2 && entity.acc && !ignoreLateralAcceleration) {
+                const diff = v - c;
+                velocity = c + diff * entity.acc * delta;
+              }
+              return Math.min(
+                  MAX_VELOCITY,
+                  Math.max(
+                      -MAX_VELOCITY,
+                      velocity,
+                  )
+              );
+            });
+  
+            // move toward centerline of cross-orientation
+            if (entity.orientation != null && delta) {
+              const crossAxis = (entity.orientation + 1) % 2;
+              
+              const center = entityCenter[crossAxis]; 
+              const rail = (center | 0) + .5;
+              const diff = rail - center;
+              entity.velocity[crossAxis] = Math.max(
+                  -Math.abs(diff/delta), 
+                  Math.min(
+                      Math.abs(diff/delta),
+                      diff * RAIL_ALIGNMENT_VELOCITY,
+                  ),
+              );
+            }
+            // add in gravity
+            movable.velocity[2] -= delta * GRAVITY;
+  
+            // check attacking
+            const attacking = entity.joints.some((joint, jointId) => {
+              return joint.animAction && entityGetActionAnims(entity, joint.animAction)
+                  ?.sequences[joint.animActionIndex]
+                  ?.[jointId]
+                  ?.[ENTITY_CHILD_PART_ANIMATION_DAMAGE_INDEX]
+            });
+            if (attacking) {
+              // get a big area (we don't know how large the animations are)
+              const position = entity.position.map(v => v - MAX_ATTACK_RADIUS) as Vector3;
+              const dimensions = entity.dimensions.map(v => v + MAX_ATTACK_RADIUS * 2) as Vector3;
+              levelIterateEntitiesInBounds(level, position, dimensions, victim => {
+                // work out the most appropriate action for each victim
+                if (!victim.lastDamaged || victim.lastDamaged < worldTime - DAMAGE_INVULNERABILITY_DURATION) {
+                  let maxDamage = 0;
+                  let maxWeapon: Entity | undefined;
+                  let blocked: Booleanish;
+                    entityIterateParts((weaponEntity, entityPart, entityTransform, entityJoint, entityPartDamage) => {
+                    if (entityPartDamage) {
+                      const entityPartShape = shapes[entityPart.modelId];
+                      const entityPartRadius = models[entityPart.modelId][2];
+                      const entityPartPosition = vector3TransformMatrix4(entityTransform, 0, 0, 0);
+                      const entityPartPlanes = entityPartShape.map(f => planeTransform(f.plane, entityTransform));
+                      // could split this out, but there should only be a very small number (ideally 1) of
+                      // damaging body parts for a given entity
+                      entityIterateParts((v, victimPart, victimTransform, victimJoint, victimDamageMultiplier) => {
+                        // do the shapes overlap?
+                        const victimPartShape = shapes[victimPart.modelId];
+                        const victimPartRadius = models[victimPart.modelId][2];
+                        const victimPartPosition = vector3TransformMatrix4(victimTransform, 0, 0, 0);
+                        // shapeFromPlanes is very expensive, so check the bounds first
+                        if (
+                            (victimDamageMultiplier || victimPart.incomingDamageMultiplier) 
+                            && victimPartRadius + entityPartRadius > vectorNLength(vectorNSubtract(victimPartPosition, entityPartPosition))
+                        ) {
+                          let overlap: Booleanish;
+                          if (FLAG_FAST_COLLISIONS) {
+                            // are any points contained in the shapes
+                            overlap = shapeContainsPointsFromShape(victimPartShape, victimTransform, entityPartShape, entityTransform)
+                                || shapeContainsPointsFromShape(entityPartShape, entityTransform, victimPartShape, victimTransform);
+                          } else {
+                            const victimPartPlanes = victimPartShape.map(f => planeTransform(f.plane, victimTransform));
+                            overlap = shapeFromPlanes([...entityPartPlanes, ...victimPartPlanes]).length > 3;
+                          }
+                          if (overlap) {
+                            const damage = entityPartDamage * (victimPart.incomingDamageMultiplier || 0);
+                            if (damage > maxDamage) {
+                              maxDamage = damage;
+                              maxWeapon = weaponEntity;
+                            }
+                            if (!blocked) {
+                              blocked = !!victimDamageMultiplier || victimPart.incomingDamageMultiplier < 0;
+                              if (blocked) {
+                                maxWeapon = weaponEntity;
+                              } 
+                            }
+                          }
+                        }
+                      }, victim, victim.body);
+                    }
+                  }, entity, entity.body);
+    
+                  const victimVelocity = vectorNAdd<Vector3>(
+                      victim.velocity || [0, 0, 0],
+                      vectorNScale(
+                          vectorNNormalize(
+                            vectorNSubtract(
+                                entityMidpoint(victim),
+                                entityMidpoint(entity),
+                            )
+                          ),
+                          .001 * (maxDamage || 1),
+                      )
+                  );
+                  if (blocked) {
+                    // start the attack cancel animation
+                    action = ACTION_ID_CANCEL;
+                  } else if (maxDamage) {
+                    // start the damage received animation
+                    victim.health -= maxDamage;
+                    victim.lastDamaged = worldTime;
+                    entityStartAnimation(worldTime, victim, ACTION_ID_TAKE_DAMAGE);
+                  }
+                  if (blocked || maxDamage) {
+                    if (victim.velocity) {
+                      victim.velocity = victimVelocity;
+                    }
+                    if (maxWeapon && maxWeapon != entity && maxWeapon.maxHealth) {
+                      // damage the weapon
+                      maxWeapon.health--;
+                    }
+                  }
+                }
+              });
+            }
+  
+            // check collisions
+            let iterations = 0;
+            let maxOverlapIndex: number;
+            let remainingDelta = delta;
+            let maxIntersectionArea = 0;
+            let verticalIntersectionCount = 0;
+  
+            do {
+              const targetPosition = entity.position.map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
+              const maximalPosition = entity.position.map((v, i) => Math.min(v, targetPosition[i]) - EPSILON) as Vector3;
+              const maximalDimensions = entity.dimensions.map(
+                  (v, i) => v + Math.abs(targetPosition[i] - entity.position[i]) + EPSILON * 2,
+              ) as Vector3;
+  
+              let maxOverlapDelta = 0;
+              // TODO might need initialisers for CC
+              let maxCollisionEntity: Entity | Falsey = 0 as any;
+              let hadSoftBodyCollision: Booleanish = 0;
+  
+              maxOverlapIndex = -1;
+              levelIterateEntitiesInBounds(level, maximalPosition, maximalDimensions, collisionEntity => {
+                // no need to check for ourselves since we have been removed from the level at this point
+                if (!(collisionEntity.collisionGroup & entity.collisionMask)) {
+                  return;
+                }
+                const startingIntersection = rect3Intersection(
+                  entity.position,
+                  entity.dimensions,
+                  collisionEntity.position,
+                  collisionEntity.dimensions,
+                );
+                if (FLAG_DEBUG_COLLISIONS && startingIntersection.every(v => v > 0)) {
+                    console.log('collions', iterations);
+                    console.log('started inside');
+                    console.log('position', entity.position);
+                    console.log('dimensions', entity.dimensions);
+                    console.log('velocity', entity.velocity);
+                    console.log('collision position', collisionEntity.position);
+                    console.log('collision dimensions' , collisionEntity.dimensions);
+                    console.log('intersection', startingIntersection);
+                    console.log('previous collision', entity.previousCollision);
+                    console.log('previous position', entity['previousPosition']);
+                    console.log('previous velocity', entity['previousVelocity']);
+                    console.log('previous move delta', entity['previousMoveDelta']);
+                    console.log('previous maximalPosition', entity['previousMaximalPosition']);
+                    console.log('previous maximalDimensions', entity['previousMaximalDimensions']);
+                    console.log('previous targetPosition', entity['previousTargetPosition']);
+                }
+  
+                // do we overlap?
+                const intersection = rect3Intersection(
+                    maximalPosition,
+                    maximalDimensions,
+                    collisionEntity.position,
+                    collisionEntity.dimensions,
+                );
+                if (FLAG_DEBUG_COLLISIONS) {
+                  if (!entity['previousIntersection']) {
+                    entity['previousIntersection'] = {};
+                  }
+                  entity['previousIntersection'][collisionEntity.id] = intersection;
+                }
+  
+                if (intersection.every(v => v >= 0)) {
+                  if (collisionEntity.velocity) {
+                    // only do soft collisions in first iteration
+                    if (!iterations) {
+                      // soft collisions with other movable objects
+                      const entityCenter = entityMidpoint(entity);
+                      const collisionEntityCenter = entityMidpoint(collisionEntity);
+                      const diffs = vectorNSubtract(entityCenter, collisionEntityCenter);
+                      diffs.forEach((diff, i) => {
+                        const maxDiff = (entity.dimensions[i] + collisionEntity.dimensions[i])/2;
+                        const dv = (1 - diff/maxDiff)/4999;
+                        entity.velocity[i] -= dv;
+                        // TODO why does the collision entity not apply this to itself when it
+                        // detects a collision?
+                        collisionEntity.velocity[i] += dv;
+                      });
+                      // because the velocity has changed, we need to redo all the collisions here
+                      hadSoftBodyCollision = 1;
+                    }
+                  } else {
+                    // scale by velocity to get collision time
+                    const overlap = intersection.reduce<[number, number, number] | Falsey>((acc, intersectionDimension, i) => {
+                      const velocity = entity.velocity[i];
+                      if (velocity) {
+                        const overlapDelta = intersectionDimension/Math.abs(velocity);
+  
+                        // unclear if this actually has any effect
+                        const intersectionArea = intersection.reduce((a, v, j) => a * (j == i ? 1 : v), 1);
+                        // if ((i != 2 || maxOverlapIndex >= 0 && maxOverlapIndex < 2) && overlapDelta <= remainingDelta) {
+                        //   console.log('trip', intersection, i, velocity, intersectionArea);
+                        // }
+                        
+                        if (overlapDelta < remainingDelta + EPSILON && 
+                            (!acc
+                                || overlapDelta > acc[0]
+                                || overlapDelta > acc[0] - EPSILON && acc[1] < intersectionArea
+                            )
+                        ) {
+                          return [overlapDelta, intersectionArea, i];
+                        }  
+                      }
+                      return acc;
+                    }, 0);
+                    if (overlap) {
+                      const [overlapDelta, intersectionArea, overlapIndex] = overlap;
+                      if (overlapDelta < remainingDelta && 
+                          (overlapDelta > maxOverlapDelta
+                              || overlapDelta > maxOverlapDelta - EPSILON && maxIntersectionArea < intersectionArea
+                          )
+                      ) {
+                        maxOverlapDelta = overlapDelta;
+                        maxIntersectionArea = intersectionArea;
+                        maxOverlapIndex = overlapIndex;
+                        maxCollisionEntity = collisionEntity;
+                      }
+                    }
+                  }
+                }
+              });
+              iterations ++;
+              if (!hadSoftBodyCollision) {
+                const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta) - EPSILON;
+                remainingDelta = maxOverlapDelta;
+                if (FLAG_DEBUG_COLLISIONS) {
+                  entity['previousPosition'] = [...entity.position];
+                  entity['previousVelocity'] = [...entity.velocity];
+                  entity['previousMoveDelta'] = moveDelta;
+                  entity['previousCollisions'] = iterations;
+                  entity['previousMaximalPosition'] = maximalPosition;
+                  entity['previousMaximalDimensions'] = maximalDimensions;  
+                  entity['previousTargetPosition'] = targetPosition;
+                }
+                arrayMapAndSet(entity.position, (v, i) => v + entity.velocity[i] * moveDelta);
+                if (maxCollisionEntity) {
+                  if (FLAG_DEBUG_COLLISIONS) {
+                    entity.previousCollision = {
+                      maxCollisionEntity,
+                      maxIntersectionArea,
+                      maxOverlapIndex,
+                      worldTime,
+                    };  
+                  }
+                  // check if we can step up
+                  // TODO: only do this if we are a creature
+                  if (maxOverlapIndex != 2
+                      && entity.position[2] > maxCollisionEntity.position[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
+                  ) {
+                    verticalIntersectionCount++;
+                  }
+                  entity.velocity[maxOverlapIndex] = 0;
+                  if (maxOverlapIndex == 2) {
+                    entity.lastZCollision = worldTime;
+                  }
+                }
+              }
+            } while ((remainingDelta > EPSILON) && iterations < MAX_COLLISIONS);
+  
+            if (verticalIntersectionCount == 1) {
+              entity.velocity[2] = Math.max(.0012, entity.velocity[2]);
+              // steps count as a z collision
+              entity.lastZCollision = worldTime;
+            }
+  
+            if (FLAG_DEBUG_COLLISIONS && iterations >= MAX_COLLISIONS) {
+              console.log('too many collisions');
+            }
+  
+            if (!entity.maxHealth || entity.health > 0) {
+              // start new animations
+              entityStartAnimation(worldTime, entity, action);
+              levelAddEntity(level, entity);
+            } else {
+              // collapse
+              entityIterateParts((e, part, transform, joint) => {
+                const position = vector3TransformMatrix4(transform, 0, 0, 0);
+                let partEntity: Entity;
+                if (e == entity) {
+                  // turn their body parts into items
+                  const [position, dimensions] = shapeBounds(shapes[part.modelId], transform, 1);
+                  partEntity = entityCreate({
+                    // create generic self-contained entity for each body part
+                    body: {
+                      ...part,
+                      id: 0,
+                      preRotationTransform: 0,
+                      children: [],
+                    },
+                    joints: [{ 
+                      ...joint,
+                      animAction: 0,
+                      attachedEntity: 0,
+                      rotation: [0, 0, 0],
+                    }],
+                    // inherit your parent health
+                    health: entity.maxHealth,
+                    maxHealth: entity.maxHealth,
+                    collisionGroup: COLLISION_GROUP_ITEM,
+                    // turn anything that can be held into an item (maybe)
+                    collisionMask: Math.random() < .5
+                        // only create objects for parts that do something
+                        && part.jointAttachmentHolderPartId
+                        // the zero'th part is assumed to be what we are held by if we are a tool
+                        // as result, we don't want to add the handle back into the world
+                        && part.id
+                        ? COLLISION_GROUP_WALL
+                        : 0,
+                    dimensions,
+                    position,
+                    // TODO use current rotation 
+                    rotation: [0, 0, Math.random() * Math.PI * 2],
+                  });
+                } else {
+                  // drop whatever they're holding
+                  partEntity = e;
+                  partEntity.position = position;
+                }
+                if (partEntity) {
+                  partEntity.velocity = entity.velocity
+                      .map(v => v + (Math.random() - .5) * .001) as Vector3;
+                  levelAddEntity(level, partEntity);
+                }
+              }, entity, entity.body);            
+            }
+          }
+  
+          const entityCenter = entityMidpoint(carrier || entity);
+          const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
+          return cy < 0 && (cz > 0 && !entity.velocity || cz > 1);
+        },
+        light,
+    );
+  
+    animationFrame = requestAnimationFrame(update);
+  };
+  update(0);
+  
+  function updateAndRenderLevel(
+      cameraProjectionMatrix: Matrix4,
+      cameraPosition: Vector3,
+      position: Vector3,
+      dimensions: Vector3,
+      previousLights: Light[],
+      // return false if want to render
+      updateEntity: (e: Entity, carrier?: Entity) => Booleanish,
+      // the light we just rendered that we want to store the offsets for
+      light?: Light,
+  ): Light[] {
+    const lights = [];
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv(
+        uniformProjectionMatrix,
+        false,
+        cameraProjectionMatrix,
+    );
+    gl.uniform3fv(
+        uniformCameraPosition,
+        cameraPosition,
+    );
+  
+    const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, TextureId, number][]>> = {};
+  
+    levelIterateEntitiesInBounds(
+        level,
+        position,
+        dimensions,
+        entity => {
+          // do we need to render?
+          const ignoreRendering = updateEntity(entity);
+          const renderEntities: Record<EntityId, Booleanish> = {[entity.id]: !ignoreRendering};
+          const predicate = (j: Joint) =>
+                  (j.attachedEntity
+                      && ((renderEntities[j.attachedEntity.id] = !updateEntity(j.attachedEntity, entity))
+                          || j.attachedEntity.joints.map(predicate).some(l => l)
+                      )
+                  ) || j.light;
+          
+          const shouldIterateJoints = entity.joints.map(predicate);
+          const shouldIterateParts = !ignoreRendering || shouldIterateJoints.some(l => l); 
+  
+          if (shouldIterateParts) {
+            entityIterateParts(
+              (entity, part, transform, joint) => {
+                const partPosition = vector3TransformMatrix4(transform, 0, 0, 0);
+  
+                // if the attached entity is dead, drop it
+                const attachedEntity = joint.attachedEntity;
+                if (attachedEntity && attachedEntity.maxHealth && attachedEntity.health <= 0) {
+                  attachedEntity.position = partPosition;
+                  attachedEntity.velocity = [0, 0, 0];
+                  joint.attachedEntity = 0;
+                  // it will disintegrate on the next tick
+                  levelAddEntity(level, attachedEntity);
+                }
+  
+                if (light) {
+                  joint.entityLightTransforms = joint.entityLightTransforms || {};
+                  // joint.entityLightTransforms[light.entityId] = matrix4Multiply(
+                  //     matrix4Translate(...vectorNScale(light.pos, -1)),
+                  //     transform,
+                  // );
+                  joint.entityLightTransforms[light.entityId] = partPosition;
+                }
+        
+                if (joint.light) {
+                  const pos = [...partPosition];
+                  pos[2] += LIGHT_Z_FUTZ;
+                  lights.push({
+                    pos,
+                    entityId: entity.id,
+                    luminosity: joint.light,
+                  });
+                }
+                if (renderEntities[entity.id]) {
+                  // sometimes the inverse isn't available. The shadows are going to be screwed up for this thing
+                  const invertedTransform = matrix4Invert(transform);
+                  if (!invertedTransform) {
+                    throw new Error(JSON.stringify(transform));
+                  }
+                  const luma = entity.maxHealth && entity.health < Math.min(entity.maxHealth, HEALTH_FLASH)
+                      // flash indicating health
+                      ? (
+                          Math.sqrt(1 - (entity.health - 1) / HEALTH_FLASH) // should be zero when health is high, 1 when low
+                          * (Math.abs(Math.sin(worldTime / 99)) - 1) // oscilates -1 to 0, always -1 when health is 0
+                      )
+                      // items with no velocity have never been picked up
+                      : !entity.velocity && entity.entityType == ENTITY_TYPE_ITEM
+                          ? (Math.abs(Math.sin(worldTime / 999 + entity.id)))/9
+                          : 0;
+                  const textureId = part.textureId || TEXTURE_ID_WHITE;
+                  if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
+                    const modelInstancedRenders = instancedRenders[part.modelId]
+                        || (instancedRenders[part.modelId] = []);
+                    modelInstancedRenders.push([transform, invertedTransform, textureId, luma])
+                  } else {
+                    const lightPositions = previousLights.map(l => {
+                      const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
+                      const render = lightRenders[l.entityId];
+                      const position = partPositionAtLightRenderTime
+                          ? vectorNSubtract(render[2], vectorNSubtract(partPositionAtLightRenderTime, partPosition))
+                          : render[2];
+                      return [...position, l.luminosity];
+                    });
+                    gl.uniform4fv(
+                        uniformLightPositions,
+                        lightPositions.flat(2).concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)),
+                    );
+    
+                    gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
+                    gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
+                    // x = intrinsic lightness multiplier
+                    // y = texture id of part
+                    gl.uniform2f(
+                        uniformModelAttributes,
+                        textureId,
+                        luma,
+                    );
+                
+                    const [vao, count] = models[part.modelId];
+                    gl.bindVertexArray(vao);
+                    gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);  
+                  }
+                }
+              },
+              entity,
+              entity.body,
+            );
+          }        
+        },
+    );
+    if (FLAG_INSTANCED_RENDERING) {
+      // these things don't move, so we don't need to check the light deltas
+      gl.uniform4fv(
+          uniformLightPositions,
+          previousLights
+              .map(l => {
+                const render = lightRenders[l.entityId];
+                return [...render[2], l.luminosity];
+              })
+              .flat(2)
+              .concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0))
+      );
+  
+      for (let modelId in instancedRenders) {
+        const modelInstancedRenders: [Matrix4, Matrix4, TextureId, number][] = instancedRenders[modelId];
+        const [vao, count] = models[modelId];
+        gl.bindVertexArray(vao);
+        modelInstancedRenders.forEach(([transform, invertedTransform, textureId, luma]) => {
+          gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
+          gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
+          
+          gl.uniform2f(uniformModelAttributes, textureId, luma);
+      
+          gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+        });
+      }
+    }
+    return lights;
   }
-  return lights;
+  
 }
+

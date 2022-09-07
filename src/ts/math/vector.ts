@@ -1,3 +1,5 @@
+///<reference path="../flags.ts"/>
+
 type Vector2 = [number, number];
 type Rect2 = [Vector2, Vector2];
 
@@ -117,7 +119,7 @@ const vectorNToPrecision = <T extends number[]>(v: T): T => {
   return v.map(v => Math.round(v / EPSILON) * EPSILON) as any;
 }
 
-function rect3Intersection(pos1: Vector3, dim1: Vector3, pos2: Vector3, dim2: Vector3) {
+const rect3Intersection = (pos1: Vector3, dim1: Vector3, pos2: Vector3, dim2: Vector3) => {
   return pos1.map((v1a, i) => {
     const d1 = dim1[i];
     const v1b = v1a + d1;
@@ -127,4 +129,45 @@ function rect3Intersection(pos1: Vector3, dim1: Vector3, pos2: Vector3, dim2: Ve
     //return v1b > v2a && v2b > v1a;
     return Math.min(v1b, v2b) - Math.max(v1a, v2a);
   });
+}
+
+const VECTOR_PACK_STARTING_CHAR_CODE = 40;
+
+const vectorNUnpack = <T extends number[]>(packed: string, original: T, scale: number, offset: number): T => {
+  if (FLAG_UNPACK_CHECK_ORIGINALS) {
+    const packedOriginal = vectorNPack(original, scale, offset);
+    if (packed != packedOriginal) {
+      try {
+        throw new Error(`expected '${packedOriginal}' got ${packed}`)
+      } catch (e) {
+        console.warn(e);
+      }
+      return original;
+    }
+  }
+  return packed.split('').map(c => (c.charCodeAt(0) - VECTOR_PACK_STARTING_CHAR_CODE)* scale/64 + offset) as T;
+};
+
+const vectorNPack = <T extends number[]>(original: T, scale: number, offset: number): string => {
+  original.forEach((v, i) => {
+    if (v < offset || v > offset + scale) {
+      try {
+        throw new Error(`${i}th component of ${v} is out of range`);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+  });
+  return original.map(
+      v => String.fromCharCode(Math.round(VECTOR_PACK_STARTING_CHAR_CODE + (v - offset) * 64/scale)),
+  ).join('');
+};
+
+const vectorNUnpackAngles = (packed: string, original: Vector3): Vector3 => {
+  return vectorNUnpack(packed, original, Math.PI*2, -Math.PI);
+}
+
+// from -1 to 1
+const vectorNUnpackSmallPosition = (packed: string, original: Vector3) => {
+  return vectorNUnpack(packed, original, 2, -1);
 }

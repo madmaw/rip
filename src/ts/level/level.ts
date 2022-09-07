@@ -544,7 +544,6 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       const [entity] = entities.splice(index, 1);
       levelAddEntity(level, entity);
       quantity--;
-      console.log(i, entity.position);
     }
   });
 

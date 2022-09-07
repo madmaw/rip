@@ -145,10 +145,3 @@ const INPUT_KEYS: Record<Input, KeyCode[]> & KeyCode[][] = [
   // ATTACK HEAVY
   FLAG_GAMEPAD_SUPPORT ? [KEY_I, KEY_S]: [KEY_S],
 ]
-
-onkeydown = (e: KeyboardEvent) => {
-  keySet(e.keyCode as KeyCode, then, 1);
-  e.preventDefault();
-};
-
-onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);

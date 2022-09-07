@@ -1,5 +1,4 @@
-const shortenMethods = <F, T extends F>(o: F, variableName: string): T => {
-  // let dts = '';
+const haxShortenMethods = <F, T extends F>(o: F, variableName: string): T => {
   const mapped = new Map<string, string>();
   for(const k in o) {
     const shortened = k.replace(/(^..)[a-z]*([A-Z]?)?[a-z]*([A-Z]?)?[a-z]*([A-Z]?)?[a-z]*(.+)$/, '$1$2$3$4$5');
@@ -9,19 +8,19 @@ const shortenMethods = <F, T extends F>(o: F, variableName: string): T => {
           console.log(`//${shortened} from ${k} already exists: ${mapped.get(shortened)}`);
         } else {
           mapped.set(shortened, k);
-          // dts += `${shortened}: PropType<${o.constructor?.name || 'object'}, '${k}'>;\n`;
         }
       }  
     }
     o[shortened] = o[k];
   }
   if (FLAG_DEBUG_SHORTENED_METHODS) {  
-    // console.log(dts);
-
     // also generate the replacements
-    console.log([...mapped.entries()].map(([k, v]) => {
-      return ` }, { from: "${variableName}.${v}(", to: "${variableName}['${k}']("`
-    }).join(''));  
+    const gruntMappings = [...mapped.entries()].map(([k, v]) => {
+      return `{ from: "${variableName}.${v}(", to: "${variableName}['${k}'](" }, `
+    }); 
+    for( let i=0; i<gruntMappings.length; i += 100) {
+      console.log(gruntMappings.slice(i, i + 100).join(''));
+    }
   }
   return o as any;
 };

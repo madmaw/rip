@@ -22,12 +22,15 @@ const animLerp = (
     easing: Easing,
     wrapAngles?: Booleanish,
     onComplete?: (() => void) | Falsey,
+    ///logPrefix?: string,
 ) => {
   const from = [...into];
-  return (now: number): 0 | 1 => {
+  //logPrefix && console.log(logPrefix, duration, start);
+  return (now: number): Booleanish => {
     const delta = now - start;
     const proportion = duration ? Math.min(delta / duration, 1) : 1;
     const progress = easing(proportion);
+    //logPrefix && console.log(logPrefix, now, delta, progress, proportion);
     arrayMapAndSet(into, (_, i) => {
       const diff = wrapAngles ? mathAngleDiff(from[i], to[i]) : to[i] - from[i];
       const result = from[i] + diff * progress;
