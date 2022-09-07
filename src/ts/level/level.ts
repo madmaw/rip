@@ -359,6 +359,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
 
   const validEnemies: Entity[] = [];
   const validTreasure: Entity[] = [];
+  const validTraps: Entity[][] = [];
 
   levelIterateInBounds(level, [0, 0, layer], [width, height, 1], (tile: Tile, ...position: Vector3) => {
     const [x, y, z] = position;
@@ -367,6 +368,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
 
     const adjacentWalls: Orientation[] = [];
     let stairsIncoming: Booleanish = 0;
+    let stairsOutgoing: Booleanish = 0;
     for (let dz = 0; dz < 2; dz++) {
       const tz = z - dz;
       for (let orientation = 0; orientation < 4; orientation++) {
@@ -384,18 +386,36 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             adjacentWalls.push(orientation as Orientation);
           }
           stairsIncoming = stairsIncoming || dz && (cell == (orientation + 2) % 4);
+          stairsOutgoing = stairsOutgoing || !dz && (cell == orientation);
         }
       }  
     }
 
     const cell = tile.cell;
-    const cellBelow = z > 0 && level.tiles[x][y][z - 1].cell;
-    const hasFloor = cell == LEVEL_DESIGN_CELL_FLOOR 
-        || cellBelow == LEVEL_DESIGN_CELL_WALL
-        && (cell == LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR
-            || cell == LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
-            || cell == LEVEL_DESIGN_CELL_SPACE);
+    let floorDepth = 0;
+    let cellBelow: LevelDesignCell = cell;
+    let cellAbove: LevelDesignCell = LEVEL_DESIGN_CELL_SPACE;
+    while (
+      cellAbove != LEVEL_DESIGN_CELL_FLOOR
+      && cellBelow != LEVEL_DESIGN_CELL_WALL
+  ) {
+      cellAbove = cellBelow;
+      floorDepth++;
+      cellBelow = level.tiles[x][y][Math.max(0, z - floorDepth)].cell;
+    };
 
+    // const hasFloor = cell == LEVEL_DESIGN_CELL_FLOOR
+    //     || cellBelow == LEVEL_DESIGN_CELL_WALL
+    //     && (cell == LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR
+    //         || cell == LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
+    //         || cell == LEVEL_DESIGN_CELL_SPACE);
+    const hasFloor = floorDepth == 1
+        && (cell == LEVEL_DESIGN_CELL_FLOOR
+            || cell == LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR
+            || cell == LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
+            || cell == LEVEL_DESIGN_CELL_SPACE
+        );
+    
     if (hasFloor && adjacentWalls.length == 3) {
       // club
       const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
@@ -418,8 +438,48 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       validTreasure.push(club);
     }
 
-    // torch
-    if (hasFloor
+    if (floorDepth == 2 && !stairsOutgoing) {
+      // pit trap
+      validTraps.push(new Array(9).fill(0).map((_, i) => {
+        const position: Vector3 = [x + Math.random(), y + Math.random(), z - 1 + Math.random() * SPEAR_LENGTH/2];
+        return entityCreate({
+          entityBody: SPEAR_PART,
+          dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
+          collisionGroup: COLLISION_GROUP_ITEM,
+          positioned: position,
+          rotated: [CONST_PI_ON_6_1DP - CONST_PI_ON_3_0DP * Math.random(), -CONST_PI_ON_2_1DP, 0],
+          //rotated: [0, -CONST_PI_ON_2_1DP, 0],
+          collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+        });
+      }));
+    }
+
+
+    if (hasFloor && adjacentWalls.length < 3) {
+      const maxHealth = 3;
+      
+      // don't face the wall
+      const orientation = ORIENTATIONS.find(o => adjacentWalls.indexOf(o) < 0);
+      const enemy: Entity<SkeletonPartId> = entityCreate({
+        positioned: position,
+        dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+        oriented: orientation,
+        entityBody: PART_SKELETON_BODY,
+        entityType: ENTITY_TYPE_HOSTILE,
+        acc: .005,
+        velocity: [0, 0, 0],
+        rotated: [0, 0, orientation * CONST_PI_ON_2_1DP],
+        health: maxHealth,
+        maxHealth,
+        collisionGroup: COLLISION_GROUP_MONSTER,
+        collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+      }, 1);
+      enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
+      validEnemies.push(enemy);   
+    }
+
+      // torch
+      if (hasFloor
         && adjacentWalls.length
         && stairsIncoming
         // at least one torch per level
@@ -450,28 +510,6 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       });
       levelAddEntity(level, torch);
       layerTorches++;
-    }
-    if (hasFloor && adjacentWalls.length < 3) {
-      const maxHealth = 3;
-      
-      // don't face the wall
-      const orientation = ORIENTATIONS.find(o => adjacentWalls.indexOf(o) < 0);
-      const enemy: Entity<SkeletonPartId> = entityCreate({
-        positioned: position,
-        dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-        oriented: orientation,
-        entityBody: PART_SKELETON_BODY,
-        entityType: ENTITY_TYPE_HOSTILE,
-        acc: .005,
-        velocity: [0, 0, 0],
-        rotated: [0, 0, orientation * CONST_PI_ON_2_1DP],
-        health: maxHealth,
-        maxHealth,
-        collisionGroup: COLLISION_GROUP_MONSTER,
-        collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-      }, 1);
-      enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
-      validEnemies.push(enemy);   
     }
 
     switch (cell) {
@@ -538,11 +576,14 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
   });
 
-  ([[validEnemies, Math.sqrt(layer) - 1], [validTreasure, 3]] as const).forEach(([entities, quantity], i) => {
+  ([[validEnemies, Math.sqrt(layer) - 1], [validTreasure, 3], [validTraps, 10]] as const).forEach(([entities, quantity], i) => {
     while (quantity > 0 && entities.length) {
       const index = Math.random() * entities.length | 0;
-      const [entity] = entities.splice(index, 1);
-      levelAddEntity(level, entity);
+      const tileEntities = entities.splice(index, 1);
+      // flat because this could be one or an array
+      tileEntities.flat().forEach(e => {
+        levelAddEntity(level, e);
+      });
       quantity--;
     }
   });

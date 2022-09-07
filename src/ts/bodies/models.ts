@@ -20,6 +20,7 @@ const MODEL_CLUB_4 = 18;
 const MODEL_CLUB_5 = 19;
 const MODEL_TORCH_HANDLE = 20;
 const MODEL_TORCH_HEAD = 21;
+const MODEL_SPEAR = 22;
 
 type ModelId =
     | typeof MODEL_WALL
@@ -44,4 +45,5 @@ type ModelId =
     | typeof MODEL_CLUB_5
     | typeof MODEL_TORCH_HANDLE
     | typeof MODEL_TORCH_HEAD
+    | typeof MODEL_SPEAR
     ;

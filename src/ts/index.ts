@@ -1,6 +1,7 @@
 ///<reference path="bodies/clubs.ts"/>
 ///<reference path="bodies/steps.ts"/>
 ///<reference path="bodies/skeleton.ts"/>
+///<reference path="bodies/spear.ts"/>
 ///<reference path="bodies/torch.ts"/>
 ///<reference path="bodies/wall.ts"/>
 ///<reference path="level/entity.ts"/>
@@ -90,7 +91,7 @@ const VERTEX_SHADER = `#version 300 es
 
 const OUT_RESULT = FLAG_LONG_GL_VARIABLE_NAMES ? 'result' : '_';
 
-const L_CAMERA_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCameraDelta' : 'a';
+const L_CAMERA_AND_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCameraDelta' : 'a';
 const L_TEXTURE_SCALE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureScale' : 'b';
 const L_MODEL_CAMERA_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelCameraNormal' : 'c';
 const L_TEXTURE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureDelta' : 'd';
@@ -109,7 +110,7 @@ const L_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightColor' : 'p';
 const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
 const L_COS_LIGHT_ANGLE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCosLightAngleDelta' : 'r';
 const L_LIGHT_TEXEL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTexel' : 's';
-const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't';
+//const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't'; // unused
 const L_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightNormal' : 'u';
 const L_LIGHT_TEXTURE_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTextureNormal' : 'U';
 const L_LIGHT_DISTANCE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDistance' : 'T';
@@ -141,10 +142,10 @@ const FRAGMENT_SHADER = `#version 300 es
   }
 
   void main() {
-    vec3 ${L_CAMERA_DELTA} = ${V_POSITION} - ${U_CAMERA_POSITION};
+    vec3 ${L_CAMERA_AND_LIGHT_DELTA} = ${V_POSITION} - ${U_CAMERA_POSITION};
     float ${L_TEXTURE_SCALE} = length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION});
     vec3 ${L_MODEL_CAMERA_NORMAL} = normalize(
-        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_DELTA}, 1.) -
+        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_AND_LIGHT_DELTA}, 1.) -
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
     ).xyz;
     
@@ -198,7 +199,7 @@ const FRAGMENT_SHADER = `#version 300 es
       );
     }
 
-    float ${L_DEPTH} = ${L_TEXTURE_DELTA} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_DELTA}));
+    float ${L_DEPTH} = ${L_TEXTURE_DELTA} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
     vec4 ${L_COLOR} = texture(${U_TEXTURE_COLORS}, tx(${L_TEXTURE_POSITION}));
     // ${L_COLOR} = vec4((${L_NORMAL} + 1.) / 2., length(${L_NORMAL}));
     // if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
@@ -229,8 +230,8 @@ const FRAGMENT_SHADER = `#version 300 es
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        vec3 ${L_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
-        vec3 ${L_LIGHT_NORMAL} = normalize(${L_LIGHT_DELTA});
+        ${L_CAMERA_AND_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
+        vec3 ${L_LIGHT_NORMAL} = normalize(${L_CAMERA_AND_LIGHT_DELTA});
         vec3 ${L_LIGHT_TEXTURE_NORMAL} = normalize(
             abs(${L_LIGHT_NORMAL}.x) > abs(${L_LIGHT_NORMAL}.y) && abs(${L_LIGHT_NORMAL}.x) > abs(${L_LIGHT_NORMAL}.z)
                 ? vec3(${L_LIGHT_NORMAL}.x, 0, 0)
@@ -239,7 +240,7 @@ const FRAGMENT_SHADER = `#version 300 es
                     : vec3(0, 0, ${L_LIGHT_NORMAL}.z)
         );
         float ${L_COS_LIGHT_ANGLE_DELTA} = dot(${L_NORMAL}, ${L_LIGHT_NORMAL});
-        //${L_COLOR} = vec4(vec3(length(${L_LIGHT_DELTA})/4.), 1.);
+        //${L_COLOR} = vec4(vec3(length(${L_CAMERA_AND_LIGHT_DELTA})/4.), 1.);
         // cannot index into samplers!
         vec4 ${L_LIGHT_TEXEL} = i == 0
             ? texture(${U_LIGHT_TEXTURES}[0], ${L_LIGHT_NORMAL})
@@ -262,11 +263,11 @@ const FRAGMENT_SHADER = `#version 300 es
         float ${L_LIGHT} = mix(
                 max(0., -${L_COS_LIGHT_ANGLE_DELTA}),
                 1.,
-                pow(max(0., (${MIN_LIGHT_THROW_C} - length(${L_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w), 2.)
+                pow(max(0., (${MIN_LIGHT_THROW_C} - length(${L_CAMERA_AND_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w), 2.)
             )
             * ${U_LIGHT_POSITIONS}[i].w
-            * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_LIGHT_DELTA}))/${MAX_LIGHT_THROW_C}, 2.));
-        if (length(${L_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE} + ${L_BIAS} && ${L_COS_LIGHT_ANGLE_DELTA} < 0. || length(${L_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}) {
+            * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_CAMERA_AND_LIGHT_DELTA}))/${MAX_LIGHT_THROW_C}, 2.));
+        if (length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE} + ${L_BIAS} && ${L_COS_LIGHT_ANGLE_DELTA} < 0. || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}) {
           ${L_LIGHT_COLOR} += ${L_LIGHT}
               * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_LIGHT}))
               + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.y, 0.) : 0.);
@@ -362,6 +363,7 @@ const shapes = [
   ...SHAPES_CLUBS,
   SHAPE_TORCH_HANDLE,
   SHAPE_TORCH_HEAD,
+  SHAPE_SPEAR_BODY,
 ];
 
 
