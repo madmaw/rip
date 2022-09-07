@@ -451,7 +451,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       sequences: entityFlipBodyPartAnimationSequences(
           {
             [SKELETON_PART_ID_HEAD]: [[
-              vectorNUnpackAngles('HC=', [0, -Math.PI/6, -Math.PI/3]), 
+              [0, -Math.PI/6, -Math.PI/3], 
             ], 1, EASE_OUT_QUAD],
             [SKELETON_PART_ID_HIPS]: [[
               [0, -Math.PI/12, -Math.PI/3],
