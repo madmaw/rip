@@ -108,7 +108,7 @@ const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnim
 const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
         '*!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;  @("@P@@ME  @)"@F@@M@  @*"@M@@F@  @',
-        {
+        FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, 0],
             [0, Math.PI/12, 0],
@@ -157,7 +157,7 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
 const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
         '*!"@==@=C  @""@CC@C=  @#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<@@U@  @("@U@@<@  @)"@F@@M@  @*"@M@@F@  @',
-        {
+        FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, -Math.PI/12],
             [0, -Math.PI/12, Math.PI/12],
@@ -203,7 +203,7 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
 
 const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
     '(!"@;K@;5! @""@=5@CK! @#"@P0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P', 
-    {
+    FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HEAD]: [[
         [0, -Math.PI/6, Math.PI/3],
         [0, -Math.PI/6, -Math.PI/3],
@@ -240,7 +240,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
     '% "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'!@J@  @(!@J@  @',
-    {
+    FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HIPS]: [[
         [0, 0, 0],
         [0, Math.PI/12, 0],
@@ -314,8 +314,8 @@ type SkeletonPartId =
 
 const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   defaultJointRotations: safeUnpackVector3Rotations(
-      '',
-      [
+      '/@C@@=@@@@@H@@<@@H@@<@@J@@J@@J@@J@@@@@@@@@@@@@',
+      FLAG_UNPACK_SUPPLY_ORIGINALS && [
         //SKELETON_PART_ID_RIBCAGE
         [0, Math.PI/10, 0],
         //SKELETON_PART_ID_HEAD
@@ -376,7 +376,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       sequences: [
         safeUnpackAnimationSequence(
             '\'"!@D@!"@#!@X@  @$!@5@  @%!@X@  @&!@5@  @\'"@;@@@@  @("@;@@@@  @',
-            {
+            FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HIPS]: [[
                 [0, Math.PI/8, 0],
               ], 1, EASE_OUT_QUAD],
@@ -409,7 +409,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       sequences: [
         safeUnpackAnimationSequence(
             '#"!@@@  @#!@0@  @$!@:@  @',
-            {
+            FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HIPS]: [[
                 [0, 0, 0],
               ]],
@@ -439,7 +439,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       sequences: [
         safeUnpackAnimationSequence(
             '&!!@;@! @"!@E@!"@\'!@C:! @(!@:F! @)!@V@! @*!@PF! @',
-            {
+            FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HEAD]: [[
                 [0, -Math.PI/6, 0],
               ], 1],
@@ -481,32 +481,35 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       maxSpeed: .007,
       blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK | ACTION_ID_RUN | ACTION_ID_ATTACK_LIGHT | ACTION_ID_ATTACK_HEAVY,
       sequences: entityFlipBodyPartAnimationSequences(
-          safeUnpackAnimationSequence('( !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @', {
-            [SKELETON_PART_ID_HEAD]: [
-              [[0, -Math.PI/6, -Math.PI/3]], 
-              1, EASE_OUT_QUAD],
-            [SKELETON_PART_ID_HIPS]: [
-              [[0, -Math.PI/12, -Math.PI/3]], 
-              1, EASE_OUT_QUAD],
-            [SKELETON_PART_ID_RIBCAGE]: [
-              [[0, 0, -Math.PI/3]],
-              1],
-            [SKELETON_PART_ID_HUMERUS_RIGHT]: [
-              [[0, Math.PI/9, -Math.PI/3]],
-              1],
-            [SKELETON_PART_ID_FOREARM_RIGHT]: [
-              [[0, Math.PI/6, 0]],
-              1],
-            [SKELETON_PART_ID_HUMERUS_LEFT]: [
-              [[0, -Math.PI/9, Math.PI/3]],
-              1],
-            [SKELETON_PART_ID_FEMUR_RIGHT]: [
-              [[0, Math.PI*1/10, -Math.PI/3]],
-              1],
-            [SKELETON_PART_ID_SHIN_RIGHT]: [
-              [[0, Math.PI*7/10, 0]],
-              1],
-          }),
+          safeUnpackAnimationSequence(
+              '( !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @', 
+              FLAG_UNPACK_SUPPLY_ORIGINALS && {
+                [SKELETON_PART_ID_HEAD]: [
+                  [[0, -Math.PI/6, -Math.PI/3]], 
+                  1, EASE_OUT_QUAD],
+                [SKELETON_PART_ID_HIPS]: [
+                  [[0, -Math.PI/12, -Math.PI/3]], 
+                  1, EASE_OUT_QUAD],
+                [SKELETON_PART_ID_RIBCAGE]: [
+                  [[0, 0, -Math.PI/3]],
+                  1],
+                [SKELETON_PART_ID_HUMERUS_RIGHT]: [
+                  [[0, Math.PI/9, -Math.PI/3]],
+                  1],
+                [SKELETON_PART_ID_FOREARM_RIGHT]: [
+                  [[0, Math.PI/6, 0]],
+                  1],
+                [SKELETON_PART_ID_HUMERUS_LEFT]: [
+                  [[0, -Math.PI/9, Math.PI/3]],
+                  1],
+                [SKELETON_PART_ID_FEMUR_RIGHT]: [
+                  [[0, Math.PI*1/10, -Math.PI/3]],
+                  1],
+                [SKELETON_PART_ID_SHIN_RIGHT]: [
+                  [[0, Math.PI*7/10, 0]],
+                  1],
+              }
+          ),
           SKELETON_PART_FLIPS,
       ),
     }
@@ -803,34 +806,47 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
       SKELETON_RIBCAGE_HEIGHT,
       SKELETON_RIBCAGE_DEPTH,
   ),
-  ...planeFlipAndDuplicateOnAxis(planeFlipAndDuplicateOnAxis([
-    // shoulder
-    {
-      d: .09,
-      normal: vectorNNormalize([0, 1, 1])
-    },
-    // waist
-    {
-      d: .07,
-      normal: vectorNNormalize([0, 3, -1])
-    },
-    // back rounding
-    {
-      d: .06,
-      normal: vectorNNormalize([-2, 3, -1])
-    },
-  ], 1), 0),
-  // collar
-  {
-    d: .085, 
-    normal: vectorNNormalize([1, 0, 1])
-  },
-  // back
-  {
-    d: .07, 
-    normal: vectorNNormalize([-1, 0, 1])
-  },
-  
+  ...planeFlipAndDuplicateOnAxis(
+      planeFlipAndDuplicateOnAxis(
+          safeUnpackPlanes(
+              '#@WWZ@^6M/Z7F',
+              FLAG_UNPACK_SUPPLY_ORIGINALS && [
+                // shoulder
+                {
+                  d: .09,
+                  normal: vectorNNormalize([0, 1, 1])
+                },
+                // waist
+                {
+                  d: .07,
+                  normal: vectorNNormalize([0, 3, -1])
+                },
+                // back rounding
+                {
+                  d: .06,
+                  normal: vectorNNormalize([-2, 3, -1])
+                },
+              ]
+          ),
+          1,
+      ),
+      0,
+  ),
+  ...safeUnpackPlanes(
+      '"W@WV)@WM',
+      FLAG_UNPACK_SUPPLY_ORIGINALS && [
+        // collar
+        {
+          d: .085, 
+          normal: vectorNNormalize([1, 0, 1])
+        },
+        // back
+        {
+          d: .07, 
+          normal: vectorNNormalize([-1, 0, 1])
+        },
+      ]
+  ),
 ]);
 
 const SHAPE_SKELETON_HEAD = shapeFromPlanes([
@@ -839,58 +855,62 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
       SKELETON_HEAD_HEIGHT,
       SKELETON_HEAD_DEPTH,
   ),
-  ...planeFlipAndDuplicateOnAxis([
-    // under jaw
-    {
-      d: .04,
-      normal: vectorNNormalize([-1, 0, -3]),
-    },
-    // front of face
-    {
-      d: .05,
-      normal: vectorNNormalize([1, 0, 0]),
-    },
-    // top of back of head
-    {
-      d: .04,
-      normal: vectorNNormalize([-2, 0, 3]),
-    },
-    // side of face
-    {
-      d: .05,
-      normal: vectorNNormalize([3, 3, 1]),
-    },
-    // forehead
-    {
-      d: .045,
-      normal: vectorNNormalize([2, 0, 3]),
-    },
-    // right cheek narrowing
-    {
-      d: .05,
-      normal: vectorNNormalize([4, 5, -2])
-    },
-    // right cranium rounding
-    {
-      d: .04,
-      normal: vectorNNormalize([0, 2, 3])
-    },
-    // right back of head rounding (top)
-    {
-      d: .04,
-      normal: vectorNNormalize([-3, 3, 1])
-    },
-    // right back of head rounding (bottom)
-    {
-      d: .045,
-      normal: vectorNNormalize([-3, 3, -1])
-    },
-    // right bottom of head rounding
-    {
-      d: .045,
-      normal: vectorNNormalize([0, 1, -1])
-    },
-  ], 1),
+  ...planeFlipAndDuplicateOnAxis(
+      safeUnpackPlanes(
+          '*6@":`@@@.@[:VVG@R@[=SX6@@R[:*VG:*V9=@W)=',
+          FLAG_UNPACK_SUPPLY_ORIGINALS && [
+            // under jaw
+            {
+              d: .04,
+              normal: vectorNNormalize([-1, 0, -3]),
+            },
+            // front of face
+            {
+              d: .05,
+              normal: vectorNNormalize([1, 0, 0]),
+            },
+            // top of back of head
+            {
+              d: .04,
+              normal: vectorNNormalize([-2, 0, 3]),
+            },
+            // side of face
+            {
+              d: .05,
+              normal: vectorNNormalize([3, 3, 1]),
+            },
+            // forehead
+            {
+              d: .045,
+              normal: vectorNNormalize([2, 0, 3]),
+            },
+            // right cheek narrowing
+            {
+              d: .05,
+              normal: vectorNNormalize([4, 5, -2])
+            },
+            // right cranium rounding
+            {
+              d: .04,
+              normal: vectorNNormalize([0, 2, 3])
+            },
+            // right back of head rounding (top)
+            {
+              d: .04,
+              normal: vectorNNormalize([-3, 3, 1])
+            },
+            // right back of head rounding (bottom)
+            {
+              d: .045,
+              normal: vectorNNormalize([-3, 3, -1])
+            },
+            // right bottom of head rounding
+            {
+              d: .045,
+              normal: vectorNNormalize([0, 1, -1])
+            },
+          ]
+      ), 1),
 ]);
 
 const SHAPE_SKELETON_HIPS = shapeFromPlanes([

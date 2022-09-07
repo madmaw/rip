@@ -50,8 +50,8 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
         // overhead smash
         sequences: [
           safeUnpackAnimationSequence(
-              '',
-              {
+              '* "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@H@!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!`',
+              FLAG_UNPACK_SUPPLY_ORIGINALS && {
                 [SKELETON_PART_ID_HIPS]: [[
                   [0, 0, 0],
                   [0, Math.PI/7, 0],
@@ -77,11 +77,11 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
                   [0, 0, 0],
                 ], 1],
                 [SKELETON_PART_ID_RIBCAGE]: [[
-                  [0, -Math.PI/5 - i/9, 0],
+                  [0, -Math.PI/5, 0],
                   [0, Math.PI/8, 0],
                 ], 1],
                 [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-                  [0, -i/5, 0],
+                  [0, -Math.PI/12, 0],
                   [0, Math.PI/4, 0],
                 ], 1, EASE_IN_QUAD],
                 [SKELETON_PART_ID_FOREARM_RIGHT]: [[

@@ -544,7 +544,7 @@ window.onload = window.onclick = () => {
   if (player?.health > 0) {
     return;
   }
-  cancelAnimationFrame(animationFrame);
+  window.cancelAnimationFrame(animationFrame);
   const level = levelCreate(9, 9);
   levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE, startX, startY);
   
@@ -1464,7 +1464,7 @@ window.onload = window.onclick = () => {
         light,
     );
   
-    animationFrame = requestAnimationFrame(update);
+    animationFrame = window.requestAnimationFrame(update);
   };
   update(0);
   

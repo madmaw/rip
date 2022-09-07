@@ -20,3 +20,5 @@ const FLAG_SHORTEN_METHODS = true;
 const FLAG_PRINT_GL_CONSTANTS = ENVIRONMENT == 'test' && false;
 const FLAG_UNPACK_CHECK_ORIGINALS = ENVIRONMENT == 'test';
 const FLAG_UNPACK_USE_ORIGINALS = false;
+// NOTE the use of undefined here allows CC to remove the argument entirely in a && 
+const FLAG_UNPACK_SUPPLY_ORIGINALS = FLAG_UNPACK_CHECK_ORIGINALS || FLAG_UNPACK_USE_ORIGINALS ? true : undefined;

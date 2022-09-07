@@ -229,11 +229,11 @@ module.exports = function (grunt) {
                 from: "forEach",
                 to: "map"
               }, {
-                from: "-58-32",
-                to:"-90",
-              }, {
                 from: /var ([a-zA-Z_$]+=[^;\{]+);var/g,
                 to: "var $1,",
+              }, {
+                from: ",null)",
+                to: ")",
               }]
           },
           js2: { // second pass for the bits that we changed above

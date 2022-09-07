@@ -43,6 +43,12 @@ const unpackAngle = unpackNumberBuilder(Math.PI * 2, -Math.PI);
 const unpackUnsignedInteger = unpackNumberBuilder(64, 0);
 // goes from -2 to 2
 const unpackFloat2 = unpackNumberBuilder(4, -2);
+// goes from -1 to 1
+const unpackFloat1 = unpackNumberBuilder(2, -1);
+// goes from -.5 to .5
+const unpackFloatHalf = unpackNumberBuilder(1, -.5);
+// goes from 0 to 0.1
+const unpackUnsignedFloatPoint1 = unpackNumberBuilder(.1, 0);
 
 const unpackRecordBuilder = <Key extends string | number, Value>(
     keyUnpacker: Unpacker<Key>, valueUnpacker: Unpacker<Value>
@@ -61,6 +67,7 @@ const unpackRecordBuilder = <Key extends string | number, Value>(
 };
 
 const unpackVector3Rotations = unpackSizedArrayBuilder(unpackFixedLengthArrayBuilder<Vector3>(unpackAngle, 3));
+const unpackVector3Normal = unpackFixedLengthArrayBuilder<Vector3>(unpackFloat1, 3);
 
 const unpackEntityBodyPartAnimationSequences = unpackRecordBuilder<number, EntityBodyPartAnimationSequence>(
     unpackUnsignedInteger,
@@ -71,6 +78,16 @@ const unpackEntityBodyPartAnimationSequences = unpackRecordBuilder<number, Entit
         unpackFloat2,
     ),
 );
+
+const unpackSmallPlane: Unpacker<Plane> = (packed: string[]) => {
+  const normal = vectorNNormalize(unpackVector3Normal(packed));
+  return {
+    normal,
+    d: unpackUnsignedFloatPoint1(packed),
+  }
+};
+
+const unpackSmallPlanes = unpackSizedArrayBuilder(unpackSmallPlane); 
 
 //const unpackPlanes = unpackSizedArrayBuilder()
 
@@ -108,6 +125,12 @@ const packAngle = packNumberBuilder(Math.PI*2, -Math.PI);
 const packUnsignedInteger = packNumberBuilder(64, 0);
 // -2..2
 const packFloat2 = packNumberBuilder(4, -2);
+// -1..1
+const packFloat1 = packNumberBuilder(2, -1);
+// -.5..-5
+const packFloatPoint5 = packNumberBuilder(1, -.5);
+// 0..0.1
+const packUnsignedFloatPoint1 = packNumberBuilder(.1, 0);
 
 const packParsedNumberBuilder = (packer: Packer<number>): Packer<string> => {
   return (value: string) => packer(parseInt(value));
@@ -133,6 +156,7 @@ const packRecordBuilder = <Key extends string | number, Value>(keyPacker: Packer
 };
 
 const packVector3Rotations = packSizedArrayBuilder(packFixedLengthArrayBuilder<Vector3>(packAngle, 3));
+const packVector3Normal = packFixedLengthArrayBuilder<Vector3>(packFloat1, 3)
 
 const packEntityBodyPartAnimationSequences = packRecordBuilder<number, EntityBodyPartAnimationSequence>(
   packParsedNumberBuilder(packUnsignedInteger),
@@ -144,16 +168,19 @@ const packEntityBodyPartAnimationSequences = packRecordBuilder<number, EntityBod
   ),
 );
 
+const packSmallPlane: Packer<Plane> = (value: Plane): string[] => {
+  return packVector3Normal(vectorNNormalize(value.normal)).concat(packUnsignedFloatPoint1(value.d));
+};
+
+const packSmallPlanes = packSizedArrayBuilder(packSmallPlane);
+
 // safe
 
-type SafeUnpacker<T> = (packed: string, original: T) => T;
+type SafeUnpacker<T> = (packed: string, original?: T | Falsey) => T;
 
 const safeUnpackerBuilder = <T>(unpacker: Unpacker<T>, packer?: Packer<T> | Falsey): SafeUnpacker<T> => {
-  return (packed: string, original: T) => {
-    if (FLAG_UNPACK_USE_ORIGINALS) {
-      return original;
-    }  
-    if (FLAG_UNPACK_CHECK_ORIGINALS && packer) {
+  return (packed: string, original?: T | Falsey) => {
+    if (FLAG_UNPACK_CHECK_ORIGINALS && packer && original) {
       const packedOriginal = packer(original).join('');
       if (packed != packedOriginal) {
         try {
@@ -161,9 +188,12 @@ const safeUnpackerBuilder = <T>(unpacker: Unpacker<T>, packer?: Packer<T> | Fals
         } catch (e) {
           console.warn(e);
         }
-        return original;
+        packed = packedOriginal;
       }  
     }  
+    if (FLAG_UNPACK_USE_ORIGINALS && original) {
+      return original;
+    }
     return unpacker(packed.split(''));
   };
 };
@@ -176,4 +206,9 @@ const safeUnpackVector3Rotations = safeUnpackerBuilder<Vector3[]>(
 const safeUnpackAnimationSequence = safeUnpackerBuilder<EntityBodyAnimationSequence<number>>(
     unpackEntityBodyPartAnimationSequences,
     FLAG_UNPACK_CHECK_ORIGINALS && packEntityBodyPartAnimationSequences,
+);
+
+const safeUnpackPlanes = safeUnpackerBuilder<Plane[]>(
+    unpackSmallPlanes,
+    FLAG_UNPACK_CHECK_ORIGINALS && packSmallPlanes,
 );
