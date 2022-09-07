@@ -2,10 +2,24 @@ type Anim = (now: number) => Booleanish;
 
 type Easing = (p: number) => number;
 
-const EASE_LINEAR: Easing = p => p;
-const EASE_IN_QUAD: Easing = p => p * p;
-const EASE_OUT_QUAD: Easing = p => p*(2-p);
-const EASE_IN_OUT_QUAD: Easing = p => p<.5 ? 2*p*p : -1+(4-2*p)*p;
+const EASE_LINEAR = 0;
+const EASE_IN_QUAD = 1;
+const EASE_OUT_QUAD = 2;
+const EASE_IN_OUT_QUAD = 3;
+
+type EasingId = 
+    | typeof EASE_LINEAR
+    | typeof EASE_IN_QUAD
+    | typeof EASE_OUT_QUAD
+    | typeof EASE_IN_OUT_QUAD
+    ;
+
+const EASINGS: Easing[] = [
+  p => p,
+  p => p * p,
+  p => p*(2-p),
+  p => p<.5 ? 2*p*p : -1+(4-2*p)*p
+];
 
 const animDeltaRotation = (from: Vector3, to: Vector3) => {
   const fromNormal = vector3TransformMatrix4(matrix4RotateInOrder(...from), 1, 0, 0);

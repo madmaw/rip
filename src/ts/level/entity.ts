@@ -175,16 +175,18 @@ type EntityBodyPartAnimationSequence = [
   // required
   Booleanish?,
   // easing to use 
-  Easing?,
+  EasingId?,
   // damage multiplier for self and children
   number?,
 ];
+
+type EntityBodyAnimationSequence<ID extends number> = Partial<Record<ID, EntityBodyPartAnimationSequence>>;
 
 type EntityBodyAnimation<ID extends number> = {
   maxSpeed: number,
   // mask of blocked action ids
   blockActions?: number,
-  sequences: Partial<Record<ID, EntityBodyPartAnimationSequence>>[],
+  sequences: EntityBodyAnimationSequence<ID>[],
   translate?: Vector3,
   // the range that this animation should be applied at (for AI)
   range?: number,
@@ -434,7 +436,7 @@ const entityStartAnimation = <T extends number>(
               ...bodyAnimations.translate || [0, 0, 0],
           ),
           totalDuration || 99,
-          EASE_OUT_QUAD,
+          EASINGS[EASE_OUT_QUAD],
       );
     }
 
@@ -464,7 +466,7 @@ const entityStartAnimation = <T extends number>(
                       joint.rotation,
                       rotation,
                       duration,
-                      easing,
+                      EASINGS[easing],
                       0,
                       () => {
                         joint.animSequenceNumber = index + 1;
@@ -478,7 +480,7 @@ const entityStartAnimation = <T extends number>(
                 defaultBodyJointRotation,
                 // TODO use overall speed of the animation
                 100,
-                easing,
+                EASINGS[easing],
                 // you shouldn't be making decisions based on default rotations
             );
         joint.anim = anim;

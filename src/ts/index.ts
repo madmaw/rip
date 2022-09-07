@@ -1056,7 +1056,7 @@ window.onload = window.onclick = () => {
                   entity.rotation,
                   to,
                   299,
-                  EASE_IN_OUT_QUAD,
+                  EASINGS[EASE_IN_OUT_QUAD],
                   1,
               );
               // action = ACTION_ID_TURN;

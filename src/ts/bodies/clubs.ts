@@ -48,48 +48,53 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
         translate: [.2, 0, -.1],
         range: .2,
         // overhead smash
-        sequences: [{
-          [SKELETON_PART_ID_HIPS]: [[
-            [0, 0, 0],
-            [0, Math.PI/7, 0],
-          ], 1],
-          [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-            [0, Math.PI/2, 0],
-            [0, Math.PI/2, 0],
-          ], 1],
-          [SKELETON_PART_ID_SHIN_RIGHT]: [[
-            [0, Math.PI/4, 0],
-            [0, Math.PI/2, 0],
-          ], 1],
-          [SKELETON_PART_ID_FEMUR_LEFT]: [[
-            [0, 0, 0],
-            [0, -Math.PI/4, 0],
-          ], 1],
-          [SKELETON_PART_ID_SHIN_LEFT]: [[
-            [0, Math.PI/2, 0],
-            [0, Math.PI/1.5, 0],
-          ], 1],
-          [SKELETON_PART_ID_HEAD]: [[
-            [0, -Math.PI/9, 0],
-            [0, 0, 0],
-          ], 1],
-          [SKELETON_PART_ID_RIBCAGE]: [[
-            [0, -Math.PI/5 - i/9, 0],
-            [0, Math.PI/8, 0],
-          ], 1],
-          [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-            [0, -i/5, 0],
-            [0, Math.PI/4, 0],
-          ], 1, EASE_IN_QUAD],
-          [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-            [0, -Math.PI/2, 0],
-            [0, 0, 0],
-          ], 1],
-          [SKELETON_PART_ID_HAND_RIGHT]: [[
-            [0, Math.PI/5, 0],
-            [0, 0, 0],
-          ], 1, EASE_IN_QUAD, 2],
-        }],
+        sequences: [
+          safeUnpackAnimationSequence(
+              '',
+              {
+                [SKELETON_PART_ID_HIPS]: [[
+                  [0, 0, 0],
+                  [0, Math.PI/7, 0],
+                ], 1],
+                [SKELETON_PART_ID_FEMUR_RIGHT]: [[
+                  [0, Math.PI/2, 0],
+                  [0, Math.PI/2, 0],
+                ], 1],
+                [SKELETON_PART_ID_SHIN_RIGHT]: [[
+                  [0, Math.PI/4, 0],
+                  [0, Math.PI/2, 0],
+                ], 1],
+                [SKELETON_PART_ID_FEMUR_LEFT]: [[
+                  [0, 0, 0],
+                  [0, -Math.PI/4, 0],
+                ], 1],
+                [SKELETON_PART_ID_SHIN_LEFT]: [[
+                  [0, Math.PI/2, 0],
+                  [0, Math.PI/1.5, 0],
+                ], 1],
+                [SKELETON_PART_ID_HEAD]: [[
+                  [0, -Math.PI/9, 0],
+                  [0, 0, 0],
+                ], 1],
+                [SKELETON_PART_ID_RIBCAGE]: [[
+                  [0, -Math.PI/5 - i/9, 0],
+                  [0, Math.PI/8, 0],
+                ], 1],
+                [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+                  [0, -i/5, 0],
+                  [0, Math.PI/4, 0],
+                ], 1, EASE_IN_QUAD],
+                [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+                  [0, -Math.PI/2, 0],
+                  [0, 0, 0],
+                ], 1],
+                [SKELETON_PART_ID_HAND_RIGHT]: [[
+                  [0, Math.PI/5, 0],
+                  [0, 0, 0],
+                ], 1, EASE_IN_QUAD, 2],
+              },
+          )
+        ],
       },   
     }
   };
