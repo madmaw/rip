@@ -10,7 +10,7 @@ type Plane = {
 type PerimeterEdge = {
   firstOutgoingIntersection?: Vector2,
   firstOutgoingIntersectionEdge?: PerimeterEdge,
-  direction: Vector2,
+  dir: Vector2,
   withPlane: Plane,
 }
 
@@ -236,7 +236,7 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
         // console.log('  intersection point', intersectionPoint);
 
         edges.push({
-          direction: intersectionDirection.slice(0, 2) as Vector2,
+          dir: intersectionDirection.slice(0, 2) as Vector2,
           point: intersectionPoint.slice(0, 2) as Vector2,
           withPlane: compare,
         });
@@ -254,15 +254,15 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
 
     for (let j=0; j<edges.length; j++) {
       let line = edges[j];
-      const nx2 = line.direction[0];
-      const ny2 = line.direction[1];
+      const nx2 = line.dir[0];
+      const ny2 = line.dir[1];
       const px2 = line.point[0];
       const py2 = line.point[1];
       let minLine: PerimeterEdge | undefined;
       let maxD: number | undefined;
       for (let k=0; k<edges.length; k++) {
         let compare = edges[k];
-        let cosAngle = vectorNDotProduct([-line.direction[1], line.direction[0]], compare.direction as [number, number]);
+        let cosAngle = vectorNDotProduct([-line.dir[1], line.dir[0]], compare.dir as [number, number]);
         if (cosAngle > EPSILON) {
           // px1 + nx1 * d1 = px2 + nx2 * d2
           //   => d1 = (px2 + nx2 * d2 - px1)/nx1
@@ -273,8 +273,8 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
           // => d2 * (ny1 * nx2 - nx1 * ny2) = nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1
           // => d2 = (nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1)/(ny1 * nx2 - nx1 * ny2)
         
-          const nx1 = compare.direction[0];
-          const ny1 = compare.direction[1];
+          const nx1 = compare.dir[0];
+          const ny1 = compare.dir[1];
           const px1 = compare.point[0];
           const py1 = compare.point[1];
           const d = (nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1)/(ny1 * nx2 - nx1 * ny2);

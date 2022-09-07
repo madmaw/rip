@@ -1,3 +1,5 @@
+///<reference path="./hax.ts"/>
+
 const UNPACK_STARTING_CHAR_CODE = 32;
 
 type Unpacker<T> = (c: string[]) => T;
@@ -39,7 +41,7 @@ const unpackNumberBuilder = (scale: number, offset: number): Unpacker<number> =>
   };
 }
 
-const unpackAngle = unpackNumberBuilder(Math.PI * 2, -Math.PI);
+const unpackAngle = unpackNumberBuilder(CONST_2_PI_2DP, -CONST_PI_2DP);
 const unpackUnsignedInteger = unpackNumberBuilder(64, 0);
 // goes from -2 to 2
 const unpackFloat2 = unpackNumberBuilder(4, -2);
@@ -54,13 +56,11 @@ const unpackRecordBuilder = <Key extends string | number, Value>(
     keyUnpacker: Unpacker<Key>, valueUnpacker: Unpacker<Value>
 ) => {
   return (packed: string[]): Partial<Record<Key, Value>> => {
-    let size = unpackUnsignedInteger(packed);
     const result: Partial<Record<Key, Value>> = {};
-    while (size > 0) {
+    while (packed.length) {
       const key = keyUnpacker(packed);
       const value = valueUnpacker(packed);
       result[key] = value;
-      size--;
     }
     return result;
   };
@@ -120,7 +120,7 @@ const packNumberBuilder = (scale: number, offset: number): Packer<number> => {
 };
 
 // -PI..PI
-const packAngle = packNumberBuilder(Math.PI*2, -Math.PI);
+const packAngle = packNumberBuilder(CONST_2_PI_2DP, -CONST_PI_2DP);
 // 0..64
 const packUnsignedInteger = packNumberBuilder(64, 0);
 // -2..2
@@ -142,15 +142,12 @@ const packDefaultBuilder = <T>(packer: Packer<T>, defaultValue: T): Packer<T | u
 
 const packRecordBuilder = <Key extends string | number, Value>(keyPacker: Packer<string>, valuePacker: Packer<Value>) => {
   return (record: Record<Key, Value>) => {
-    let size = 0;
     const result: string[] = [];
     for (const key in record) {
       const value = record[key];
-      size++;
       result.push(...keyPacker(key));
       result.push(...valuePacker(value));
     }
-    result.unshift(...packUnsignedInteger(size));
     return result;
   };
 };
@@ -176,39 +173,45 @@ const packSmallPlanes = packSizedArrayBuilder(packSmallPlane);
 
 // safe
 
-type SafeUnpacker<T> = (packed: string, original?: T | Falsey) => T;
+type SafeUnpacker<T> = (packed: string[], original?: T | Falsey) => T;
 
 const safeUnpackerBuilder = <T>(unpacker: Unpacker<T>, packer?: Packer<T> | Falsey): SafeUnpacker<T> => {
-  return (packed: string, original?: T | Falsey) => {
+  return (packed: string[], original?: T | Falsey) => {
     if (FLAG_UNPACK_CHECK_ORIGINALS && packer && original) {
       const packedOriginal = packer(original).join('');
-      if (packed != packedOriginal) {
+      if (packed.join('') != packedOriginal) {
         try {
-          throw new Error(`expected '${packedOriginal.replace(/\'/g, '\\\'')}' got '${packed}' for ${JSON.stringify(original)}`)
+          throw new Error(`expected '${packedOriginal.replace(/\'/g, '\\\'')}' got '${packed.join('')}' for ${JSON.stringify(original)}`)
         } catch (e) {
           console.warn(e);
         }
-        packed = packedOriginal;
+        packed = [...packedOriginal];
       }  
     }  
     if (FLAG_UNPACK_USE_ORIGINALS && original) {
       return original;
     }
-    return unpacker(packed.split(''));
+    return unpacker([...packed]);
   };
 };
 
-const safeUnpackVector3Rotations = safeUnpackerBuilder<Vector3[]>(
-    unpackVector3Rotations,
-    FLAG_UNPACK_CHECK_ORIGINALS && packVector3Rotations,
-);
+const safeUnpackVector3Rotations = FLAG_UNPACK_CHECK_ORIGINALS 
+    ? safeUnpackerBuilder<Vector3[]>(
+        unpackVector3Rotations,
+        packVector3Rotations,
+    )
+    : unpackVector3Rotations;
 
-const safeUnpackAnimationSequence = safeUnpackerBuilder<EntityBodyAnimationSequence<number>>(
-    unpackEntityBodyPartAnimationSequences,
-    FLAG_UNPACK_CHECK_ORIGINALS && packEntityBodyPartAnimationSequences,
-);
+const safeUnpackAnimationSequence = FLAG_UNPACK_CHECK_ORIGINALS 
+    ? safeUnpackerBuilder<EntityBodyAnimationSequence<number>>(
+        unpackEntityBodyPartAnimationSequences,
+        packEntityBodyPartAnimationSequences,
+    ) 
+    : unpackEntityBodyPartAnimationSequences;
 
-const safeUnpackPlanes = safeUnpackerBuilder<Plane[]>(
-    unpackSmallPlanes,
-    FLAG_UNPACK_CHECK_ORIGINALS && packSmallPlanes,
-);
+const safeUnpackPlanes = FLAG_UNPACK_CHECK_ORIGINALS
+    ? safeUnpackerBuilder<Plane[]>(
+        unpackSmallPlanes,
+        FLAG_UNPACK_CHECK_ORIGINALS && packSmallPlanes,
+    )
+    : unpackSmallPlanes;

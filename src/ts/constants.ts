@@ -1,4 +1,6 @@
 ///<reference path="math/matrix.ts"/>
+///<reference path="flags.ts"/>
+///<reference path="util/unpack.ts"/>
 
 const EPSILON = .00001;
 const GRAVITY = .000012;
@@ -29,27 +31,33 @@ const CUBE_MAP_PERPSECTIVE_TRANSFORM = matrix4Perspective(
     CUBE_MAP_PERPSECTIVE_Z_NEAR,
     CUBE_MAP_PERPSECTIVE_Z_FAR,
 );
-const CUBE_MAP_ROTATION_TRANSFORMS: Matrix4[] = ([
-  // +ve X
-  [Math.PI, -Math.PI/2, 0],
-  // -ve X
-  [Math.PI, Math.PI/2, 0],
-  // +ve Y
-  [Math.PI/2, Math.PI, Math.PI],
-  // -ve Y
-  [-Math.PI/2, Math.PI, Math.PI],
-  // +ve Z
-  [Math.PI, 0, 0],
-  // -ve Z
-  [Math.PI, Math.PI, 0],
-] as Vector3[]).map(v => matrix4RotateInOrder(...v));
+const CUBE_MAP_ROTATION_TRANSFORMS: Matrix4[] = safeUnpackVector3Rotations(
+    [...'&`0@`P@P``0```@@``@'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [
+      // +ve X
+      [Math.PI, -Math.PI/2, 0],
+      // -ve X
+      [Math.PI, Math.PI/2, 0],
+      // +ve Y
+      [Math.PI/2, Math.PI, Math.PI],
+      // -ve Y
+      [-Math.PI/2, Math.PI, Math.PI],
+      // +ve Z
+      [Math.PI, 0, 0],
+      // -ve Z
+      [Math.PI, Math.PI, 0],
+    ] as Vector3[]
+).map(v => matrix4RotateInOrder(...v));
 const CUBE_MAP_DIMENSION = 256;
 const CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES: number[] = new Array(MAX_LIGHTS).fill(MAX_LIGHTS);
 const CUBE_MAP_LIGHTS_FAKE: number[] = new Array(MAX_LIGHTS * 4).fill(0);
 const CUBE_MAP_LIGHTS_TEXTURE_INDICES: number[] = CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES.map((_, i) => i);
 const TEXTURE_COLOR_INDEX = MAX_LIGHTS + 2;
 const TEXTURE_NORMAL_INDEX = TEXTURE_COLOR_INDEX + 1;
-const TEXTURE_SIZE = 18;
+const DEFAULT_TEXTURE_SIZE = 28;
+const TEXTURE_SIZE = FLAG_HASH_TEXTURE_QUALITY
+    ? parseInt(window.location.hash.substring(1)) || DEFAULT_TEXTURE_SIZE
+    : DEFAULT_TEXTURE_SIZE;
 const TEXTURE_SIZE_PLUS_2 = TEXTURE_SIZE + 2;
 
 const TEXTURE_LOOP_STEPS = 30;
@@ -63,7 +71,7 @@ const TARGET_ASPECT_RATIO = TARGET_HORIZONTAL_RESOLUTION / TARGET_VERTICAL_RESOL
 const MAX_ATTACK_RADIUS = 1;
 const DAMAGE_INVULNERABILITY_DURATION = 200;
 const SKELETON_WALK_SPEED = .001;
-const AI_RECALCULATION_TIME = 999;
+const AI_RECALCULATION_TIME = 1e4;
 const AI_LOOK_RADIUS = 3;
 const AI_DIRECT_MOVE_RADIUS = .7;
 const LEVEL_DIMENSION = 9;

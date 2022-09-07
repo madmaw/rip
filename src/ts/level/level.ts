@@ -17,7 +17,7 @@ const levelPopulateGraph = (level: Level) => {
       [0, 0, 0],
       level.dimensions,
       (entity, ...pos) => {
-        const area = rect3Intersection(pos, [1, 1, 1], entity.position, entity.dimensions).reduce(
+        const area = rect3Intersection(pos, [1, 1, 1], entity.positioned, entity.dimensions).reduce(
           (acc, v) => {
             return acc * v;
           },
@@ -40,7 +40,7 @@ const levelPopulateGraph = (level: Level) => {
     from.orientationTargetTilePositions = ORIENTATION_OFFSETS.map<Vector3>((offset, orientation) => {
       // assume we don't have stairs leading up to nowhere, otherwise will need to check the
       // bounds too
-      const zOffset = orientation == fromSalientFeature?.orientation
+      const zOffset = orientation == fromSalientFeature?.oriented
           && fromSalientFeature?.entityType == ENTITY_TYPE_STAIR
           ? 1
           : 0;
@@ -53,7 +53,7 @@ const levelPopulateGraph = (level: Level) => {
           const toSalientFeature = salientFeatures[toX][toY][toZ];
           if (toZ == startingZ && toSalientFeature) {
             // way is maybe blocked
-            if (toSalientFeature.entityType == ENTITY_TYPE_STAIR && toSalientFeature.orientation == orientation) {
+            if (toSalientFeature.entityType == ENTITY_TYPE_STAIR && toSalientFeature.oriented == orientation) {
               return [toX, toY, toZ];
             }
             // assume anything else is a blockage
@@ -110,13 +110,13 @@ const levelIterateEntitiesInBounds = (
 
 const levelAddEntity = (level: Level, entity: Entity) => levelIterateInBounds(
     level,
-    entity.position,
+    entity.positioned,
     entity.dimensions,
     tile => tile.entities[entity.id] = entity,
 );
 const levelRemoveEntity = (level: Level, entity: Entity) => levelIterateInBounds(
     level,
-    entity.position,
+    entity.positioned,
     entity.dimensions,
     tile => delete tile.entities[entity.id],
 );
@@ -399,16 +399,16 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     if (hasFloor && adjacentWalls.length == 3) {
       // club
       const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
-      const maxHealth = 40 + clubSize * 10;
+      const maxHealth = 7 + clubSize;
       const clubBody = PARTS_CLUBS[clubSize];
       const clubShape = shapes[clubBody.modelId];
       const [_, dimensions] = shapeBounds(clubShape, 0, 1);
       const club: Entity<ClubPartId> = entityCreate({
-        body: clubBody,
+        entityBody: clubBody,
         dimensions,
-        position, 
+        positioned: position, 
         entityType: ENTITY_TYPE_ITEM,
-        rotation: [0, 0, Math.PI * 2 * Math.random()],
+        rotated: [0, 0, CONST_PI_0DP * 2 * Math.random()],
         //velocity: [0, 0, 0],
         health: maxHealth,
         maxHealth,
@@ -430,21 +430,21 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       const t = matrix4Translate(x + .5 + dx/2.1, y + .5 + dy/2.1, z + .5);
       const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
       const torch: Entity<TorchPartId> = entityCreate({
-        body: PART_TORCH,
+        entityBody: PART_TORCH,
         entityType: ENTITY_TYPE_TORCH,
-        position,
+        positioned: position,
         dimensions,
         collisionGroup: COLLISION_GROUP_ITEM,
         collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
         // TODO x rotation (but it interferes with z rotation)
-        rotation: [-Math.PI/3 * dy, Math.PI/3 * dx, (orientation + 2) * Math.PI/2],
+        rotated: [-CONST_PI_ON_3_0DP * dy, CONST_PI_ON_3_0DP * dx, (orientation + 2) * CONST_PI_ON_2_1DP],
         // velocity: [0, 0, 0], intentionally have no velocity so we sit on the wall
         health: TORCH_MAX_HEALTH,
         maxHealth: TORCH_MAX_HEALTH,
         joints: [{
-          rotation: [0, 0, 0],
+          rotated: [0, 0, 0],
         }, {
-          rotation: [0, 0, 0],
+          rotated: [0, 0, 0],
           light: TORCH_BRIGHTNESS,
         }],
       });
@@ -457,14 +457,14 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       // don't face the wall
       const orientation = ORIENTATIONS.find(o => adjacentWalls.indexOf(o) < 0);
       const enemy: Entity<SkeletonPartId> = entityCreate({
-        position,
+        positioned: position,
         dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-        orientation,
-        body: PART_SKELETON_BODY,
+        oriented: orientation,
+        entityBody: PART_SKELETON_BODY,
         entityType: ENTITY_TYPE_HOSTILE,
         acc: .005,
         velocity: [0, 0, 0],
-        rotation: [0, 0, orientation * Math.PI/2],
+        rotated: [0, 0, orientation * CONST_PI_ON_2_1DP],
         health: maxHealth,
         maxHealth,
         collisionGroup: COLLISION_GROUP_MONSTER,
@@ -477,12 +477,12 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     switch (cell) {
       case LEVEL_DESIGN_CELL_WALL:
         levelAddEntity(level, entityCreate({
-          position,
+          positioned: position,
           dimensions: [1, 1, 1],
-          body: PART_WALL,
+          entityBody: PART_WALL,
           collisionGroup: COLLISION_GROUP_WALL,
           entityType: ENTITY_TYPE_WALL,
-          rotation: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * Math.PI/2) as Vector3,
+          rotated: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
         }));
         break;
       case LEVEL_DESIGN_CELL_FLOOR:
@@ -490,10 +490,10 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           // reuse the bottom step
           const step: Entity = entityCreate({
             entityType: ENTITY_TYPE_WALL,
-            position: [x, y, z - STEP_DEPTH],
+            positioned: [x, y, z - STEP_DEPTH],
             dimensions: [1, 1, STEP_DEPTH],
-            rotation: [0, 0, 0],
-            body: PART_ORIENTATION_STEPS[0][0],
+            rotated: [0, 0, 0],
+            entityBody: PART_ORIENTATION_STEPS[0][0],
             collisionGroup: COLLISION_GROUP_WALL,
           });
           levelAddEntity(level, step);
@@ -510,19 +510,19 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           const transform = matrix4Multiply(
               matrix4Translate(...position),
               matrix4Translate(.5, .5, 0),
-              matrix4Rotate(Math.PI/2 * (stepOrientation + 2), 0, 0, 1),
+              matrix4Rotate(CONST_PI_ON_2_2DP * (stepOrientation + 2), 0, 0, 1),
           );
           
           stepParts.reduce((z, stepPart, i) => {
             const t = matrix4Multiply(transform, matrix4Translate(-STEP_WIDTH/2 * i, 0, z + STEP_DEPTH/2));
-            const [position, dimensions] = shapeBounds(SHAPE_STEPS[i], t);
+            const [positioned, dimensions] = shapeBounds(SHAPE_STEPS[i], t);
             const step: Entity = entityCreate({
               entityType: ENTITY_TYPE_STAIR,
-              orientation: stepOrientation,
-              position,
+              oriented: stepOrientation,
+              positioned,
               dimensions,
-              rotation: [0, 0, 0],
-              body: stepPart,
+              rotated: [0, 0, 0],
+              entityBody: stepPart,
               collisionGroup: COLLISION_GROUP_WALL,
             });
             levelAddEntity(level, step);

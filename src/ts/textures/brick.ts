@@ -1,7 +1,9 @@
+///<reference path="../util/hax.ts"/>
+
 type BricksDescriptor = number[][][];
 
 const BRICK_AXISES: Vector3[] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-const BRICK_ANGLES = [0, Math.PI/2, Math.PI, -Math.PI/2];
+const BRICK_ANGLES = [0, CONST_PI_ON_2_1DP, CONST_PI_1DP, -CONST_PI_ON_2_1DP];
 const BRICK_OFFSET_POINTS: Vector3[] = [[1, 0, 0], [0, 1, 0]];
 
 const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension: number): TextureFactory => {
@@ -47,8 +49,8 @@ const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension
 
 
     const rule: ShapedRule = {
-      shape: shapeFromPlanes(planes),
-      transform: matrix4Translate(...center),
+      shaped: shapeFromPlanes(planes),
+      transforms: matrix4Translate(...center),
       // type: SHAPED_RULE_TYPE_ADDITION,
     };
     return rule;

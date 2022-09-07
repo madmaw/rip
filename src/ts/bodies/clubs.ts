@@ -27,14 +27,14 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
       [ACTION_ID_ATTACK_LIGHT]: {
         maxSpeed: .006 - .003 * i/(i + 1),
         blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
-        translate: [.1, 0, 0],
+        translated: [.1, 0, 0],
         range: .1 + i/19,
         sequences: [{
           // adjust existing attack
           ...SKELETON_LIGHT_ATTACK_SEQUENCE,
           [SKELETON_PART_ID_HAND_RIGHT]: [[
-            [Math.PI/1.5, 0, 0],
-            [0, Math.PI/1.5, 0],
+            [CONST_PI_ON_1_5_1DP, 0, 0],
+            [0, CONST_PI_ON_1_5_1DP, 0],
           ], 1, EASE_IN_QUAD, 1],
         }],
       },         
@@ -45,12 +45,12 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
             | ACTION_ID_RUN
             | ACTION_ID_WALK
             | ACTION_ID_WALK_BACKWARD,
-        translate: [.2, 0, -.1],
+        translated: [.2, 0, -.1],
         range: .2,
         // overhead smash
         sequences: [
           safeUnpackAnimationSequence(
-              '* "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@H@!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!`',
+              [...' "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@H@!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!`'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && {
                 [SKELETON_PART_ID_HIPS]: [[
                   [0, 0, 0],

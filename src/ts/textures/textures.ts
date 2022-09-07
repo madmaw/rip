@@ -30,30 +30,30 @@ const gradientTextureFactory = createLinearGradientTextureFactory(
 
 const rightHandNormalFactory = createShapedTextureNormalFactory([
   {
-    shape: shapeFromPlanes(planesCapsule(6, .5, .05)),
-    transform: matrix4Multiply(
+    shaped: shapeFromPlanes(planesCapsule(6, .5, .05)),
+    transforms: matrix4Multiply(
         matrix4Translate(-.6, 0, 0),
-        matrix4Rotate(-Math.PI/5, 0, .8, -.7),
+        matrix4Rotate(-CONST_PI_ON_5_1DP, 0, .8, -.7),
         matrix4Translate(.4, 0, 0),
     ),
   },
   ...new Array(4).fill(0).flatMap((_, i) => {
-    const a = -Math.PI/15 + i * Math.PI/15;
+    const a = -CONST_PI_ON_15_2DP + i * CONST_PI_ON_15_2DP;
     const t = matrix4Multiply(
         matrix4Translate(-.6, 0, 0),
         matrix4Rotate(a, 0, 1, 0),
         matrix4Translate(.4, 0, 0),
     );
     return [{
-      shape: shapeFromPlanes(planesCapsule(6, .5, .05)),
-      transform: t,
+      shaped: shapeFromPlanes(planesCapsule(6, .5, .05)),
+      transforms: t,
       //type: SHAPED_RULE_TYPE_ADDITION,
     }, {
-      shape: shapeFromPlanes(planesCapsule(6, .4, .05, .01)),
-      transform: matrix4Multiply(
+      shaped: shapeFromPlanes(planesCapsule(6, .4, .05, .01)),
+      transforms: matrix4Multiply(
         t,
         matrix4Translate(.3, 0, 0),
-        matrix4Rotate(Math.PI/4, 0, 0, 1),
+        matrix4Rotate(CONST_PI_ON_4_1DP, 0, 0, 1),
         matrix4Translate(.2, 0, 0),
       )
       //type: SHAPED_RULE_TYPE_ADDITION,
@@ -151,43 +151,43 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     ), .2),
     //solidTextureNormalFactory,
     createShapedTextureNormalFactory([{
-      shape: shapeFromPlanes(planesCube(1, 1, 1)),
-      type: SHAPED_RULE_TYPE_ADDITION,
+      shaped: shapeFromPlanes(planesCube(1, 1, 1)),
+      ruleType: SHAPED_RULE_TYPE_ADDITION,
     }, {
       // eye
-      shape: shapeFromPlanes(planesCapsule(8, .5, .1)),
-      transform: matrix4Translate(.5, .2, 0),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCapsule(8, .5, .1)),
+      transforms: matrix4Translate(.5, .2, 0),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }, {
       // eye
-      shape: shapeFromPlanes(planesCapsule(8, .5, .1)),
-      transform: matrix4Translate(.5, -.2, 0),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCapsule(8, .5, .1)),
+      transforms: matrix4Translate(.5, -.2, 0),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }, {
       // tooth gap
-      shape: shapeFromPlanes(planesCube(.4, .1, .3)),
-      transform: matrix4Translate(.5, .1, -.5),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCube(.4, .1, .3)),
+      transforms: matrix4Translate(.5, .1, -.5),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }, {
       // tooth gap
-      shape: shapeFromPlanes(planesCube(.4, .1, .3)),
-      transform: matrix4Translate(.5, -.1, -.5),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCube(.4, .1, .3)),
+      transforms: matrix4Translate(.5, -.1, -.5),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }, {
       // back of teeth
-      shape: shapeFromPlanes(planesCube(.2, 1, .2)),
-      transform: matrix4Translate(.3, 0, -.5),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCube(.2, 1, .2)),
+      transforms: matrix4Translate(.3, 0, -.5),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }, {
       // cheek
-      shape: shapeFromPlanes(planesCube(1, .3, .4)),
-      transform: matrix4Translate(.5, -.5, -.5),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCube(1, .3, .4)),
+      transforms: matrix4Translate(.5, -.5, -.5),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }, {
       // cheek
-      shape: shapeFromPlanes(planesCube(1, .3, .4)),
-      transform: matrix4Translate(.5, .5, -.5),
-      type: SHAPED_RULE_TYPE_SUBTRACTION,
+      shaped: shapeFromPlanes(planesCube(1, .3, .4)),
+      transforms: matrix4Translate(.5, .5, -.5),
+      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
     }]),
   ],
   // bone
@@ -197,14 +197,14 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     createShapedTextureNormalFactory([
       {
         //shape: shapeFromPlanes(planesCube(.9, .3, 1)),
-        shape: shapeFromPlanes(planesCapsule(8, .3, .4, .3)),
-        transform: matrix4Translate(.05, 0, 0),
+        shaped: shapeFromPlanes(planesCapsule(8, .3, .4, .3)),
+        transforms: matrix4Translate(.05, 0, 0),
         //type: SHAPED_RULE_TYPE_ADDITION,
       },
       ...new Array(8).fill(0).map<ShapedRule>((_, i) => ({
-        shape: shapeFromPlanes(planesCapsule(6, .4, .35, .4)),
-        transform: matrix4Multiply(matrix4Rotate(i * Math.PI/4, 1, 0, 0), matrix4Translate(.1, 0, .5)),
-        type: SHAPED_RULE_TYPE_SUBTRACTION,
+        shaped: shapeFromPlanes(planesCapsule(6, .4, .35, .4)),
+        transforms: matrix4Multiply(matrix4Rotate(i * CONST_PI_ON_4_1DP, 1, 0, 0), matrix4Translate(.1, 0, .5)),
+        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
       }))
     ]),
   ],
@@ -213,33 +213,33 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     boneTextureFactory,
     //solidTextureNormalFactory,
     createShapedTextureNormalFactory([{
-      shape: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
-      transform: matrix4Multiply(
+      shaped: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
+      transforms: matrix4Multiply(
         matrix4Translate(0, .3, 0),
-        matrix4Rotate(-Math.PI/12, 1, 0, 0),
-        matrix4Rotate(Math.PI/2, 0, 1, 0),
+        matrix4Rotate(-CONST_PI_ON_12_2DP, 1, 0, 0),
+        matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
     }, {
-      shape: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
-      transform: matrix4Multiply(
+      shaped: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
+      transforms: matrix4Multiply(
         matrix4Translate(0, -.3, 0),
-        matrix4Rotate(Math.PI/12, 1, 0, 0),
-        matrix4Rotate(Math.PI/2, 0, 1, 0),
+        matrix4Rotate(CONST_PI_ON_12_2DP, 1, 0, 0),
+        matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
     }, {
-      shape: shapeFromPlanes(planesCapsule(6, .6, .15)),
-      transform: matrix4Multiply(
+      shaped: shapeFromPlanes(planesCapsule(6, .6, .15)),
+      transforms: matrix4Multiply(
         matrix4Translate(0, 0, .3),
-        matrix4Rotate(Math.PI/2, 0, 0, 1),
+        matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
     }, {
-      shape: shapeFromPlanes(planesCapsule(6, .2, .1)),
-      transform: matrix4Multiply(
+      shaped: shapeFromPlanes(planesCapsule(6, .2, .1)),
+      transforms: matrix4Multiply(
         matrix4Translate(0, 0, -.3),
-        matrix4Rotate(Math.PI/2, 0, 0, 1),
+        matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
     }]),
@@ -251,8 +251,8 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     createShapedTextureNormalFactory([
       // spine
       {
-        shape: shapeFromPlanes(planesCapsule(6, .8, .05)),
-        transform: matrix4Multiply(
+        shaped: shapeFromPlanes(planesCapsule(6, .8, .05)),
+        transforms: matrix4Multiply(
           matrix4Translate(-.2, 0, 0),
           matrix4Rotate(Math.PI/2.2, 0, 1, 0),
         ),
@@ -266,10 +266,10 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
         const rib = shapeFromPlanes(planesCapsule(6, RIB_WIDTH, RIB_RADIUS));
         //const rib = shapeFromPlanes(planesCube(RIB_WIDTH, RIB_RADIUS, RIB_RADIUS));
         const z = .4 - i * .11;
-        const yAngle = i * -Math.PI/16;
+        const yAngle = i * -CONST_PI_ON_1_6_1DP;
         return [{
-          shape: rib,
-          transform: matrix4Multiply(
+          shaped: rib,
+          transforms: matrix4Multiply(
             matrix4Translate(CHEST_OFFSET, 0, z),
             matrix4Rotate(Math.PI/1.7, 0, 0, 1),
             matrix4Rotate(-yAngle, 0, 1, 0),
@@ -277,8 +277,8 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
           ),
           //type: SHAPED_RULE_TYPE_ADDITION,
         }, {
-          shape: rib,
-          transform: matrix4Multiply(
+          shaped: rib,
+          transforms: matrix4Multiply(
             matrix4Translate(CHEST_OFFSET, 0, z),
             matrix4Rotate(-Math.PI/1.7, 0, 0, 1),
             matrix4Rotate(-yAngle, 0, 1, 0),
@@ -286,19 +286,19 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
           ),
           //type: SHAPED_RULE_TYPE_ADDITION,
         }, {
-          shape: rib,
-          transform: matrix4Multiply(
+          shaped: rib,
+          transforms: matrix4Multiply(
             matrix4Translate(-CHEST_OFFSET, 0, z),
-            matrix4Rotate(Math.PI/1.5, 0, 0, 1),
+            matrix4Rotate(CONST_PI_ON_1_5_1DP, 0, 0, 1),
             matrix4Rotate(yAngle, 0, 1, 0),
             matrix4Translate(-RIB_WIDTH/2, 0, 0),
           ),
           //type: SHAPED_RULE_TYPE_ADDITION,
         }, {
-          shape: rib,
-          transform: matrix4Multiply(
+          shaped: rib,
+          transforms: matrix4Multiply(
             matrix4Translate(-CHEST_OFFSET, 0, z),
-            matrix4Rotate(-Math.PI/1.5, 0, 0, 1),
+            matrix4Rotate(-CONST_PI_ON_1_5_1DP, 0, 0, 1),
             matrix4Rotate(yAngle, 0, 1, 0),
             matrix4Translate(-RIB_WIDTH/2, 0, 0),
           ),
@@ -326,15 +326,15 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     //solidTextureNormalFactory,
     createShapedTextureNormalFactory([
       ...new Array(5).fill(0).map((_, i) => {
-        const a = -Math.PI/10 + i * Math.PI/30;
+        const a = -CONST_PI_ON_10_2DP + i * CONST_PI_ON_30_2DP;
         const t = matrix4Multiply(
             matrix4Translate(.6, 0, 0),
             matrix4Rotate(a, 0, 0, 1),
             matrix4Translate(-.4, 0, 0),
         );
         return {
-          shape: shapeFromPlanes(planesCapsule(6, 1, .05, .02)),
-          transform: t,
+          shaped: shapeFromPlanes(planesCapsule(6, 1, .05, .02)),
+          transforms: t,
           //type: SHAPED_RULE_TYPE_ADDITION,
         };
       }),
@@ -357,8 +357,4 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   ],
 ];
 
-const texture3D = createTextures(
-    TEXTURE_FACTORIES,
-    TEXTURE_SIZE,
-);
 //const texture3D = createTextures([[[[checkeredTextureFactory, solidTextureNormalFactory]]]], [1, 1, 1], TEXTURE_SIZE);

@@ -8,21 +8,21 @@ type ShapedRuleType =
     | typeof SHAPED_RULE_TYPE_SUBTRACTION;
 
 type ShapedRule = {
-  shape: Shape,
-  transform?: Matrix4,
-  type?: ShapedRuleType,
+  shaped: Shape,
+  transforms?: Matrix4,
+  ruleType?: ShapedRuleType,
 };
 
 const createShapedTextureNormalFactory = (
   rules: ShapedRule[],  
 ): TextureFactory => {
   const transformedRules = rules.map(rule => {
-    const transformsAndNormals = rule.shape.map((face, i) => {
-      const normal = vector3TransformMatrix4(rule.transform, ...face.plane.normal);
-      const original = vector3TransformMatrix4(rule.transform, 0, 0, 0);
+    const transformsAndNormals = rule.shaped.map((face, i) => {
+      const normal = vector3TransformMatrix4(rule.transforms, ...face.plane.normal);
+      const original = vector3TransformMatrix4(rule.transforms, 0, 0, 0);
       const transform = matrix4Multiply(
           face.transformToCoordinateSpace,
-          rule.transform && matrix4Invert(rule.transform),
+          rule.transforms && matrix4Invert(rule.transforms),
       );
       return [
         transform,
@@ -32,7 +32,7 @@ const createShapedTextureNormalFactory = (
     });
     return [
       transformsAndNormals,
-      rule.type,
+      rule.ruleType,
     ] as const;
   });
   return (z: number, y: number, x: number): Vector4 => {

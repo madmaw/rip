@@ -33,12 +33,17 @@ const PART_TORCH: EntityBody<TorchPartId> = {
       // hold up
       sequences: [{
         ...SKELETON_IDLE_SEQUENCE,
-        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-          [0, -Math.PI/4, 0],
-        ]],
-        [SKELETON_PART_ID_HAND_LEFT]: [[
-          [0, Math.PI/5, 0],
-        ]],
+        ...safeUnpackAnimationSequence(
+            [...'%!@8@  @,!@F@  @'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && {
+              [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+                [0, -Math.PI/4, 0],
+              ]],
+              [SKELETON_PART_ID_HAND_LEFT]: [[
+                [0, Math.PI/5, 0],
+              ]],              
+            }
+        )
       }],
     }, 
     [ACTION_ID_WALK]: {
@@ -46,19 +51,24 @@ const PART_TORCH: EntityBody<TorchPartId> = {
       // hold up
       sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES.map(s => ({
         ...s,
-        [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-          [0, 0, 0],
-        ]],
-        [SKELETON_PART_ID_FOREARM_LEFT]: [[
-          [0, -Math.PI/2, 0],
-        ]],
-        [SKELETON_PART_ID_HAND_LEFT]: [[
-          [0, Math.PI/3, 0],
-        ]],
+        ...safeUnpackAnimationSequence(
+            [...'%!@@@  @&!@0@  @,!@K@  @'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && {
+              [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+                [0, 0, 0],
+              ]],
+              [SKELETON_PART_ID_FOREARM_LEFT]: [[
+                [0, -Math.PI/2, 0],
+              ]],
+              [SKELETON_PART_ID_HAND_LEFT]: [[
+                [0, Math.PI/3, 0],
+              ]],
+            },
+        ),
       })),
     },
   },
-  children: [{
+  childs: [{
     id: TORCH_PART_ID_HEAD,
     preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH/2, 0, 0),
     modelId: MODEL_TORCH_HEAD,

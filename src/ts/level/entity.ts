@@ -100,12 +100,12 @@ const COLLISION_GROUP_ITEM = 4;
 type EntityBase<T extends number> = {
   readonly id: EntityId,
   readonly entityType?: EntityType,
-  position: Vector3,
-  offset?: Vector3,
+  positioned: Vector3,
+  offsetted?: Vector3,
   offsetAnim?: Anim | Falsey,
   offsetAnimAction?: ActionId | 0,
   readonly dimensions: Vector3,
-  readonly body: EntityBody<T>,
+  readonly entityBody: EntityBody<T>,
   joints: Joint[],
   previousCollision?: {
     maxIntersectionArea: number,
@@ -117,7 +117,7 @@ type EntityBase<T extends number> = {
   lastDamaged?: number,
   collisionGroup: CollisionGroup,
   collisionMask?: number,
-} & Pick<Joint, 'rotation' | 'anim' | 'animAction'>;
+} & Pick<Joint, 'rotated' | 'anim' | 'animAction'>;
 
 type Immovable = {
   velocity?: never,
@@ -134,12 +134,12 @@ type Active = Oriented & {
 };
 
 type Inactive = {
-  orientation?: never,
+  oriented?: never,
   acc?: never,
 }
 
 type Oriented = {
-  orientation: Orientation,
+  oriented: Orientation,
 };
 
 type Intelligent = {
@@ -187,7 +187,7 @@ type EntityBodyAnimation<ID extends number> = {
   // mask of blocked action ids
   blockActions?: number,
   sequences: EntityBodyAnimationSequence<ID>[],
-  translate?: Vector3,
+  translated?: Vector3,
   // the range that this animation should be applied at (for AI)
   range?: number,
 };
@@ -205,7 +205,7 @@ type Part<ID extends number> = {
   readonly textureId?: TextureId,
   readonly incomingDamageMultiplier?: number,
   readonly outgoingDamage?: number,
-  readonly children?: readonly Part<ID>[],
+  readonly childs?: readonly Part<ID>[],
   // and where is this part held when carried
   readonly jointAttachmentHeldTransform?: Matrix4 | Falsey,
   // when picked up, what does this attach to
@@ -217,7 +217,7 @@ type Part<ID extends number> = {
 };
 
 type Joint = {
-  rotation: Vector3,
+  rotated: Vector3,
   //cachedTransform?: Matrix4 | Falsey,
   attachedEntity?: Entity | Falsey,
   anim?: Anim | Falsey,
@@ -243,14 +243,14 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
   part: Part<PartId>,
   inheritedTransform: Matrix4 = matrix4Multiply(
       matrix4Translate(...(entity.dimensions.map(
-          (v, i) => v/2 + entity.position[i] + (entity.offset?.[i] || 0)) as Vector3),
+          (v, i) => v/2 + entity.positioned[i] + (entity.offsetted?.[i] || 0)) as Vector3),
       ),
-      matrix4RotateInOrder(...entity.rotation),
+      matrix4RotateInOrder(...entity.rotated),
   ),
   inheritedOutgoingDamageMultiplier: number = 0,
 ) => {
   const joint = entity.joints?.[part.id];
-  let rotationTransform = joint && matrix4RotateInOrder(...joint.rotation);
+  let rotationTransform = joint && matrix4RotateInOrder(...joint.rotated);
   const transform = matrix4Multiply(
       inheritedTransform,
       part.preRotationTransform,
@@ -268,19 +268,19 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
       || 0;
   const childPartOutgoingDamageMultiplier = animationDamageMultiplier || inheritedOutgoingDamageMultiplier;
   f(entity, part, transform, joint, inheritedOutgoingDamageMultiplier * (part.outgoingDamage || 0));
-  part.children?.forEach(child => {
+  part.childs?.forEach(child => {
     entityIterateParts(f, entity, child, transform, childPartOutgoingDamageMultiplier);
   });
   if (joint?.attachedEntity) {
     entityIterateParts(
         f,
         joint.attachedEntity as any,
-        joint.attachedEntity.body,
+        joint.attachedEntity.entityBody,
         matrix4Multiply(
             transform,
             part.jointAttachmentHolderTransform,
             // TODO this might need to be after rotation
-            joint.attachedEntity.body.jointAttachmentHeldTransform
+            joint.attachedEntity.entityBody.jointAttachmentHeldTransform
         ),
         childPartOutgoingDamageMultiplier,
     )
@@ -325,16 +325,16 @@ let entityId = 1;
 
 const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType, center?: Booleanish): Entity<T> => {
   const joints: Joint[] = [];
-  entity.rotation = entity.rotation || [0, 0, 0];
+  entity.rotated = entity.rotated || [0, 0, 0];
   if (center) {
-    arrayMapAndSet(entity.position, (v, i) => (v | 0) + (i < 2 ? (.5 - entity.dimensions[i]/2) : .01));
+    arrayMapAndSet(entity.positioned, (v, i) => (v | 0) + (i < 2 ? (.5 - entity.dimensions[i]/2) : .01));
   }
   entityIterateParts((e, part) => {
-    const defaultRotation = entity.body.defaultJointRotations?.[part.id];
+    const defaultRotation = entity.entityBody.defaultJointRotations?.[part.id];
     joints[part.id] = entity.joints?.[part.id] || {
-      rotation: defaultRotation ? [...defaultRotation] : [0, 0, 0],
+      rotated: defaultRotation ? [...defaultRotation] : [0, 0, 0],
     };
-  }, entity, entity.body);
+  }, entity, entity.entityBody);
   return {
     id: entityId++,
     joints,
@@ -343,7 +343,7 @@ const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(ent
 };
 
 const entityMidpoint = (entity: Entity): Vector3 => {
-  return entity.position.map((v, i) => {
+  return entity.positioned.map((v, i) => {
     return v + entity.dimensions[i]/2;
   }) as Vector3;
 };
@@ -351,9 +351,9 @@ const entityMidpoint = (entity: Entity): Vector3 => {
 const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: ActionId) => {
   let bodyAnimations: EntityBodyAnimation<number> | Falsey = entity.joints.reduce<Falsey | EntityBodyAnimation<number>>(
       (acc, joint) => acc
-          || joint.attachedEntity && joint.attachedEntity.body.jointAttachmentHolderAnims?.[action],
+          || joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action],
       0,
-  ) || entity.body.anims?.[action];
+  ) || entity.entityBody.anims?.[action];
   if (action == ACTION_ID_CANCEL) {
     // synthesize a cancel animation
     bodyAnimations = {
@@ -366,7 +366,7 @@ const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: Actio
           // bounce back to the start position
           rotation = animationSequence?.[0][0];
         }
-        rotation = rotation || entity.body.defaultJointRotations?.[partId];
+        rotation = rotation || entity.entityBody.defaultJointRotations?.[partId];
         if (rotation) {
           acc[partId] = [[rotation], 1, EASE_OUT_QUAD];
         }
@@ -391,7 +391,7 @@ const entityStartAnimation = <T extends number>(
         const jointBodyAnim = bodyAnimation[jointId];
         // only interested in how long it takes to move to the first step
         const delta: Falsey | number = jointBodyAnim
-            && animDeltaRotation(v.rotation, jointBodyAnim[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS][0]);
+            && animDeltaRotation(v.rotated, jointBodyAnim[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS][0]);
         return delta > max
             ? delta
             : max;
@@ -401,12 +401,12 @@ const entityStartAnimation = <T extends number>(
         return [animationDuration, i];
       }
       return acc;
-    }, [action == ACTION_ID_TAKE_DAMAGE ? 0 : 9999, 0]);
+    }, [action == ACTION_ID_TAKE_DAMAGE ? 0 : 1e5, 0]);
     
     const bodyAnimation = bodyAnimations.sequences[bestAnimationIndex];
     const animFrameDurations = entity.joints.reduce<number[]>((acc, joint, jointId) => {
       const bodyJointAnimation = bodyAnimation[jointId];
-      let prev = joint.rotation;
+      let prev = joint.rotated;
       return bodyJointAnimation?.[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS]
           .reduce((acc, rotation, index) => {
             const deltaRotation = animDeltaRotation(prev, rotation);
@@ -421,19 +421,19 @@ const entityStartAnimation = <T extends number>(
           }, acc) || acc;
     }, []);
 
-    entity.offset = entity.offset || [0, 0, 0];
+    entity.offsetted = entity.offsetted || [0, 0, 0];
 
     if (entity.offsetAnimAction != action
-        && entity.offset.some((v, i) => Math.abs(v - (bodyAnimations.translate?.[i] || 0)) > EPSILON)
+        && entity.offsetted.some((v, i) => Math.abs(v - (bodyAnimations.translated?.[i] || 0)) > EPSILON)
     ) {
       const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
       entity.offsetAnimAction = action;
       entity.offsetAnim = animLerp(
           worldTime,
-          entity.offset,
+          entity.offsetted,
           vector3TransformMatrix4(
-              matrix4Rotate((entity.orientation || 0) * Math.PI/2, 0, 0, 1),
-              ...bodyAnimations.translate || [0, 0, 0],
+              matrix4Rotate((entity.oriented || 0) * CONST_PI_ON_2_1DP, 0, 0, 1),
+              ...bodyAnimations.translated || [0, 0, 0],
           ),
           totalDuration || 99,
           EASINGS[EASE_OUT_QUAD],
@@ -442,7 +442,7 @@ const entityStartAnimation = <T extends number>(
 
     entity.joints.forEach((joint, jointId) => {
       const bodyJointAnimation = bodyAnimation[jointId];
-      const defaultBodyJointRotation = entity.body.defaultJointRotations?.[jointId];
+      const defaultBodyJointRotation = entity.entityBody.defaultJointRotations?.[jointId];
       const existingAnimation = joint.animAction && entityGetActionAnims(entity, joint.animAction);
       const existingAnimationRequired = existingAnimation
           && existingAnimation.sequences[joint.animActionIndex][jointId]?.[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_REQUIRED]
@@ -463,7 +463,7 @@ const entityStartAnimation = <T extends number>(
                   const duration = animFrameDurations[index];
                   return now => animLerp(
                       now,
-                      joint.rotation,
+                      joint.rotated,
                       rotation,
                       duration,
                       EASINGS[easing],
@@ -476,7 +476,7 @@ const entityStartAnimation = <T extends number>(
             )
             : animLerp(
                 worldTime,
-                joint.rotation,
+                joint.rotated,
                 defaultBodyJointRotation,
                 // TODO use overall speed of the animation
                 100,

@@ -107,7 +107,7 @@ const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnim
 
 const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        '*!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;  @("@P@@ME  @)"@F@@M@  @*"@M@@F@  @',
+        [...'!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;  @("@P@@ME  @)"@F@@M@  @*"@M@@F@  @'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, 0],
@@ -156,7 +156,7 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
 
 const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        '*!"@==@=C  @""@CC@C=  @#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<@@U@  @("@U@@<@  @)"@F@@M@  @*"@M@@F@  @',
+        [...'!"@==@=C  @""@CC@C=  @#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<@@U@  @("@U@@<@  @)"@F@@M@  @*"@M@@F@  @'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, -Math.PI/12],
@@ -202,7 +202,7 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
 );
 
 const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    '(!"@;K@;5! @""@=5@CK! @#"@P0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P', 
+    [...'!"@;K@;5! @""@=5@CK! @#"@P0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HEAD]: [[
         [0, -Math.PI/6, Math.PI/3],
@@ -239,7 +239,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 );
 
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    '% "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'!@J@  @(!@J@  @',
+    [...' "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'!@J@  @(!@J@  @'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HIPS]: [[
         [0, 0, 0],
@@ -279,14 +279,14 @@ const SKELETON_FEMUR_ATTACHMENT_INFO: Pick<
     [ACTION_ID_ATTACK_LIGHT]: {
       maxSpeed: .005,
       blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
-      translate: [.1, 0, 0],
+      translated: [.1, 0, 0],
       range: .1,
       sequences: [{
         // adjust existing attack
         ...SKELETON_LIGHT_ATTACK_SEQUENCE,
         [SKELETON_PART_ID_HAND_RIGHT]: [[
-          [Math.PI/1.5, 0, 0],
-          [0, Math.PI/1.5, 0],
+          [CONST_PI_ON_1_5_1DP, 0, 0],
+          [0, CONST_PI_ON_1_5_1DP, 0],
         ], 1, EASE_IN_QUAD, 1],
       }],
     },         
@@ -314,7 +314,7 @@ type SkeletonPartId =
 
 const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   defaultJointRotations: safeUnpackVector3Rotations(
-      '/@C@@=@@@@@H@@<@@H@@<@@J@@J@@J@@J@@@@@@@@@@@@@',
+      [...'/@C@@=@@@@@H@@<@@H@@<@@J@@J@@J@@J@@@@@@@@@@@@@'],
       FLAG_UNPACK_SUPPLY_ORIGINALS && [
         //SKELETON_PART_ID_RIBCAGE
         [0, Math.PI/10, 0],
@@ -375,7 +375,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       //translate: [0, 0, -SKELETON_FEMUR_LENGTH],
       sequences: [
         safeUnpackAnimationSequence(
-            '\'"!@D@!"@#!@X@  @$!@5@  @%!@X@  @&!@5@  @\'"@;@@@@  @("@;@@@@  @',
+            [...'"!@D@!"@#!@X@  @$!@5@  @%!@X@  @&!@5@  @\'"@;@@@@  @("@;@@@@  @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HIPS]: [[
                 [0, Math.PI/8, 0],
@@ -408,7 +408,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       maxSpeed: .001,
       sequences: [
         safeUnpackAnimationSequence(
-            '#"!@@@  @#!@0@  @$!@:@  @',
+            [...'"!@@@  @#!@0@  @$!@:@  @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HIPS]: [[
                 [0, 0, 0],
@@ -435,10 +435,10 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           | ACTION_ID_WALK_BACKWARD
           | ACTION_ID_RUN
           | ACTION_ID_ATTACK_HEAVY,
-      translate: [0, 0, -SKELETON_SHIN_WIDTH],
+      translated: [0, 0, -SKELETON_SHIN_WIDTH],
       sequences: [
         safeUnpackAnimationSequence(
-            '&!!@;@! @"!@E@!"@\'!@C:! @(!@:F! @)!@V@! @*!@PF! @',
+            [...'!!@;@! @"!@E@!"@\'!@C:! @(!@:F! @)!@V@! @*!@PF! @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HEAD]: [[
                 [0, -Math.PI/6, 0],
@@ -465,7 +465,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     [ACTION_ID_ATTACK_LIGHT]: {
       maxSpeed: .007,
       blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
-      translate: [.2, 0, 0],
+      translated: [.2, 0, 0],
       range: .2, 
       sequences: [{
         ...SKELETON_LIGHT_ATTACK_SEQUENCE,
@@ -482,7 +482,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK | ACTION_ID_RUN | ACTION_ID_ATTACK_LIGHT | ACTION_ID_ATTACK_HEAVY,
       sequences: entityFlipBodyPartAnimationSequences(
           safeUnpackAnimationSequence(
-              '( !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @', 
+              [...' !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @'], 
               FLAG_UNPACK_SUPPLY_ORIGINALS && {
                 [SKELETON_PART_ID_HEAD]: [
                   [[0, -Math.PI/6, -Math.PI/3]], 
@@ -528,7 +528,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       0,
       0,
   ),
-  children: [
+  childs: [
     // upper body
     {
       id: SKELETON_PART_ID_RIBCAGE,
@@ -541,7 +541,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           SKELETON_HIPS_DEPTH/2,
       ),
       postRotationTransform: matrix4Translate(0, 0, SKELETON_RIBCAGE_DEPTH/2),  
-      children: [
+      childs: [
         // head
         {
           id: SKELETON_PART_ID_HEAD,
@@ -572,7 +572,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               0,
           ),
           ...SKELETON_FEMUR_ATTACHMENT_INFO,
-          children: [{
+          childs: [{
             id: SKELETON_PART_ID_FOREARM_RIGHT,
             modelId: MODEL_SKELETON_FOREARM,
             textureId: TEXTURE_ID_BONE,
@@ -586,7 +586,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
                 0,
                 0,
             ),
-            children: [{
+            childs: [{
               id: SKELETON_PART_ID_HAND_RIGHT,
               modelId: MODEL_SKELETON_HAND,
               textureId: TEXTURE_ID_HAND_RIGHT,
@@ -634,7 +634,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               0,
           ),
           ...SKELETON_FEMUR_ATTACHMENT_INFO,
-          children: [{
+          childs: [{
             id: SKELETON_PART_ID_FOREARM_LEFT,
             modelId: MODEL_SKELETON_FOREARM,
             textureId: TEXTURE_ID_BONE,
@@ -649,7 +649,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
                 0,
                 0,
             ),
-            children: [{
+            childs: [{
               id: SKELETON_PART_ID_HAND_LEFT,
               modelId: MODEL_SKELETON_HAND,
               textureId: TEXTURE_ID_HAND_LEFT,
@@ -697,7 +697,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           0,
       ),
       ...SKELETON_FEMUR_ATTACHMENT_INFO,
-      children: [{
+      childs: [{
         id: SKELETON_PART_ID_SHIN_RIGHT,
         modelId: MODEL_SKELETON_SHIN,
         textureId: TEXTURE_ID_BONE,
@@ -712,7 +712,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             0, 
             0
         ),
-        children: [{
+        childs: [{
           id: SKELETON_PART_ID_FOOT_RIGHT,
           modelId: MODEL_SKELETON_FOOT,
           textureId: TEXTURE_ID_FOOT,
@@ -754,7 +754,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           0,
       ),
       ...SKELETON_FEMUR_ATTACHMENT_INFO,
-      children: [{
+      childs: [{
         id: SKELETON_PART_ID_SHIN_LEFT,
         modelId: MODEL_SKELETON_SHIN,
         textureId: TEXTURE_ID_BONE,
@@ -770,7 +770,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             0, 
             0
         ),
-        children: [{
+        childs: [{
           id: SKELETON_PART_ID_FOOT_RIGHT,
           modelId: MODEL_SKELETON_FOOT,
           textureId: TEXTURE_ID_FOOT,
@@ -809,7 +809,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
   ...planeFlipAndDuplicateOnAxis(
       planeFlipAndDuplicateOnAxis(
           safeUnpackPlanes(
-              '#@WWZ@^6M/Z7F',
+              [...'#@WWZ@^6M/Z7F'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [
                 // shoulder
                 {
@@ -833,7 +833,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
       0,
   ),
   ...safeUnpackPlanes(
-      '"W@WV)@WM',
+      [...'"W@WV)@WM'],
       FLAG_UNPACK_SUPPLY_ORIGINALS && [
         // collar
         {
@@ -857,7 +857,7 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
   ),
   ...planeFlipAndDuplicateOnAxis(
       safeUnpackPlanes(
-          '*6@":`@@@.@[:VVG@R@[=SX6@@R[:*VG:*V9=@W)=',
+          [...'*6@":`@@@.@[:VVG@R@[=SX6@@R[:*VG:*V9=@W)='],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [
             // under jaw
             {
