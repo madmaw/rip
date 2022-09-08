@@ -45,8 +45,8 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
             | ACTION_ID_RUN
             | ACTION_ID_WALK
             | ACTION_ID_WALK_BACKWARD,
-        translated: [.2, 0, -.1],
-        range: .2,
+        translated: [.1, 0, -.1],
+        range: .1,
         // overhead smash
         sequences: [
           safeUnpackAnimationSequence(

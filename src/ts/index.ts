@@ -546,6 +546,7 @@ const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((
 const startX = 4;
 const startY = 4;
 
+let then = 0;
 let animationFrame: number = 0;
 let player: Entity<SkeletonPartId>;
 
@@ -618,7 +619,7 @@ window.onload = window.onclick = () => {
   let targetCameraOrientation: Orientation = player.oriented;
   let cameraZRotation = 0;
   
-  let then = 0;
+  let previouslyPickedUpEntities: Entity[] = []
   let worldTime = 0;
   let updateCount = 0;
   let previousLights: Light[] = [];
@@ -959,6 +960,11 @@ window.onload = window.onclick = () => {
     if (renderPosition[2] + RENDER_DIMENSIONS[2] > level.dimensions[2]) {
       // time to generate some more layers
       levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE);
+
+      if (FLAG_CLEAR_PREVIOUSLY_PICKED_UP_ARRAY) {
+        // clear it out for performance reasons
+        previouslyPickedUpEntities = [];
+      }
     }
   
     previousPreviousLights = previousLights;
@@ -1013,7 +1019,6 @@ window.onload = window.onclick = () => {
               const canWalk = availableActions & ACTION_ID_WALK;
               const canRun = availableActions & ACTION_ID_RUN;
               const canJump = availableActions & ACTION_ID_JUMP;
-              const canFall = availableActions & ACTION_ID_FALL;
               const canDuck = availableActions & ACTION_ID_DUCK;
               const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
               const canHeavyAttack = availableActions & ACTION_ID_ATTACK_HEAVY;
@@ -1072,9 +1077,6 @@ window.onload = window.onclick = () => {
               }
               if (canDuck && down && probablyOnGround) {
                 action = ACTION_ID_DUCK;
-              }
-              if (canFall && !probablyOnGround) {
-                action = ACTION_ID_FALL;
               }
               if (canLightAttack && lightAttack) {
                 action = ACTION_ID_ATTACK_LIGHT;
@@ -1177,7 +1179,7 @@ window.onload = window.onclick = () => {
                     if (activeTarget.entityType == ENTITY_TYPE_PLAYER) {
                       // find best attack for range
                       if (FLAG_AI_USE_HEAVY_ATTACKS) {
-                        const attackActions: ActionId[] = [ACTION_ID_ATTACK_LIGHT, /*ACTION_ID_ATTACK_HEAVY, ACTION_ID_USE_SECONDARY*/];
+                        const attackActions: ActionId[] = [ACTION_ID_ATTACK_LIGHT, ACTION_ID_ATTACK_HEAVY, ACTION_ID_USE_SECONDARY];
                         targetAction = attackActions
                             .map<[ActionId, number]>(action => {
                               const actionAnimations = entityGetActionAnims(entity, action);
@@ -1267,8 +1269,10 @@ window.onload = window.onclick = () => {
               const pickUpPosition = entityCenter.map((v, i) => v - pickUpDimensions[i]/2) as Vector3;
               levelIterateEntitiesInBounds(level, pickUpPosition, pickUpDimensions, found => {
                 // NOTE: while 0 is a valid part id, we assume it's not used for extremities
-                if (found.entityBody.jointAttachmentHolderPartId && !pickedUp ) {
-                  // somewhat 
+                if (found.entityBody.jointAttachmentHolderPartId
+                      // prever to pick up things we have either not picked up before, or picked up a long time ago
+                      && (!pickedUp || previouslyPickedUpEntities.indexOf(found) < previouslyPickedUpEntities.indexOf(pickedUp))
+                ) {
                   pickedUp = found;
                 }
               });
@@ -1289,14 +1293,19 @@ window.onload = window.onclick = () => {
                   held.positioned = entityCenter.map(
                       (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
                   ) as Vector3;
-                  held.velocity = [0, 0, 0];
-
+                  // should already have 0 speed
+                  //held.velocity = [0, 0, 0];
                 }
                 held.rotated = [...entity.rotated];
                 levelAddEntity(level, held);
                 joint.attachedEntity = 0;
               }
               if (pickedUp) {
+                const index = previouslyPickedUpEntities.indexOf(pickedUp);
+                if (index >= 0) {
+                  previouslyPickedUpEntities.splice(index, 1);
+                }
+                previouslyPickedUpEntities.push(pickedUp);
                 levelRemoveEntity(level, pickedUp);
                 pickedUp.velocity = [0, 0, 0];
                 entity.joints[pickedUp.entityBody.jointAttachmentHolderPartId].attachedEntity = pickedUp;

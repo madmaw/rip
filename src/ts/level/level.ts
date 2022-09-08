@@ -361,7 +361,7 @@ const levelAppendLayers = (level: Level, layers: number, startingX?: number, sta
 const levelPopulateLayer = (level: Level, layer: number) => {
   const [width, height] = level.dimensions;
 
-  const validEnemies: Entity[] = [];
+  const validEnemies: Entity[][] = [];
   const validWeapons: Entity[] = [];
   const validTraps: Entity[][] = [];
   const validHealth: Entity[] = [];
@@ -421,9 +421,34 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         ...position,
         cell => cell == LEVEL_DESIGN_CELL_WALL || cell == LEVEL_DESIGN_CELL_OUT_OF_BOUNDS,
     );
-    if (floorDepth == 1 && blockedOrientations.length > 2) {
+
+    let validEnemy: Entity[];
+    if (floorDepth == 1 && blockedOrientations.length < 3) {
+      const maxHealth = 3;
+      
+      // don't face the wall
+      const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
+      const enemy: Entity<SkeletonPartId> = entityCreate({
+        positioned: position,
+        dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+        oriented: orientation,
+        entityBody: PART_SKELETON_BODY,
+        entityType: ENTITY_TYPE_HOSTILE,
+        acc: .005,
+        velocity: [0, 0, 0],
+        rotated: [0, 0, orientation * CONST_PI_ON_2_1DP],
+        health: maxHealth,
+        maxHealth,
+        collisionGroup: COLLISION_GROUP_MONSTER,
+        collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+      }, 1);
+      enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
+      validEnemies.push(validEnemy = [enemy]);   
+    }
+
+    if (floorDepth == 1 && blockedOrientations.length > 2 || validEnemy) {
       // club
-      {
+      if (!validEnemy || Math.random() > (layer-2)/layer){
         const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
         const maxHealth = 7 + clubSize;
         const clubBody = PARTS_CLUBS[clubSize];
@@ -441,10 +466,10 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           collisionGroup: COLLISION_GROUP_ITEM,
           collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
         }, 1);
-        validWeapons.push(club);
+        (validEnemy || validWeapons).push(club);
       }
       // bottle
-      {
+      if (!validEnemy || Math.random() < .1) {
         const maxHealth = 2;
         const bottle: Entity<BottlePartId> = entityCreate({
           entityBody: BOTTLE_PART_BODY,
@@ -458,7 +483,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
         }, 1);
         bottle.joints[0].light = .2;
-        validHealth.push(bottle);
+        (validEnemy || validHealth).push(bottle);
       }
     }
 
@@ -487,34 +512,10 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       }));
     }
 
-
-    if (floorDepth == 1 && blockedOrientations.length < 3) {
-      const maxHealth = 3;
-      
-      // don't face the wall
-      const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
-      const enemy: Entity<SkeletonPartId> = entityCreate({
-        positioned: position,
-        dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
-        oriented: orientation,
-        entityBody: PART_SKELETON_BODY,
-        entityType: ENTITY_TYPE_HOSTILE,
-        acc: .005,
-        velocity: [0, 0, 0],
-        rotated: [0, 0, orientation * CONST_PI_ON_2_1DP],
-        health: maxHealth,
-        maxHealth,
-        collisionGroup: COLLISION_GROUP_MONSTER,
-        collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-      }, 1);
-      enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
-      validEnemies.push(enemy);   
-    }
-
-      // torch
-      const [adjacentWalls] = checkAdjacency(...position, cell => cell == LEVEL_DESIGN_CELL_WALL);
-      const [incomingStairs] = checkAdjacency(x, y, z-1, (cell, x, y, z, orientation) => cell == (orientation + 2)%4);
-      if (floorDepth == 1
+    // torch
+    const [adjacentWalls] = checkAdjacency(...position, cell => cell == LEVEL_DESIGN_CELL_WALL);
+    const [incomingStairs] = checkAdjacency(x, y, z-1, (cell, x, y, z, orientation) => cell == (orientation + 2)%4);
+    if (floorDepth == 1
         && adjacentWalls.length
         && incomingStairs.length
         // at least one torch per level
@@ -612,19 +613,30 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
   });
 
+  
+  const populatedTiles = array3New<Booleanish>(width, height, 1);
   ([
     [validEnemies, Math.sqrt(layer) - 1],
-    [validWeapons, 3],
-    [validTraps, layer/2],
-    [validHealth, 10],
+    [validWeapons, Math.min(layer, 3)],
+    [validHealth, (layer+1) % 2],
+    [validTraps, (layer-2)/2],
   ] as const).forEach(([entities, quantity], i) => {
     while (quantity > 0 && entities.length) {
       const index = Math.random() * entities.length | 0;
       const tileEntities = entities.splice(index, 1);
       // flat because this could be one or an array
-      tileEntities.flat().forEach(e => {
-        levelAddEntity(level, e);
-      });
+      const flatTileEntities = tileEntities.flat();
+      const e = flatTileEntities[0];
+
+      // avoid collisions
+      const populatedTile = populatedTiles[e.positioned[0] | 0][e.positioned[1] | 0];
+      // traps can have collisions
+      if (!populatedTile[0] || i == 3) {
+        flatTileEntities.forEach(e => {
+          levelAddEntity(level, e);
+        });
+        populatedTile[0] = 1;  
+      }
       quantity--;
     }
   });

@@ -378,7 +378,6 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       maxSpeed: .01,
       blockActions: 
           ACTION_ID_IDLE
-          | ACTION_ID_FALL
           | ACTION_ID_WALK
           | ACTION_ID_WALK_BACKWARD
           | ACTION_ID_RUN
@@ -415,25 +414,6 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         )
       ]
     },
-    [ACTION_ID_FALL]: {
-      maxSpeed: .001,
-      sequences: [
-        safeUnpackAnimationSequence(
-            [...'"!@@@  @#!@0@  @$!@:@  @'],
-            FLAG_UNPACK_SUPPLY_ORIGINALS && {
-              [SKELETON_PART_ID_HIPS]: [[
-                [0, 0, 0],
-              ]],
-              [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-                [0, -Math.PI/2, 0],
-              ]],
-              [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-                [0, -Math.PI/5, 0],
-              ]],  
-            }
-        )
-      ]
-    },
     [ACTION_ID_DUCK]: {
       maxSpeed: .005,
       // AI uses duck to pick things up, so the range indicates how far we need
@@ -441,7 +421,6 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       range: PICK_UP_ITEM_RADIUS,
       blockActions:
           ACTION_ID_IDLE
-          | ACTION_ID_FALL
           | ACTION_ID_WALK
           | ACTION_ID_WALK_BACKWARD
           | ACTION_ID_RUN
