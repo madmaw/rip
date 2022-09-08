@@ -16,7 +16,7 @@ const MAX_LIGHT_THROW_C = `${MAX_LIGHT_THROW}.`;
 const MIN_LIGHT_THROW_C = '2.';
 const LIGHT_Z_FUTZ = .1;
 const VERTICAL_INTERSECTION_IGNORE = .01;
-const PICK_UP_ITEM_RADIUS = .1;
+const PICK_UP_ITEM_RADIUS = .4; // this, plus the skeleton bounds, plus the item bounds should cover every scenario
 
 const VECTOR3_UP: [number, number, number] = [0, 0, 1];
 const VECTOR3_EAST: [number, number, number] = [1, 0, 0];
@@ -69,9 +69,9 @@ const TARGET_VERTICAL_RESOLUTION = 480;
 const TARGET_ASPECT_RATIO = TARGET_HORIZONTAL_RESOLUTION / TARGET_VERTICAL_RESOLUTION;
 
 const MAX_ATTACK_RADIUS = 1;
-const DAMAGE_INVULNERABILITY_DURATION = 200;
+const DAMAGE_INVULNERABILITY_DURATION = 300;
 const SKELETON_WALK_SPEED = .001;
-const AI_RECALCULATION_TIME = 1e4;
+const AI_RECALCULATION_TIME = 1e3;
 const AI_LOOK_RADIUS = 3;
 const AI_DIRECT_MOVE_RADIUS = .7;
 const LEVEL_DIMENSION = 9;

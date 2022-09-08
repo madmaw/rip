@@ -1,5 +1,5 @@
 const SPEAR_LENGTH = .4;
-const SPEAR_RADIUS = .015;
+const SPEAR_RADIUS = .01;
 
 const SPEAR_PART_ID_BODY = 0;
 
@@ -11,6 +11,33 @@ const SPEAR_PART: EntityBody<SpearPartId> = {
   id: SPEAR_PART_ID_BODY,
   modelId: MODEL_SPEAR,
   textureId: TEXTURE_ID_WOOD,
+  jointAttachmentHeldTransform: matrix4Translate(SPEAR_LENGTH/4, 0, 0),
+  jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_RIGHT,
+  outgoingDamage: 1,
+  jointAttachmentHolderAnims: {
+    [ACTION_ID_ATTACK_LIGHT]: {
+      maxSpeed: .005,
+      blockActions: ACTION_ID_IDLE
+          | ACTION_ID_RUN
+          | ACTION_ID_ATTACK_HEAVY
+          | ACTION_ID_ATTACK_LIGHT
+          | ACTION_ID_USE_SECONDARY,
+      range: SPEAR_LENGTH,
+      translated: [.1, 0, 0],
+      sequences: [{
+        // adjust existing attack
+        ...SKELETON_HEAVY_ATTACK_SEQUENCE,
+        [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+          [0, Math.PI/1.5, 0],
+          [0, -Math.PI/4, -Math.PI/3],
+        ], 1, EASE_IN_QUAD],
+        [SKELETON_PART_ID_HAND_RIGHT]: [[
+          [0, 0, 0],
+          [0, CONST_PI_ON_2_1DP, 0],
+        ], 1, EASE_IN_QUAD, 1],
+      }],
+    },         
+  },
 };
 
 const SPEAR_COS = Math.cos(CONST_PI_ON_2_5_1DP);

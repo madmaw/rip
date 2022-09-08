@@ -31,7 +31,7 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
         range: .1 + i/19,
         sequences: [{
           // adjust existing attack
-          ...SKELETON_LIGHT_ATTACK_SEQUENCE,
+          ...SKELETON_HEAVY_ATTACK_SEQUENCE,
           [SKELETON_PART_ID_HAND_RIGHT]: [[
             [CONST_PI_ON_1_5_1DP, 0, 0],
             [0, CONST_PI_ON_1_5_1DP, 0],

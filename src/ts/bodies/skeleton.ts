@@ -73,6 +73,43 @@ const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
   [SKELETON_PART_ID_FOOT_LEFT]: SKELETON_PART_ID_FOOT_RIGHT,
 };
 
+
+const SKELETON_DEFAULT_ROTATIONS = safeUnpackVector3Rotations(
+  [...'/@C@@=@@@@@H@@<@@H@@<@@J@@J@@J@@J@@@@@@@@@@@@@'],
+  FLAG_UNPACK_SUPPLY_ORIGINALS && [
+    //SKELETON_PART_ID_RIBCAGE
+    [0, Math.PI/10, 0],
+    //SKELETON_PART_ID_HEAD
+    [0, -Math.PI/10, 0],
+    //SKELETON_PART_ID_HIPS
+    [0, 0, 0],
+    //SKELETON_PART_ID_HUMERUS_RIGHT
+    [0, Math.PI/4, 0],
+    //SKELETON_PART_ID_FOREARM_RIGHT
+    [0, -Math.PI/8, 0],
+    //SKELETON_PART_ID_HUMERUS_LEFT
+    [0, Math.PI/4, 0],
+    //SKELETON_PART_ID_FOREARM_LEFT
+    [0, -Math.PI/8, 0],
+    //SKELETON_PART_ID_FEMUR_RIGHT
+    [0, Math.PI*3/10, 0],
+    //SKELETON_PART_ID_SHIN_RIGHT
+    [0, Math.PI*3/10, 0],
+    //SKELETON_PART_ID_FEMUR_LEFT
+    [0, Math.PI*3/10, 0],
+    //SKELETON_PART_ID_SHIN_LEFT
+    [0, Math.PI*3/10, 0],
+    // SKELETON_PART_ID_HAND_RIGHT
+    [0, 0, 0],
+    // SKELETON_PART_ID_HAND_LEFT
+    [0, 0, 0],
+    // SKELETON_PART_ID_FOOT_RIGHT
+    [0, 0, 0],
+    // SKELETON_PART_ID_FOOT_LEFT
+    [0, 0, 0],
+  ]
+) as Vector3[] & Record<SkeletonPartId, Vector3>;
+
 // unused
 const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = {
   [SKELETON_PART_ID_HIPS]: [[
@@ -151,37 +188,38 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
           ]],
         },
     ),
+    SKELETON_DEFAULT_ROTATIONS,
     SKELETON_PART_FLIPS,
 );
 
 const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        [...'!"@==@=C  @""@CC@C=  @#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<@@U@  @("@U@@<@  @)"@F@@M@  @*"@M@@F@  @'],
+        [...'!"@==@=C  @""@CD@C<!#@#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<:@U<!"@("@UD@<F!"@)"@P@@J@!"@*"@J@@P@!"@'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, -Math.PI/12],
             [0, -Math.PI/12, Math.PI/12],
           ]],
           [SKELETON_PART_ID_HIPS]: [[
-            [0, Math.PI/12, Math.PI/12],
-            [0, Math.PI/12, -Math.PI/12], 
-          ]],
+            [0, Math.PI/12, Math.PI/9],
+            [0, Math.PI/12, -Math.PI/9], 
+          ], 1, EASE_IN_OUT_QUAD],
           [SKELETON_PART_ID_FEMUR_LEFT]: [[
-            [0, Math.PI/1.5, 0],
-            [0, -Math.PI/8, 0],
-          ]],
+            [0, Math.PI/1.5, Math.PI/9],
+            [0, -Math.PI/8, Math.PI/5],
+          ], 1, EASE_OUT_QUAD],
           [SKELETON_PART_ID_FEMUR_RIGHT]: [[
-            [0, -Math.PI/8, 0],
-            [0, Math.PI/1.5, 0],
-          ]],
+            [0, -Math.PI/8, -Math.PI/5],
+            [0, Math.PI/1.5, -Math.PI/9],
+          ], 1, EASE_OUT_QUAD],
           [SKELETON_PART_ID_SHIN_LEFT]: [[
-            [0, Math.PI*4/10, 0],
-            [0, Math.PI*2/10, 0],
-          ]],
+            [0, Math.PI*3/10, 0],
+            [0, Math.PI*5/10, 0],
+          ], 1, EASE_OUT_QUAD],
           [SKELETON_PART_ID_SHIN_RIGHT]: [[
-            [0, Math.PI*2/10, 0],
-            [0, Math.PI*4/10, 0],
-          ]],
+            [0, Math.PI*5/10, 0],
+            [0, Math.PI*3/10, 0],
+          ], 1, EASE_OUT_QUAD],
           [SKELETON_PART_ID_HUMERUS_LEFT]: [[
             [0, 0, 0],
             [0, Math.PI/2, 0],
@@ -198,10 +236,11 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
           ]],
         }
     ),
+    SKELETON_DEFAULT_ROTATIONS,
     SKELETON_PART_FLIPS,
 );
 
-const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
+const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
     [...'!"@;K@;5! @""@=5@CK! @#"@P0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HEAD]: [[
@@ -239,7 +278,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 );
 
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    [...' "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'!@J@  @(!@J@  @'],
+    [...' "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'"@J@@F@  @("@J@@F@  @'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HIPS]: [[
         [0, 0, 0],
@@ -255,13 +294,16 @@ const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnima
       ]],
       [SKELETON_PART_ID_FEMUR_LEFT]: [[
         [0, Math.PI*3/10, 0],
+        [0, Math.PI*2/10, 0],
       ]],
       [SKELETON_PART_ID_FEMUR_RIGHT]: [[
         [0, Math.PI*3/10, 0],
+        [0, Math.PI*2/10, 0],
       ]],
     }
 );
 
+// for when the bone is used as a weapon
 const SKELETON_FEMUR_ATTACHMENT_INFO: Pick<
     Part<SkeletonPartId>, 
     'jointAttachmentHolderPartId'
@@ -283,7 +325,7 @@ const SKELETON_FEMUR_ATTACHMENT_INFO: Pick<
       range: .1,
       sequences: [{
         // adjust existing attack
-        ...SKELETON_LIGHT_ATTACK_SEQUENCE,
+        ...SKELETON_HEAVY_ATTACK_SEQUENCE,
         [SKELETON_PART_ID_HAND_RIGHT]: [[
           [CONST_PI_ON_1_5_1DP, 0, 0],
           [0, CONST_PI_ON_1_5_1DP, 0],
@@ -312,45 +354,12 @@ type SkeletonPartId =
     | typeof SKELETON_PART_ID_FOOT_LEFT
     ;
 
+
 const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
-  defaultJointRotations: safeUnpackVector3Rotations(
-      [...'/@C@@=@@@@@H@@<@@H@@<@@J@@J@@J@@J@@@@@@@@@@@@@'],
-      FLAG_UNPACK_SUPPLY_ORIGINALS && [
-        //SKELETON_PART_ID_RIBCAGE
-        [0, Math.PI/10, 0],
-        //SKELETON_PART_ID_HEAD
-        [0, -Math.PI/10, 0],
-        //SKELETON_PART_ID_HIPS
-        [0, 0, 0],
-        //SKELETON_PART_ID_HUMERUS_RIGHT
-        [0, Math.PI/4, 0],
-        //SKELETON_PART_ID_FOREARM_RIGHT
-        [0, -Math.PI/8, 0],
-        //SKELETON_PART_ID_HUMERUS_LEFT
-        [0, Math.PI/4, 0],
-        //SKELETON_PART_ID_FOREARM_LEFT
-        [0, -Math.PI/8, 0],
-        //SKELETON_PART_ID_FEMUR_RIGHT
-        [0, Math.PI*3/10, 0],
-        //SKELETON_PART_ID_SHIN_RIGHT
-        [0, Math.PI*3/10, 0],
-        //SKELETON_PART_ID_FEMUR_LEFT
-        [0, Math.PI*3/10, 0],
-        //SKELETON_PART_ID_SHIN_LEFT
-        [0, Math.PI*3/10, 0],
-        // SKELETON_PART_ID_HAND_RIGHT
-        [0, 0, 0],
-        // SKELETON_PART_ID_HAND_LEFT
-        [0, 0, 0],
-        // SKELETON_PART_ID_FOOT_RIGHT
-        [0, 0, 0],
-        // SKELETON_PART_ID_FOOT_LEFT
-        [0, 0, 0],
-      ]
-  ) as Vector3[] & Record<SkeletonPartId, Vector3>,
+  defaultJointRotations: SKELETON_DEFAULT_ROTATIONS,
   anims: {
     [ACTION_ID_IDLE]: {
-      maxSpeed: .0006,
+      maxSpeed: .001,
       sequences: [SKELETON_IDLE_SEQUENCE]
     },
     [ACTION_ID_WALK]: {
@@ -362,7 +371,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES,
     },
     [ACTION_ID_RUN]: {
-      maxSpeed: .005,
+      maxSpeed: .006,
       sequences: SKELETON_RUN_SEQUENCES,
     },
     [ACTION_ID_JUMP]: {
@@ -371,6 +380,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           ACTION_ID_IDLE
           | ACTION_ID_FALL
           | ACTION_ID_WALK
+          | ACTION_ID_WALK_BACKWARD
+          | ACTION_ID_RUN
           | ACTION_ID_JUMP,
       //translate: [0, 0, -SKELETON_FEMUR_LENGTH],
       sequences: [
@@ -434,7 +445,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           | ACTION_ID_WALK
           | ACTION_ID_WALK_BACKWARD
           | ACTION_ID_RUN
-          | ACTION_ID_ATTACK_HEAVY,
+          | ACTION_ID_ATTACK_HEAVY
+          | ACTION_ID_USE_SECONDARY,
       translated: [0, 0, -SKELETON_SHIN_WIDTH],
       sequences: [
         safeUnpackAnimationSequence(
@@ -464,11 +476,30 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     },
     [ACTION_ID_ATTACK_LIGHT]: {
       maxSpeed: .007,
-      blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
+      blockActions: ACTION_ID_IDLE
+          | ACTION_ID_RUN
+          | ACTION_ID_ATTACK_HEAVY
+          | ACTION_ID_ATTACK_LIGHT
+          | ACTION_ID_USE_SECONDARY,
       translated: [.2, 0, 0],
-      range: .2, 
+      range: .12, 
       sequences: [{
-        ...SKELETON_LIGHT_ATTACK_SEQUENCE,
+        ...SKELETON_HEAVY_ATTACK_SEQUENCE,
+        // make the forearm damaging so the hand
+        // (which should be empty if you're using the default attack) inherits it
+        [SKELETON_PART_ID_FOREARM_RIGHT]: [[
+          [0, -Math.PI/2, 0],
+          [0, 0, 0],
+        ], 1, EASE_IN_QUAD, .5],
+      }],
+    },
+    [ACTION_ID_ATTACK_HEAVY]: {
+      maxSpeed: .005,
+      blockActions: ACTION_ID_IDLE | ACTION_ID_RUN,
+      translated: [.1, 0, 0],
+      range: .1, 
+      sequences: [{
+        ...SKELETON_HEAVY_ATTACK_SEQUENCE,
         // make the forearm damaging so the hand
         // (which should be empty if you're using the default attack) inherits it
         [SKELETON_PART_ID_FOREARM_RIGHT]: [[
@@ -477,9 +508,42 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         ], 1, EASE_IN_QUAD, 1],
       }],
     },    
+    [ACTION_ID_USE_SECONDARY]: {
+      maxSpeed: .007,
+      blockActions: ACTION_ID_IDLE
+          | ACTION_ID_RUN
+          | ACTION_ID_ATTACK_HEAVY
+          | ACTION_ID_ATTACK_LIGHT
+          | ACTION_ID_USE_SECONDARY,
+      translated: [.1, 0, 0],
+      range: .05, 
+      sequences: [{
+        ...entityFlipBodyPartAnimationSequences(
+            SKELETON_HEAVY_ATTACK_SEQUENCE,
+            SKELETON_DEFAULT_ROTATIONS,
+            SKELETON_PART_FLIPS
+            // only use flipped
+        )[1],
+        // make the forearm damaging so the hand
+        // (which should be empty if you're using the default attack) inherits it
+        // [SKELETON_PART_ID_FOREARM_LEFT]: [[
+        //   [0, -Math.PI/2, 0],
+        //   [0, 0, 0],
+        // ], 1, EASE_IN_QUAD, .1], // very low damage
+        // [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
+        //   [0, 0, 0],
+        // ]], 
+      }],      
+    },
     [ACTION_ID_TAKE_DAMAGE]: {
       maxSpeed: .007,
-      blockActions: ACTION_ID_JUMP | ACTION_ID_IDLE | ACTION_ID_WALK | ACTION_ID_RUN | ACTION_ID_ATTACK_LIGHT | ACTION_ID_ATTACK_HEAVY,
+      blockActions: ACTION_ID_JUMP
+          | ACTION_ID_IDLE
+          | ACTION_ID_WALK
+          | ACTION_ID_RUN
+          | ACTION_ID_ATTACK_LIGHT
+          | ACTION_ID_ATTACK_HEAVY
+          | ACTION_ID_USE_SECONDARY,
       sequences: entityFlipBodyPartAnimationSequences(
           safeUnpackAnimationSequence(
               [...' !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @'], 
@@ -510,6 +574,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
                   1],
               }
           ),
+          SKELETON_DEFAULT_ROTATIONS,
           SKELETON_PART_FLIPS,
       ),
     }

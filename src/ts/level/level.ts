@@ -101,7 +101,9 @@ const levelIterateEntitiesInBounds = (
     for (let entityId in tile.entities) {
       if (!iteratedEntities[entityId]) {
         const entity = tile.entities[entityId];
-        f(entity, ...pos);
+        if (rect3Intersection(position, dimensions, entity.positioned, entity.dimensions).every(v => v > 0)) {
+          f(entity, ...pos);
+        }
         iteratedEntities[entityId] = 1;
       }
     }
@@ -130,6 +132,7 @@ const LEVEL_DESIGN_CELL_WALL = 5;
 const LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR = 6;
 const LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR = 7;
 const LEVEL_DESIGN_CELL_FLOOR = 8;
+const LEVEL_DESIGN_CELL_OUT_OF_BOUNDS = 9;
 
 const levelPrintLayer = (level: Level, tz: number) => {
   const [width, height, depth] = level.dimensions;
@@ -158,6 +161,7 @@ type LevelDesignCell =
   | typeof LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR
   | typeof LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
   | typeof LEVEL_DESIGN_CELL_FLOOR
+  | typeof LEVEL_DESIGN_CELL_OUT_OF_BOUNDS
   ;
 
 const LEVEL_MIN_CORRIDOR_LENGTH = 2;
@@ -358,108 +362,137 @@ const levelPopulateLayer = (level: Level, layer: number) => {
   const [width, height] = level.dimensions;
 
   const validEnemies: Entity[] = [];
-  const validTreasure: Entity[] = [];
+  const validWeapons: Entity[] = [];
   const validTraps: Entity[][] = [];
+  const validHealth: Entity[] = [];
+
+  const checkAdjacency = (
+      x: number,
+      y: number,
+      z: number,
+      f?: (cell: LevelDesignCell, x: number, y: number, z: number, orientation: Orientation) => Booleanish
+  ): [Orientation[], number] => {
+    const [width, height] = level.dimensions;
+    const orientations: Orientation[] = [];
+    let floorDepth = 0;
+    if (z >= 0) {
+      if (f) {
+        for (let orientation = 0; orientation < 4; orientation++) {
+          const [dx, dy] = ORIENTATION_OFFSETS[orientation];
+          const tx = x + dx;
+          const ty = y + dy;
+          const cell = tx >= 0
+              && tx < width
+              && ty >= 0
+              && ty < height
+              ? level.tiles[tx][ty][z].cell
+              : LEVEL_DESIGN_CELL_OUT_OF_BOUNDS;
+          if (f(cell, tx, ty, z, orientation as Orientation)) {
+            orientations.push(orientation as Orientation);
+          }
+        }  
+      }
+  
+      const cell = level.tiles[x][y][z].cell;
+      let cellBelow: LevelDesignCell = cell;
+      let cellAbove: LevelDesignCell = LEVEL_DESIGN_CELL_SPACE;
+      while (
+          cellAbove != LEVEL_DESIGN_CELL_FLOOR
+          && cellBelow != LEVEL_DESIGN_CELL_WALL
+      ) {
+        cellAbove = cellBelow;
+        floorDepth++;
+        cellBelow = level.tiles[x][y][Math.max(0, z - floorDepth)].cell;
+      };
+      if (cellAbove <= LEVEL_DESIGN_CELL_STAIR_SOUTH) {
+        // stairs count as a half level
+        floorDepth -= .5;
+      }
+    }
+    return [orientations, floorDepth];
+  };
 
   levelIterateInBounds(level, [0, 0, layer], [width, height, 1], (tile: Tile, ...position: Vector3) => {
     const [x, y, z] = position;
 
     let layerTorches = 0;
-
-    const adjacentWalls: Orientation[] = [];
-    let stairsIncoming: Booleanish = 0;
-    let stairsOutgoing: Booleanish = 0;
-    for (let dz = 0; dz < 2; dz++) {
-      const tz = z - dz;
-      for (let orientation = 0; orientation < 4; orientation++) {
-        const [dx, dy] = ORIENTATION_OFFSETS[orientation];
-        const tx = x + dx;
-        const ty = y + dy;
-        if (tx >= 0
-            && tx < width
-            && ty >= 0
-            && ty < height
-            && tz >= 0
-        ) {
-          const cell = level.tiles[tx][ty][tz].cell;
-          if (!dz && cell == LEVEL_DESIGN_CELL_WALL) {
-            adjacentWalls.push(orientation as Orientation);
-          }
-          stairsIncoming = stairsIncoming || dz && (cell == (orientation + 2) % 4);
-          stairsOutgoing = stairsOutgoing || !dz && (cell == orientation);
-        }
-      }  
-    }
-
-    const cell = tile.cell;
-    let floorDepth = 0;
-    let cellBelow: LevelDesignCell = cell;
-    let cellAbove: LevelDesignCell = LEVEL_DESIGN_CELL_SPACE;
-    while (
-      cellAbove != LEVEL_DESIGN_CELL_FLOOR
-      && cellBelow != LEVEL_DESIGN_CELL_WALL
-  ) {
-      cellAbove = cellBelow;
-      floorDepth++;
-      cellBelow = level.tiles[x][y][Math.max(0, z - floorDepth)].cell;
-    };
-
-    // const hasFloor = cell == LEVEL_DESIGN_CELL_FLOOR
-    //     || cellBelow == LEVEL_DESIGN_CELL_WALL
-    //     && (cell == LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR
-    //         || cell == LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
-    //         || cell == LEVEL_DESIGN_CELL_SPACE);
-    const hasFloor = floorDepth == 1
-        && (cell == LEVEL_DESIGN_CELL_FLOOR
-            || cell == LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR
-            || cell == LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
-            || cell == LEVEL_DESIGN_CELL_SPACE
-        );
     
-    if (hasFloor && adjacentWalls.length == 3) {
+    const [blockedOrientations, floorDepth] = checkAdjacency(
+        ...position,
+        cell => cell == LEVEL_DESIGN_CELL_WALL || cell == LEVEL_DESIGN_CELL_OUT_OF_BOUNDS,
+    );
+    if (floorDepth == 1 && blockedOrientations.length > 2) {
       // club
-      const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
-      const maxHealth = 7 + clubSize;
-      const clubBody = PARTS_CLUBS[clubSize];
-      const clubShape = shapes[clubBody.modelId];
-      const [_, dimensions] = shapeBounds(clubShape, 0, 1);
-      const club: Entity<ClubPartId> = entityCreate({
-        entityBody: clubBody,
-        dimensions,
-        positioned: position, 
-        entityType: ENTITY_TYPE_ITEM,
-        rotated: [0, 0, CONST_PI_0DP * 2 * Math.random()],
-        //velocity: [0, 0, 0],
-        health: maxHealth,
-        maxHealth,
-        collisionGroup: COLLISION_GROUP_ITEM,
-        collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-      }, 1);
-      validTreasure.push(club);
+      {
+        const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
+        const maxHealth = 7 + clubSize;
+        const clubBody = PARTS_CLUBS[clubSize];
+        const clubShape = shapes[clubBody.modelId];
+        const [_, dimensions] = shapeBounds(clubShape, 0, 1);
+        const club: Entity<ClubPartId> = entityCreate({
+          entityBody: clubBody,
+          dimensions,
+          positioned: position, 
+          entityType: ENTITY_TYPE_ITEM,
+          rotated: [0, 0, CONST_PI_0DP * 2 * Math.random()],
+          //velocity: [0, 0, 0],
+          health: maxHealth,
+          maxHealth,
+          collisionGroup: COLLISION_GROUP_ITEM,
+          collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+        }, 1);
+        validWeapons.push(club);
+      }
+      // bottle
+      {
+        const maxHealth = 2;
+        const bottle: Entity<BottlePartId> = entityCreate({
+          entityBody: BOTTLE_PART_BODY,
+          collisionGroup: COLLISION_GROUP_ITEM,
+          dimensions: [BOTTLE_RADIUS*2, BOTTLE_RADIUS*2, BOTTLE_RADIUS*2],
+          positioned: position,
+          entityType: ENTITY_TYPE_ITEM,
+          rotated: [0, -CONST_PI_ON_2_1DP, 0],
+          health: maxHealth,
+          maxHealth,
+          collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+        }, 1);
+        bottle.joints[0].light = .2;
+        validHealth.push(bottle);
+      }
     }
 
-    if (floorDepth == 2 && !stairsOutgoing) {
+    const [invalidPitOrientations] = checkAdjacency(
+        x, y, z - 1,
+        // the adjacent tiles don't have holes or stairs
+        (cell, x, y, z) => cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH || cell != LEVEL_DESIGN_CELL_OUT_OF_BOUNDS && checkAdjacency(x, y, z)[1] > 1,
+    );
+    if (floorDepth == 2 && !invalidPitOrientations.length) {
       // pit trap
+      const maxHealth = 3;
       validTraps.push(new Array(9).fill(0).map((_, i) => {
         const position: Vector3 = [x + Math.random(), y + Math.random(), z - 1 + Math.random() * SPEAR_LENGTH/2];
         return entityCreate({
           entityBody: SPEAR_PART,
           dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
-          collisionGroup: COLLISION_GROUP_ITEM,
+          collisionGroup: COLLISION_GROUP_MONSTER,
+          entityType: ENTITY_TYPE_SPIKE,
           positioned: position,
           rotated: [CONST_PI_ON_6_1DP - CONST_PI_ON_3_0DP * Math.random(), -CONST_PI_ON_2_1DP, 0],
           //rotated: [0, -CONST_PI_ON_2_1DP, 0],
+          health: maxHealth,
+          maxHealth,
           collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
         });
       }));
     }
 
 
-    if (hasFloor && adjacentWalls.length < 3) {
+    if (floorDepth == 1 && blockedOrientations.length < 3) {
       const maxHealth = 3;
       
       // don't face the wall
-      const orientation = ORIENTATIONS.find(o => adjacentWalls.indexOf(o) < 0);
+      const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
       const enemy: Entity<SkeletonPartId> = entityCreate({
         positioned: position,
         dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
@@ -479,9 +512,11 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
 
       // torch
-      if (hasFloor
+      const [adjacentWalls] = checkAdjacency(...position, cell => cell == LEVEL_DESIGN_CELL_WALL);
+      const [incomingStairs] = checkAdjacency(x, y, z-1, (cell, x, y, z, orientation) => cell == (orientation + 2)%4);
+      if (floorDepth == 1
         && adjacentWalls.length
-        && stairsIncoming
+        && incomingStairs.length
         // at least one torch per level
         && (!layerTorches || Math.random() > (layer - 3)/layer)
     ) {
@@ -512,6 +547,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       layerTorches++;
     }
 
+    const cell = level.tiles[x][y][z].cell;
     switch (cell) {
       case LEVEL_DESIGN_CELL_WALL:
         levelAddEntity(level, entityCreate({
@@ -576,7 +612,12 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
   });
 
-  ([[validEnemies, Math.sqrt(layer) - 1], [validTreasure, 3], [validTraps, 10]] as const).forEach(([entities, quantity], i) => {
+  ([
+    [validEnemies, Math.sqrt(layer) - 1],
+    [validWeapons, 3],
+    [validTraps, layer/2],
+    [validHealth, 10],
+  ] as const).forEach(([entities, quantity], i) => {
     while (quantity > 0 && entities.length) {
       const index = Math.random() * entities.length | 0;
       const tileEntities = entities.splice(index, 1);

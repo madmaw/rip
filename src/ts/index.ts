@@ -1,3 +1,4 @@
+///<reference path="bodies/bottle.ts"/>
 ///<reference path="bodies/clubs.ts"/>
 ///<reference path="bodies/steps.ts"/>
 ///<reference path="bodies/skeleton.ts"/>
@@ -364,6 +365,7 @@ const shapes = [
   SHAPE_TORCH_HANDLE,
   SHAPE_TORCH_HEAD,
   SHAPE_SPEAR_BODY,
+  BOTTLE_SHAPE,
 ];
 
 
@@ -1000,7 +1002,8 @@ window.onload = window.onclick = () => {
             let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
             let ignoreLateralAcceleration: Booleanish;
             let targetOrientation = entity.oriented;
-            let interact = 0;
+            let pickUpOrDrop = 0;
+            let useSecondary = 0;
             const entityCenter = entityMidpoint(entity);
   
             levelRemoveEntity(level, entity);
@@ -1014,6 +1017,7 @@ window.onload = window.onclick = () => {
               const canDuck = availableActions & ACTION_ID_DUCK;
               const canLightAttack = availableActions & ACTION_ID_ATTACK_LIGHT;
               const canHeavyAttack = availableActions & ACTION_ID_ATTACK_HEAVY;
+              const canUseSecondary = availableActions & ACTION_ID_USE_SECONDARY;
       
               const right = inputRead(INPUT_RIGHT);
               const left = inputRead(INPUT_LEFT);
@@ -1028,7 +1032,9 @@ window.onload = window.onclick = () => {
               let moving = 0;
               // running and interact share keys, so we want to avoid collisions
               if (down) {
-                interact = inputRead(INPUT_INTERACT, now);
+                pickUpOrDrop = inputRead(INPUT_INTERACT, now);
+              } else {
+                useSecondary = inputRead(INPUT_INTERACT, now);
               }
               if (canRun) {
                 running = inputRead(INPUT_RUN, now, 1);
@@ -1075,6 +1081,9 @@ window.onload = window.onclick = () => {
               }
               if (canHeavyAttack && heavyAttack) {
                 action = ACTION_ID_ATTACK_HEAVY;
+              }
+              if (canUseSecondary && useSecondary) {
+                action = ACTION_ID_USE_SECONDARY;
               }
   
               if (action == ACTION_ID_JUMP) {
@@ -1166,8 +1175,25 @@ window.onload = window.onclick = () => {
   
                     let minActionRangeMultiplier = 0;
                     if (activeTarget.entityType == ENTITY_TYPE_PLAYER) {
-                      // TODO find best attack for range
-                      targetAction = ACTION_ID_ATTACK_LIGHT;
+                      // find best attack for range
+                      if (FLAG_AI_USE_HEAVY_ATTACKS) {
+                        const attackActions: ActionId[] = [ACTION_ID_ATTACK_LIGHT, /*ACTION_ID_ATTACK_HEAVY, ACTION_ID_USE_SECONDARY*/];
+                        targetAction = attackActions
+                            .map<[ActionId, number]>(action => {
+                              const actionAnimations = entityGetActionAnims(entity, action);
+                              const delta = entity.joints.some(v => v.animAction == action)
+                                  // strongly prefer the existing action
+                                  ? 0
+                                  // if the action specifies no range, we assume it's not an attack and want the
+                                  // target to actually be as far away as possible
+                                  : Math.abs(distance - (actionAnimations.range || AI_DIRECT_MOVE_RADIUS));
+                                  
+                              return [action, delta];
+                            })
+                            .sort((d1, d2) => d1[1] - d2[1])[0][0];
+                      } else {
+                        targetAction = ACTION_ID_ATTACK_LIGHT;
+                      }
                       minActionRangeMultiplier = .8;
                     } else {
                       targetAction = ACTION_ID_DUCK;
@@ -1176,6 +1202,7 @@ window.onload = window.onclick = () => {
                     const maxActionRange = animations.range || 0;
                     const minActionRange = maxActionRange * minActionRangeMultiplier;
                     const targetActionAvailable = !targetAction || (availableActions & targetAction);
+                    const doingTargetAction = entity.joints.some(joint => joint.animAction == targetAction);
                     const inRange = distance <= maxActionRange && distance >= minActionRange;
   
                     // look at target
@@ -1195,14 +1222,14 @@ window.onload = window.onclick = () => {
                     if (animations && targetAction && targetActionAvailable && inRange) {
                       action = targetAction;
                       if (targetAction == ACTION_ID_DUCK) {
-                        interact = 1;
+                        pickUpOrDrop = 1;
                       }
                     } else if ((availableActions & ACTION_ID_WALK)
                         && definitelyOnGround
                         && (!inRange || !targetActionAvailable)
                     ){
                       // stay back a bit if the desired action isn't available
-                      const direction = targetActionAvailable
+                      const direction = targetActionAvailable || doingTargetAction
                           ? (distance - minActionRange)/Math.abs(distance - minActionRange)
                           : -1;
                       action = direction > 0 ? ACTION_ID_WALK : ACTION_ID_WALK_BACKWARD;
@@ -1233,15 +1260,15 @@ window.onload = window.onclick = () => {
               // action = ACTION_ID_TURN;
             }
   
-            if (interact) {
+            if (pickUpOrDrop) {
               // find any entities we might be able to pick up
               let pickedUp: Entity | undefined;
-              const pickUpDimensions = entity.dimensions.map(v => v + PICK_UP_ITEM_RADIUS * 2) as Vector3;
+              const pickUpDimensions = entity.dimensions.map((v, i) => v + (i != 2 ? PICK_UP_ITEM_RADIUS * 2 : 0)) as Vector3;
               const pickUpPosition = entityCenter.map((v, i) => v - pickUpDimensions[i]/2) as Vector3;
               levelIterateEntitiesInBounds(level, pickUpPosition, pickUpDimensions, found => {
                 // NOTE: while 0 is a valid part id, we assume it's not used for extremities
-                if (found.entityBody.jointAttachmentHolderPartId) {
-                  // TODO get the closest one
+                if (found.entityBody.jointAttachmentHolderPartId && !pickedUp ) {
+                  // somewhat 
                   pickedUp = found;
                 }
               });
@@ -1252,9 +1279,19 @@ window.onload = window.onclick = () => {
               if (joint) {
                 // add the attached entity back into the world
                 const held = joint.attachedEntity as Entity;
-                held.positioned = entity.positioned.map(
-                    (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
-                ) as Vector3;
+                if (FLAG_DROP_ITEMS_FORWARD) {
+                  const delta = ORIENTATION_OFFSETS[entity.oriented];
+                  held.positioned = entityCenter.map(
+                      (v, i) => v + ((entity.dimensions[i] - held.dimensions[i]) * (delta[i] || 0) - held.dimensions[i])/2,
+                  ) as Vector3;
+                  held.velocity = entity.velocity.map(((v, i) => v + (delta[i] || .5) * .001)) as Vector3;
+                } else {
+                  held.positioned = entityCenter.map(
+                      (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
+                  ) as Vector3;
+                  held.velocity = [0, 0, 0];
+
+                }
                 held.rotated = [...entity.rotated];
                 levelAddEntity(level, held);
                 joint.attachedEntity = 0;
@@ -1317,7 +1354,7 @@ window.onload = window.onclick = () => {
               const dimensions = entity.dimensions.map(v => v + MAX_ATTACK_RADIUS * 2) as Vector3;
               levelIterateEntitiesInBounds(level, position, dimensions, victim => {
                 // work out the most appropriate action for each victim
-                if (!victim.lastDamaged || victim.lastDamaged < worldTime - DAMAGE_INVULNERABILITY_DURATION) {
+                if (!(victim.invulnerableUntil > worldTime)) {
                   let maxDamage = 0;
                   let maxWeapon: Entity | undefined;
                   let blocked: Booleanish;
@@ -1384,7 +1421,7 @@ window.onload = window.onclick = () => {
                   } else if (maxDamage) {
                     // start the damage received animation
                     victim.health -= maxDamage;
-                    victim.lastDamaged = worldTime;
+                    victim.invulnerableUntil = worldTime + DAMAGE_INVULNERABILITY_DURATION;
                     entityStartAnimation(worldTime, victim, ACTION_ID_TAKE_DAMAGE);
                   }
                   if (blocked || maxDamage) {
@@ -1464,9 +1501,18 @@ window.onload = window.onclick = () => {
                 }
   
                 if (intersection.every(v => v >= 0)) {
-                  if (collisionEntity.velocity) {
+                  if (collisionEntity.entityType == ENTITY_TYPE_SPIKE) {
+                    const spikeInverse = matrix4Invert(matrix4RotateInOrder(...collisionEntity.rotated));
+                    const inverseVelocity = vector3TransformMatrix4(spikeInverse, ...entity.velocity);
+                    // only get hurt if we hit it front on
+                    if (inverseVelocity[0] < -SKELETON_WALK_SPEED*2 && !(entity.invulnerableUntil > worldTime)) {
+                      action = ACTION_ID_TAKE_DAMAGE;
+                      entity.health--;
+                      entity.invulnerableUntil = worldTime + DAMAGE_INVULNERABILITY_DURATION;
+                    }
+                  } else if (collisionEntity.velocity) {
                     // only do soft collisions in first iteration
-                    if (!iterations) {
+                    if (!iterations && entity.entityType != ENTITY_TYPE_SPIKE) {
                       // soft collisions with other movable objects
                       const entityCenter = entityMidpoint(entity);
                       const collisionEntityCenter = entityMidpoint(collisionEntity);
@@ -1630,7 +1676,11 @@ window.onload = window.onclick = () => {
   
           const entityCenter = entityMidpoint(carrier || entity);
           const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
-          return cy < 0 && (cz > 0 && !entity.velocity || cz > 1);
+          return cy < 0
+              && (cz > 0 && !entity.velocity || cz > 1)
+              // flicker if we have been damaged
+              || (entity.invulnerableUntil > worldTime)
+                  && ((worldTime/MAX_MILLISECONDS_PER_FRAME | 0) % 2) as Booleanish;
         },
         light,
     );

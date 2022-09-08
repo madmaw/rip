@@ -29,6 +29,7 @@ const ENTITY_TYPE_HOSTILE = 2;
 const ENTITY_TYPE_PLAYER = 3;
 const ENTITY_TYPE_TORCH = 4;
 const ENTITY_TYPE_ITEM = 5;
+const ENTITY_TYPE_SPIKE = 6
 
 type EntityType =
   | typeof ENTITY_TYPE_WALL
@@ -37,6 +38,7 @@ type EntityType =
   | typeof ENTITY_TYPE_PLAYER
   | typeof ENTITY_TYPE_TORCH
   | typeof ENTITY_TYPE_ITEM
+  | typeof ENTITY_TYPE_SPIKE
   ;
 
 // action ids are also masks
@@ -44,29 +46,31 @@ type EntityType =
 const ACTION_ID_IDLE = 1;
 const ACTION_ID_WALK = 2;
 const ACTION_ID_WALK_BACKWARD = 4;
-const ACTION_ID_TURN = 8;
-const ACTION_ID_JUMP = 16;
-const ACTION_ID_RUN = 32;
-const ACTION_ID_FALL = 64;
-const ACTION_ID_DUCK = 128;
+const ACTION_ID_RUN = 8;
+const ACTION_ID_TURN = 16;
+const ACTION_ID_JUMP = 32;
+const ACTION_ID_DUCK = 64;
+const ACTION_ID_FALL = 128;
 const ACTION_ID_ATTACK_LIGHT = 256;
 const ACTION_ID_ATTACK_HEAVY = 512;
-const ACTION_ID_CANCEL = 1024;
-const ACTION_ID_TAKE_DAMAGE = 2048;
+const ACTION_ID_USE_SECONDARY = 1024;
+const ACTION_ID_CANCEL = 2048;
+const ACTION_ID_TAKE_DAMAGE = 4096;
 
 type ActionId = 
-    | typeof ACTION_ID_TURN
     | typeof ACTION_ID_IDLE 
     | typeof ACTION_ID_WALK
     | typeof ACTION_ID_WALK_BACKWARD
-    | typeof ACTION_ID_JUMP
     | typeof ACTION_ID_RUN
-    | typeof ACTION_ID_FALL
+    | typeof ACTION_ID_TURN
+    | typeof ACTION_ID_JUMP
     | typeof ACTION_ID_DUCK
+    | typeof ACTION_ID_FALL
     | typeof ACTION_ID_ATTACK_LIGHT
     | typeof ACTION_ID_ATTACK_HEAVY
-    | typeof ACTION_ID_TAKE_DAMAGE
+    | typeof ACTION_ID_USE_SECONDARY
     | typeof ACTION_ID_CANCEL
+    | typeof ACTION_ID_TAKE_DAMAGE
     ;
 
 const ENTITY_CHILD_PART_ANIMATION_DAMAGE_INDEX = 3;
@@ -114,7 +118,7 @@ type EntityBase<T extends number> = {
     worldTime: number,
   },
   lastZCollision?: number,
-  lastDamaged?: number,
+  invulnerableUntil?: number,
   collisionGroup: CollisionGroup,
   collisionMask?: number,
 } & Pick<Joint, 'rotated' | 'anim' | 'animAction'>;
@@ -190,6 +194,8 @@ type EntityBodyAnimation<ID extends number> = {
   translated?: Vector3,
   // the range that this animation should be applied at (for AI)
   range?: number,
+  // fired after the animation completes
+  onComplete?: (e: Entity) => void,
 };
 
 type EntityBody<ID extends number> = Part<ID> & {
@@ -327,7 +333,7 @@ const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(ent
   const joints: Joint[] = [];
   entity.rotated = entity.rotated || [0, 0, 0];
   if (center) {
-    arrayMapAndSet(entity.positioned, (v, i) => (v | 0) + (i < 2 ? (.5 - entity.dimensions[i]/2) : .01));
+    entity.positioned = entity.positioned.map((v, i) => (v | 0) + (i < 2 ? (.5 - entity.dimensions[i]/2) : .01)) as Vector3;
   }
   entityIterateParts((e, part) => {
     const defaultRotation = entity.entityBody.defaultJointRotations?.[part.id];
@@ -422,11 +428,11 @@ const entityStartAnimation = <T extends number>(
     }, []);
 
     entity.offsetted = entity.offsetted || [0, 0, 0];
+    const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
 
     if (entity.offsetAnimAction != action
         && entity.offsetted.some((v, i) => Math.abs(v - (bodyAnimations.translated?.[i] || 0)) > EPSILON)
     ) {
-      const totalDuration = animFrameDurations.reduce((acc, v) => acc + v, 0);
       entity.offsetAnimAction = action;
       entity.offsetAnim = animLerp(
           worldTime,
@@ -439,6 +445,8 @@ const entityStartAnimation = <T extends number>(
           EASINGS[EASE_OUT_QUAD],
       );
     }
+
+    let requiredCompletedSequences = 0;
 
     entity.joints.forEach((joint, jointId) => {
       const bodyJointAnimation = bodyAnimation[jointId];
@@ -453,36 +461,48 @@ const entityStartAnimation = <T extends number>(
                 || defaultBodyJointRotation && !joint.animAction
             )
       ) {
-        const easing = bodyJointAnimation?.[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_EASING]
-            || EASE_LINEAR;
-        const anim = bodyJointAnimation
-            ? animComposite(...bodyJointAnimation[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS]
-                .map((rotation, index) => {
-                  // TODO use max speed correctly
-                  //const duration = 1/bodyAnimations.maxSpeed;
-                  const duration = animFrameDurations[index];
-                  return now => animLerp(
-                      now,
-                      joint.rotated,
-                      rotation,
-                      duration,
-                      EASINGS[easing],
-                      0,
-                      () => {
-                        joint.animSequenceNumber = index + 1;
-                      },
-                  );
-                })
-            )
-            : animLerp(
-                worldTime,
-                joint.rotated,
-                defaultBodyJointRotation,
-                // TODO use overall speed of the animation
-                100,
-                EASINGS[easing],
-                // you shouldn't be making decisions based on default rotations
-            );
+        let anim: Anim;
+        if (bodyJointAnimation) {
+          const bodyJointAnimationRequired = bodyJointAnimation[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_REQUIRED];
+          const bodyJointAnimationRotations = bodyJointAnimation[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS];
+          if (bodyJointAnimationRequired) {
+            requiredCompletedSequences += bodyJointAnimationRotations.length;
+          }
+    
+          const easing = bodyJointAnimation?.[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_EASING]
+              || EASE_LINEAR;
+          anim = animComposite(...bodyJointAnimationRotations
+              .map((rotation, index) => {
+                const duration = animFrameDurations[index];
+                return now => animLerp(
+                    now,
+                    joint.rotated,
+                    rotation,
+                    duration,
+                    EASINGS[easing],
+                    0,
+                    () => {
+                      joint.animSequenceNumber = index + 1;
+                      if (bodyJointAnimationRequired) {
+                        requiredCompletedSequences--;
+                        if (!requiredCompletedSequences) {
+                          bodyAnimations.onComplete?.(entity);
+                        }
+                      }
+                    },
+                );
+              })
+          );
+        } else {
+          anim = animLerp(
+              worldTime,
+              joint.rotated,
+              defaultBodyJointRotation,
+              totalDuration,
+              EASINGS[EASE_LINEAR],
+          );
+        }
+       
         joint.anim = anim;
         joint.animAction = action;
         joint.animActionIndex = bestAnimationIndex;
@@ -495,7 +515,7 @@ const entityStartAnimation = <T extends number>(
 const entityFlipBodyPartAnimationSequences = <ID extends number>(
   sequences: Partial<Record<ID, EntityBodyPartAnimationSequence>>,
   // TODO work out the opposites based on the delta from the defaults
-  //defaultRotations: Vector3[] & Record<ID, Vector3>,
+  defaultRotations: Vector3[] & Record<ID, Vector3>,
   oppositePartIdMap: Partial<Record<ID, ID>>,
 ): Partial<Record<ID, EntityBodyPartAnimationSequence>>[] => {
   // ensure the map is bidirectional
@@ -507,21 +527,31 @@ const entityFlipBodyPartAnimationSequences = <ID extends number>(
   for (let partId in sequences) {
     //const defaultRotation = defaultRotations[partId];
     const oppositePartId = oppositePartIdMap[partId];
-    let source: EntityBodyPartAnimationSequence;
+    let sourceSequence: EntityBodyPartAnimationSequence;
     if (oppositePartId) {
+      const oppositeSequence = sequences[oppositePartId];
+      //const defaultRotation = defaultRotations[partId];
       // swap the sequences
-      source = sequences[oppositePartId]
+      if (oppositeSequence) {
+        sourceSequence = oppositeSequence;
+      } else {
+        // do nothing
+        // if the sequence doesn't exist, it will use the default for the opposite part, which will be fine
+      }
+    } else {
+      sourceSequence = sequences[partId];
+    } 
+    if (sourceSequence) {
+      const [rotations, ...theRest] = sourceSequence;
+      const flippedSequence = [
+        // flip on z and x
+        rotations.map(rotation => [-rotation[0], rotation[1], -rotation[2]]),
+        ...theRest,
+        // types don't transfer
+      ] as any;
+      // flip the rotations
+      flippedSequences[partId] = flippedSequence;
     }
-    if (!source) {
-      source = sequences[partId];
-    }
-    const [rotations, ...theRest] = source;
-    // flip the rotations
-    flippedSequences[partId] = [
-      rotations.map(rotation => [-rotation[0], rotation[1], -rotation[2]]),
-      // types don't transfer
-      ...theRest,
-    ] as any;
   }
   return [sequences, flippedSequences];
 };

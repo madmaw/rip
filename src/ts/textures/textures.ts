@@ -98,6 +98,7 @@ const TEXTURE_ID_HAND_RIGHT = 8;
 const TEXTURE_ID_HAND_LEFT = 9;
 const TEXTURE_ID_FOOT = 10;
 const TEXTURE_ID_WOOD = 11;
+const TEXTURE_ID_GOLD = 12;
 
 type TextureId = 
     | typeof TEXTURE_ID_WHITE
@@ -112,6 +113,7 @@ type TextureId =
     | typeof TEXTURE_ID_HAND_LEFT
     | typeof TEXTURE_ID_FOOT
     | typeof TEXTURE_ID_WOOD
+    | typeof TEXTURE_ID_GOLD
     ;
 
 const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
@@ -354,6 +356,17 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     ),
     //solidTextureNormalFactory,
     createSpeckleTextureFactory(solidTextureNormalFactory, .2),
+  ],
+  // TEXTURE_ID_GOLD (with neck hole)
+  [
+    createLinearGradientTextureFactory(
+        [255, 64, 128, 170],
+        [.5, 0, 0],
+        [255, 0, 0, 255],
+        [-.5, 0, 0],
+    ),
+    //solidTextureNormalFactory,
+    solidTextureNormalFactory,
   ],
 ];
 
