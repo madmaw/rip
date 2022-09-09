@@ -64,9 +64,10 @@ const animComposite = (...anims: ((start: number) => Anim)[]): Anim => {
   }
   return (now: number): Booleanish => {
     if (!currentAnim) {
-      currentAnim = anims.shift()(now);
+      // TODO how can anims be empty here?
+      currentAnim = anims.shift()?.(now);
     }
-    if (currentAnim(now)) {
+    if (!currentAnim || currentAnim(now)) {
       currentAnim = 0;
       return !anims.length;
     }

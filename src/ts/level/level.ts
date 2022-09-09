@@ -426,14 +426,16 @@ const levelPopulateLayer = (level: Level, layer: number) => {
 
     let validEnemy: Entity[];
     if (floorDepth == 1 && blockedOrientations.length < 3) {
-      const variant = Math.random() * layerVariant | 0;
+      let variant = (1 - Math.pow(Math.random(), layerVariant)) * (layerVariant + 1) | 0;
+      const scale = .8 + (variant % 4 | 0) * .2;
       const maxHealth = 3 + variant * 2;
+      variant = variant / 4 | 0;
       
       // don't face the wall
       const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
       const enemy: Entity<SkeletonPartId> = entityCreate({
         positioned: position,
-        dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
+        dimensions: [SKELETON_DIMENSION * scale, SKELETON_DIMENSION * scale, SKELETON_DEPTH * scale],
         oriented: orientation,
         entityBody: PART_SKELETON_BODY,
         entityType: ENTITY_TYPE_HOSTILE,
@@ -445,19 +447,20 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         collisionGroup: COLLISION_GROUP_MONSTER,
         collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
         variant,
+        scale,
       }, 1);
       enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
       validEnemies.push(validEnemy = [enemy]);   
     }
 
     if (floorDepth == 1 && blockedOrientations.length > 2 || validEnemy) {
-      // club
+      // weapon
       if (!validEnemy || Math.random() > (layer-2)/layer){
         const variant = Math.min(2, Math.random() * layerVariant | 0);
         let weapon: Entity;
-        if (!FLAG_SPEARS_AS_LOOT || Math.random() > .5) {
+        if (!FLAG_SPEARS_AS_LOOT || Math.random() > .2) {
           const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
-          const maxHealth = 7 + clubSize + variant;
+          const maxHealth = 7 + clubSize + variant * 3;
           const clubBody = PARTS_CLUBS[clubSize];
           const clubShape = shapes[clubBody.modelId];
           const [_, dimensions] = shapeBounds(clubShape, 0, 1);
@@ -475,8 +478,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             variant,
           }, 1);
         } else {
-          const maxHealth = 3 + variant * 2;
-          return entityCreate<SpearPartId>({
+          const maxHealth = 3 + variant * 3;
+          weapon = entityCreate<SpearPartId>({
             entityBody: SPEAR_PART,
             dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
             collisionGroup: COLLISION_GROUP_ITEM,
@@ -486,9 +489,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             health: maxHealth,
             maxHealth,
             collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+            variant,
           }, 1);
         }
-
         (validEnemy || validWeapons).push(weapon);
       }
       // bottle
@@ -520,7 +523,6 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       const maxHealth = 3;
       validTraps.push(new Array(9).fill(0).map(() => {
         const position: Vector3 = [x + Math.random(), y + Math.random(), z - 1 + Math.random() * SPEAR_LENGTH/2];
-        const maxHealth = 3;
         return entityCreate<SpearPartId>({
           entityBody: SPEAR_PART,
           dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
@@ -646,7 +648,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     [validEnemies, Math.sqrt(layer) - 1],
     [validWeapons, Math.min(layer, 3)],
     [validHealth, (layer+1) % 2],
-    [validTraps, (layer-2)/2],
+    [validTraps, (layer-3)/2],
   ] as const).forEach(([entities, quantity], i) => {
     while (quantity > 0 && entities.length) {
       const index = Math.random() * entities.length | 0;

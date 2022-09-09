@@ -13,8 +13,8 @@ const boneColor: Vector4 = safeUnpackRGBA(
     FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 255, 200, 127],
 );
 const charredBoneColor: Vector4 = safeUnpackRGBA(
-    [...''],
-    FLAG_UNPACK_SUPPLY_ORIGINALS && [54, 69, 79, 127],
+    [...'279@'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [70, 90, 99, 127],
 );
 const brickTextureFactory = createSpeckleTextureFactory(
     createSolidTextureColorFactory(
@@ -29,7 +29,7 @@ const brickTextureFactory = createSpeckleTextureFactory(
 const sandstoneTextureFactory = createSpeckleTextureFactory(
     createSolidTextureColorFactory(
         safeUnpackRGBA(
-            [...'.14@'],
+            [...'.149'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && [56, 67, 80, 99],
         ),
     ),
@@ -199,7 +199,7 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_SKULL
   createSpeckleTextureFactory(
       createRadialGradientTextureFactory(
-          [0, 255, 0, 255],
+          [0, 199, 255, 255],
           [0, 0, 0],
           boneColor,
           .4,
@@ -228,12 +228,12 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // TODO what would a radial gradient look like here instead?
   createLinearGradientTextureFactory(
     safeUnpackRGBA(
-        [...'1+#@'],
+        [...'1239'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 99]
     ),
     [-.5, 0, 0],
     safeUnpackRGBA(
-        [...'RA2@'],
+        [...'>AF*'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 40],
     ),
     [.25, 0, 0],

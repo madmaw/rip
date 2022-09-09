@@ -587,7 +587,7 @@ window.onload = window.onclick = () => {
     rotated: [0, 0, 0],
     maxHealth: 9,
     health: 9,
-    //scale: 2,
+    variant: 1,
     collisionGroup: COLLISION_GROUP_MONSTER,
     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
   });
@@ -822,8 +822,8 @@ window.onload = window.onclick = () => {
   }
   
   const update = (now: number) => {
-    const delta = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
-    worldTime += delta;
+    const deltaTime = Math.min(now - then, MAX_MILLISECONDS_PER_FRAME);
+    worldTime += deltaTime;
     then = now;
     updateCount++;
   
@@ -835,7 +835,7 @@ window.onload = window.onclick = () => {
     const targetCameraZRotation = (-targetCameraOrientation) * CONST_PI_ON_2_2DP;
     const cameraZDelta = mathAngleDiff(cameraZRotation, targetCameraZRotation);
     // TODO can we tween this?
-    cameraZRotation += cameraZDelta * delta / 100;
+    cameraZRotation += cameraZDelta * deltaTime / 100;
     const cameraRotation = matrix4Rotate(cameraZRotation, 0, 0, 1);
     const negatedPlayerCenter = vectorNScale(playerCenter, -1);
     const cameraPositionMatrix = matrix4Multiply(
@@ -1012,7 +1012,7 @@ window.onload = window.onclick = () => {
             if (attachedEntity) {
               // update attached entity
               if (attachedEntity.entityType == ENTITY_TYPE_TORCH) {
-                attachedEntity.health = Math.max(0, attachedEntity.health - delta / TORCH_MS_PER_HEALTH);
+                attachedEntity.health = Math.max(0, attachedEntity.health - deltaTime / TORCH_MS_PER_HEALTH);
                 attachedEntity.joints[TORCH_PART_ID_HEAD].light = 
                     (1 - Math.pow(1 - attachedEntity.health/attachedEntity.maxHealth, 9)) * TORCH_BRIGHTNESS;
               }
@@ -1025,7 +1025,7 @@ window.onload = window.onclick = () => {
           if (entity.velocity && !carrier) {
             let action: ActionId | 0 = 0;
             const availableActions = entityAvailableActions(entity);
-            const definitelyOnGround = entity.lastZCollision >= worldTime - delta;
+            const definitelyOnGround = entity.lastZCollision >= worldTime - deltaTime;
             const probablyOnGround = entity.lastZCollision > worldTime - MAX_JUMP_DELAY;
             let targetVelocity: Vector3 = definitelyOnGround ? [0, 0, entity.velocity[2]] : [...entity.velocity];
             let ignoreLateralAcceleration: Booleanish;
@@ -1143,9 +1143,9 @@ window.onload = window.onclick = () => {
             } else {
               action = ACTION_ID_IDLE;
               if (entity.entityType == ENTITY_TYPE_HOSTILE) {
+                entity.aggro = Math.max(0, (entity.aggro || 0) - deltaTime);
                 // AI
-                
-                if (!entity.activePathTime || entity.activePathTime < worldTime - AI_RECALCULATION_TIME){
+                if ((!entity.activePathTime || entity.activePathTime < worldTime - AI_RECALCULATION_TIME) && !entity.aggro){
                   // look around
                   let bestTarget: Entity;
                   let bestTargetValue = 0;
@@ -1158,7 +1158,6 @@ window.onload = window.onclick = () => {
                       target => {
                         let targetValue = 0;
                         if (target.entityType == ENTITY_TYPE_PLAYER) {
-                          // TODO aggro
                           targetValue = 2;
                         }
                         if (
@@ -1192,7 +1191,14 @@ window.onload = window.onclick = () => {
                       (v, i) => Math.max(0, Math.abs(v) - (entity.dimensions[i] + activeTarget.dimensions[i])/2),
                   );
                   const distance = vectorNLength(distances);
-                  if (distance < AI_DIRECT_MOVE_RADIUS) {
+                  if (distance < AI_DIRECT_MOVE_RADIUS + Math.sqrt(entity.aggro/99)) {
+                    if (activeTarget.lastZCollision > worldTime - deltaTime*2) {
+                      // aggro will fade if distance > 1
+                      entity.aggro += deltaTime / distance; 
+                    } else {
+                      // if the target is jumping/falling we probably don't want to follow them
+                      entity.aggro = Math.min(entity.aggro, 99); 
+                    }
                     // walk in that direction
                     // account for target size and weapon range
                     let targetAction: ActionId | 0 = 0;
@@ -1210,7 +1216,7 @@ window.onload = window.onclick = () => {
                                   ? 0
                                   // if the action specifies no range, we assume it's not an attack and want the
                                   // target to actually be as far away as possible
-                                  : Math.abs(distance - (actionAnimations.range || AI_DIRECT_MOVE_RADIUS));
+                                  : Math.abs(distance - ((actionAnimations.range * (entity.scale || 1)) || AI_DIRECT_MOVE_RADIUS));
                                   
                               return [action, delta];
                             })
@@ -1223,7 +1229,7 @@ window.onload = window.onclick = () => {
                       targetAction = ACTION_ID_DUCK;
                     }
                     const animations = entityGetActionAnims(entity, targetAction);
-                    const maxActionRange = animations.range || 0;
+                    const maxActionRange = (animations.range * (entity.scale || 1)) || 0;
                     const minActionRange = maxActionRange * minActionRangeMultiplier;
                     const targetActionAvailable = !targetAction || (availableActions & targetAction);
                     const doingTargetAction = entity.joints.some(joint => joint.animAction == targetAction);
@@ -1344,7 +1350,7 @@ window.onload = window.onclick = () => {
               let velocity = v;
               if (i < 2 && entity.acc && !ignoreLateralAcceleration) {
                 const diff = v - c;
-                velocity = c + diff * entity.acc * delta;
+                velocity = c + diff * entity.acc * deltaTime;
               }
               return Math.min(
                   MAX_VELOCITY,
@@ -1356,22 +1362,22 @@ window.onload = window.onclick = () => {
             });
   
             // move toward centerline of cross-orientation
-            if (entity.oriented != null && delta) {
+            if (entity.oriented != null && deltaTime) {
               const crossAxis = (entity.oriented + 1) % 2;
               
               const center = entityCenter[crossAxis]; 
               const rail = (center | 0) + .5;
               const diff = rail - center;
               entity.velocity[crossAxis] = Math.max(
-                  -Math.abs(diff/delta), 
+                  -Math.abs(diff/deltaTime), 
                   Math.min(
-                      Math.abs(diff/delta),
+                      Math.abs(diff/deltaTime),
                       diff * RAIL_ALIGNMENT_VELOCITY,
                   ),
               );
             }
             // add in gravity
-            movable.velocity[2] -= delta * GRAVITY;
+            movable.velocity[2] -= deltaTime * GRAVITY;
   
             // check attacking
             const attacking = entity.joints.some((joint, jointId) => {
@@ -1444,8 +1450,8 @@ window.onload = window.onclick = () => {
                                 entityMidpoint(entity),
                             )
                           ),
-                          .001 * (maxDamage || 1),
-                      )
+                          .001 * Math.max(maxWeapon?.entityBody.pushback || 0, maxDamage || 1),
+                      ),
                   );
                   if (blocked) {
                     // start the attack cancel animation
@@ -1472,7 +1478,7 @@ window.onload = window.onclick = () => {
             // check collisions
             let iterations = 0;
             let maxOverlapIndex: number;
-            let remainingDelta = delta;
+            let remainingDelta = deltaTime;
             let maxIntersectionArea = 0;
             let verticalIntersectionCount = 0;
   
@@ -1675,6 +1681,7 @@ window.onload = window.onclick = () => {
                       rotated: [0, 0, 0],
                     }],
                     variant: entity.variant,
+                    scale: entity.scale,
                     // inherit your parent health
                     health: entity.maxHealth,
                     maxHealth: entity.maxHealth,

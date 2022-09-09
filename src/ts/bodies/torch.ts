@@ -24,6 +24,7 @@ const PART_TORCH: EntityBody<TorchPartId> = {
   id: TORCH_PART_ID_BODY,
   modelId: MODEL_TORCH_HANDLE,
   colorTextureIds: [COLOR_TEXTURE_ID_WOOD],
+  pushback: 1,
   // preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH, 0, 0),
   jointAttachmentHeldTransform: matrix4Translate(0, 0, 0),
   jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_LEFT,
@@ -34,10 +35,10 @@ const PART_TORCH: EntityBody<TorchPartId> = {
       sequences: [{
         ...SKELETON_IDLE_SEQUENCE,
         ...safeUnpackAnimationSequence(
-            [...'%!@8@  @,!@F@  @'],
+            [...'%!@:@  @,!@F@  @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-                [0, -Math.PI/4, 0],
+                [0, -Math.PI/5, 0],
               ]],
               [SKELETON_PART_ID_HAND_LEFT]: [[
                 [0, Math.PI/5, 0],
@@ -67,10 +68,36 @@ const PART_TORCH: EntityBody<TorchPartId> = {
         ),
       })),
     },
+    // [ACTION_ID_USE_SECONDARY]: {
+    //   maxSpeed: .005,
+    //   blockActions:
+    //       ACTION_ID_ATTACK_HEAVY
+    //       | ACTION_ID_ATTACK_LIGHT
+    //       | ACTION_ID_USE_SECONDARY
+    //       | ACTION_ID_RUN
+    //       | ACTION_ID_JUMP
+    //       ,
+    //   // burn them all
+    //   sequences: [{
+    //     [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+    //       [0, -Math.PI/5, 0],
+    //       [0, Math.PI/4, 0],
+    //     ], 1],
+    //     [SKELETON_PART_ID_FOREARM_LEFT]: [[
+    //       [0, -Math.PI/4, 0],
+    //       [0, -Math.PI/4, -Math.PI/7],
+    //     ], 1],
+    //     [SKELETON_PART_ID_HAND_LEFT]: [[
+    //       [0, Math.PI/5, 0],
+    //       [0, Math.PI/3, 0],
+    //     ], 1, EASE_IN_QUAD, 1],
+    //   }],
+    // },    
   },
   childs: [{
     id: TORCH_PART_ID_HEAD,
     preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH/2, 0, 0),
+    outgoingDamage: 9,
     modelId: MODEL_TORCH_HEAD,
     colorTextureIds: [COLOR_TEXTURE_ID_FLAME],
   }]

@@ -150,12 +150,14 @@ type Intelligent = {
   activePath?: Vector3[],
   activePathTime?: number,
   activeTarget?: Entity | Falsey,
+  aggro?: number,
 };
 
 type Mindless = {
   activePath: never,
   activePathTime: never,
   activeTarget?: never,
+  aggro?: never,
 };
 
 type Destructible = {
@@ -201,6 +203,7 @@ type EntityBodyAnimation<ID extends number> = {
 type EntityBody<ID extends number> = Part<ID> & {
   anims?: Partial<Record<ActionId, EntityBodyAnimation<ID>>>,
   defaultJointRotations?: Record<ID, Vector3> & Vector3[],
+  readonly pushback?: number,
 }
 
 type Part<ID extends number> = {
@@ -253,7 +256,7 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
           (v, i) => v/2 + entity.positioned[i] + (entity.offsetted?.[i] || 0)) as Vector3),
       ),
       matrix4RotateInOrder(...entity.rotated),
-      //entity.scale && matrix4Scale(entity.scale),
+      entity.scale && matrix4Scale(entity.scale),
   ),
   inheritedOutgoingDamageMultiplier: number = 0,
 ) => {
@@ -288,7 +291,8 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
             transform,
             part.jointAttachmentHolderTransform,
             // TODO this might need to be after rotation
-            joint.attachedEntity.entityBody.jointAttachmentHeldTransform
+            joint.attachedEntity.entityBody.jointAttachmentHeldTransform,
+            matrix4Scale((joint.attachedEntity.scale || 1)/(entity.scale || 1)),
         ),
         childPartOutgoingDamageMultiplier,
     )
@@ -517,7 +521,7 @@ const entityStartAnimation = <T extends number>(
 const entityFlipBodyPartAnimationSequences = <ID extends number>(
   sequences: Partial<Record<ID, EntityBodyPartAnimationSequence>>,
   // TODO work out the opposites based on the delta from the defaults
-  defaultRotations: Vector3[] & Record<ID, Vector3>,
+  //defaultRotations: Vector3[] & Record<ID, Vector3>,
   oppositePartIdMap: Partial<Record<ID, ID>>,
 ): Partial<Record<ID, EntityBodyPartAnimationSequence>>[] => {
   // ensure the map is bidirectional
@@ -526,7 +530,7 @@ const entityFlipBodyPartAnimationSequences = <ID extends number>(
     oppositePartIdMap[oppositePartId] = partId;
   }
   const flippedSequences: Partial<Record<ID, EntityBodyPartAnimationSequence>> = {};
-  for (let partId in sequences) {
+  for (let partId in {...sequences, ...oppositePartIdMap }) {
     //const defaultRotation = defaultRotations[partId];
     const oppositePartId = oppositePartIdMap[partId];
     let sourceSequence: EntityBodyPartAnimationSequence;

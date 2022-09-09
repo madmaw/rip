@@ -54,7 +54,7 @@ const CUBE_MAP_LIGHTS_FAKE: number[] = new Array(MAX_LIGHTS * 4).fill(0);
 const CUBE_MAP_LIGHTS_TEXTURE_INDICES: number[] = CUBE_MAP_LIGHT_TEXTURE_FAKE_INDICES.map((_, i) => i);
 const TEXTURE_COLOR_INDEX = MAX_LIGHTS + 2;
 const TEXTURE_NORMAL_INDEX = TEXTURE_COLOR_INDEX + 1;
-const DEFAULT_TEXTURE_SIZE = 25; // 1/25 = .04, which is shorter
+const DEFAULT_TEXTURE_SIZE = 40; // 1/25 = .04, which is shorter
 const TEXTURE_SIZE = FLAG_HASH_TEXTURE_QUALITY
     ? parseInt(window.location.hash.substring(1)) || DEFAULT_TEXTURE_SIZE
     : DEFAULT_TEXTURE_SIZE;

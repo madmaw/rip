@@ -22,7 +22,7 @@ const SPEAR_PART: EntityBody<SpearPartId> = {
           | ACTION_ID_ATTACK_HEAVY
           | ACTION_ID_ATTACK_LIGHT
           | ACTION_ID_USE_SECONDARY,
-      range: SPEAR_LENGTH,
+      range: SPEAR_LENGTH/2,
       translated: [.1, 0, 0],
       sequences: [{
         // adjust existing attack
@@ -36,7 +36,26 @@ const SPEAR_PART: EntityBody<SpearPartId> = {
           [0, CONST_PI_ON_2_1DP, 0],
         ], 1, EASE_IN_QUAD, 1],
       }],
-    },         
+    },
+    [ACTION_ID_ATTACK_HEAVY]: {
+      maxSpeed: .004,
+      blockActions: ACTION_ID_IDLE
+          | ACTION_ID_RUN
+          | ACTION_ID_WALK
+          | ACTION_ID_ATTACK_HEAVY
+          | ACTION_ID_ATTACK_LIGHT
+          | ACTION_ID_USE_SECONDARY,
+      range: SPEAR_LENGTH,
+      translated: [.1, 0, 0],
+      sequences: [{
+        ...SKELETON_CLUB_ATTACK_LIGHT_SEQUENCE,
+        [SKELETON_PART_ID_HAND_RIGHT]: [[
+          [CONST_PI_ON_1_5_1DP, 0, 0],
+          [0, CONST_PI_ON_1_5_1DP, 0],
+        ], 1, EASE_IN_QUAD, 1.5],
+      }],
+    },
+
   },
 };
 
