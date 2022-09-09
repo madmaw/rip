@@ -119,6 +119,8 @@ type EntityBase<T extends number> = {
   invulnerableUntil?: number,
   collisionGroup: CollisionGroup,
   collisionMask?: number,
+  variant?: number,
+  scale?: number,
 } & Pick<Joint, 'rotated' | 'anim' | 'animAction'>;
 
 type Immovable = {
@@ -206,7 +208,8 @@ type Part<ID extends number> = {
   readonly preRotationTransform?: Matrix4 | Falsey,
   readonly postRotationTransform?: Matrix4 | Falsey,
   readonly modelId: ModelId,
-  readonly textureId?: TextureId,
+  readonly normalTextureIds?: NormalTextureId[],
+  readonly colorTextureIds: ColorTextureId[],
   readonly incomingDamageMultiplier?: number,
   readonly outgoingDamage?: number,
   readonly childs?: readonly Part<ID>[],
@@ -250,6 +253,7 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
           (v, i) => v/2 + entity.positioned[i] + (entity.offsetted?.[i] || 0)) as Vector3),
       ),
       matrix4RotateInOrder(...entity.rotated),
+      //entity.scale && matrix4Scale(entity.scale),
   ),
   inheritedOutgoingDamageMultiplier: number = 0,
 ) => {
@@ -327,7 +331,7 @@ const entityAvailableActions = <T extends number>(entity: Entity<T>): number => 
 
 let entityId = 1;
 
-const entityCreate = <T extends number, EntityType extends PartialEntity<T>>(entity: EntityType, center?: Booleanish): Entity<T> => {
+const entityCreate = <T extends number, EntityType extends PartialEntity<T> = PartialEntity<T>>(entity: EntityType, center?: Booleanish): Entity<T> => {
   const joints: Joint[] = [];
   entity.rotated = entity.rotated || [0, 0, 0];
   if (center) {

@@ -64,6 +64,8 @@ const SKELETON_PART_ID_FOOT_LEFT = 14;
 
 const SKELETON_GLOW = .25;
 
+const SKELETON_COLOR_TEXTURE_IDS: ColorTextureId[] = [COLOR_TEXTURE_ID_BONE, COLOR_TEXTURE_ID_BONE_BLACKENED];
+
 const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
   [SKELETON_PART_ID_HUMERUS_LEFT]: SKELETON_PART_ID_HUMERUS_RIGHT,
   [SKELETON_PART_ID_FOREARM_LEFT]: SKELETON_PART_ID_FOREARM_RIGHT,
@@ -560,7 +562,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
   },
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,
-  textureId: TEXTURE_ID_HIPS,
+  colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+  normalTextureIds: [NORMAL_TEXTURE_ID_HIPS],
   incomingDamageMultiplier: 1,
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
@@ -577,7 +580,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     {
       id: SKELETON_PART_ID_RIBCAGE,
       modelId: MODEL_SKELETON_TORSO,
-      textureId: TEXTURE_ID_RIBCAGE,
+      colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+      normalTextureIds: [NORMAL_TEXTURE_ID_RIBCAGE],
       incomingDamageMultiplier: 1,
       preRotationTransform: matrix4Translate(
           0,
@@ -590,7 +594,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HEAD,
           modelId: MODEL_SKELETON_HEAD,
-          textureId: TEXTURE_ID_SKULL,
+          colorTextureIds: [COLOR_TEXTURE_ID_SKULL, COLOR_TEXTURE_ID_SKULL_BLACKENED],
+          normalTextureIds: [NORMAL_TEXTURE_ID_SKULL],
           incomingDamageMultiplier: 2,
           preRotationTransform: matrix4Translate(
               0,
@@ -604,7 +609,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HUMERUS_RIGHT,
           modelId: MODEL_SKELETON_HUMERUS,
-          textureId: TEXTURE_ID_BONE,
+          colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+          normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
           preRotationTransform: matrix4Translate(
               0,
               -SKELETON_RIBCAGE_HEIGHT/2 + SKELETON_HUMERUS_DIAMETER/2,
@@ -619,7 +625,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           childs: [{
             id: SKELETON_PART_ID_FOREARM_RIGHT,
             modelId: MODEL_SKELETON_FOREARM,
-            textureId: TEXTURE_ID_BONE,
+            colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+            normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
             preRotationTransform: matrix4Translate(
                 SKELETON_HUMERUS_WIDTH/2 + SKELETON_HUMERUS_DIAMETER/2,
                 0,
@@ -633,7 +640,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             childs: [{
               id: SKELETON_PART_ID_HAND_RIGHT,
               modelId: MODEL_SKELETON_HAND,
-              textureId: TEXTURE_ID_HAND_RIGHT,
+              colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+              normalTextureIds: [NORMAL_TEXTURE_ID_HAND_RIGHT],
               outgoingDamage: 1,
               preRotationTransform: matrix4Translate(
                   SKELETON_FOREARM_WIDTH/2,
@@ -665,7 +673,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HUMERUS_LEFT,
           modelId: MODEL_SKELETON_HUMERUS,
-          textureId: TEXTURE_ID_BONE,
+          colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+          normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
           // TODO flip model
           preRotationTransform: matrix4Translate(
               0,
@@ -681,8 +690,9 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           childs: [{
             id: SKELETON_PART_ID_FOREARM_LEFT,
             modelId: MODEL_SKELETON_FOREARM,
-            textureId: TEXTURE_ID_BONE,
-            // TODO flip model
+            colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+            normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
+              // TODO flip model
             preRotationTransform: matrix4Translate(
                 SKELETON_HUMERUS_WIDTH/2 + SKELETON_HUMERUS_DIAMETER/2,
                 0,
@@ -696,7 +706,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
             childs: [{
               id: SKELETON_PART_ID_HAND_LEFT,
               modelId: MODEL_SKELETON_HAND,
-              textureId: TEXTURE_ID_HAND_LEFT,
+              colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+              normalTextureIds: [NORMAL_TEXTURE_ID_HAND_LEFT],
               preRotationTransform: matrix4Translate(
                   SKELETON_FOREARM_WIDTH/2,
                   0,
@@ -729,7 +740,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     {
       id: SKELETON_PART_ID_FEMUR_RIGHT,
       modelId: MODEL_SKELETON_FEMUR,
-      textureId: TEXTURE_ID_BONE,
+      colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+      normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
       preRotationTransform: matrix4Translate(
           0,
           -SKELETON_HIPS_HEIGHT/2,
@@ -744,7 +756,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       childs: [{
         id: SKELETON_PART_ID_SHIN_RIGHT,
         modelId: MODEL_SKELETON_SHIN,
-        textureId: TEXTURE_ID_BONE,
+        colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+        normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
         preRotationTransform: matrix4Translate(
             SKELETON_FEMUR_LENGTH/2,
             0,
@@ -759,7 +772,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         childs: [{
           id: SKELETON_PART_ID_FOOT_RIGHT,
           modelId: MODEL_SKELETON_FOOT,
-          textureId: TEXTURE_ID_FOOT,
+          colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+          normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
           preRotationTransform: matrix4Translate(
               SKELETON_SHIN_WIDTH,
               0,
@@ -785,7 +799,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
     {
       id: SKELETON_PART_ID_FEMUR_LEFT,
       modelId: MODEL_SKELETON_FEMUR,
-      textureId: TEXTURE_ID_BONE,
+      colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+      normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
       // TODO flip model
       preRotationTransform: matrix4Translate(
           0,
@@ -801,8 +816,9 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       childs: [{
         id: SKELETON_PART_ID_SHIN_LEFT,
         modelId: MODEL_SKELETON_SHIN,
-        textureId: TEXTURE_ID_BONE,
-        // TODO flip model
+        colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+        normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
+          // TODO flip model
         preRotationTransform: matrix4Translate(
             // TODO this should be SKELETON_FEMUR_LENGTH
             SKELETON_FEMUR_LENGTH/2,
@@ -817,8 +833,9 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         childs: [{
           id: SKELETON_PART_ID_FOOT_RIGHT,
           modelId: MODEL_SKELETON_FOOT,
-          textureId: TEXTURE_ID_FOOT,
-          preRotationTransform: matrix4Translate(
+          colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
+          normalTextureIds: [NORMAL_TEXTURE_ID_BONE],
+              preRotationTransform: matrix4Translate(
               SKELETON_SHIN_WIDTH,
               0,
               0,

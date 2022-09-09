@@ -125,7 +125,7 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
   uniform vec3 ${U_CAMERA_POSITION};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
-  uniform vec2 ${U_MODEL_ATTRIBUTES};
+  uniform vec3 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
   uniform sampler3D ${U_TEXTURE_COLORS};
   uniform sampler3D ${U_TEXTURE_NORMALS};
@@ -137,9 +137,9 @@ const FRAGMENT_SHADER = `#version 300 es
   in vec3 ${V_TEXTURE_POSITION};
   out vec4 ${OUT_RESULT};
 
-  vec3 tx(vec3 p) {
-    return (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(p, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
-        / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
+  vec3 tn(vec3 p) {
+    return (vec3(${U_MODEL_ATTRIBUTES}.y, 0., 0.) + clamp(p, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
+        / vec3(${NORMAL_TEXTURE_FACTORIES.length}., 1., 1.);
   }
 
   void main() {
@@ -152,7 +152,7 @@ const FRAGMENT_SHADER = `#version 300 es
     
     float ${L_TEXTURE_DELTA} = 0.;
     vec3 ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION};
-    vec4 ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tx(${L_TEXTURE_POSITION}));
+    vec4 ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION}));
     vec3 ${L_POSITION} = ${V_POSITION};
     vec3 ${L_NORMAL} = normalize(${V_NORMAL});
 
@@ -165,7 +165,7 @@ const FRAGMENT_SHADER = `#version 300 es
             ? (${L_TEXTURE_DELTA} + ${L_MINIMUM_TEXTURE_DELTA})/2.
             : ${L_TEXTURE_DELTA} + ${TEXTURE_LOOP_STEP_SIZE};
         ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEST};
-        ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tx(${L_TEXTURE_POSITION}));
+        ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION}));
         if (
           ${L_TEXTURE_NORMAL}.w > ${TEXTURE_ALPHA_THRESHOLD}
         ) {
@@ -180,7 +180,7 @@ const FRAGMENT_SHADER = `#version 300 es
         }  
       }
       ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
-      ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tx(${L_TEXTURE_POSITION}));
+      ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION}));
       vec3 ${L_MODEL_POSITION} = ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
       if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}
           // || abs(${L_MODEL_POSITION}.x) > .5
@@ -201,7 +201,11 @@ const FRAGMENT_SHADER = `#version 300 es
     }
 
     float ${L_DEPTH} = ${L_TEXTURE_DELTA} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
-    vec4 ${L_COLOR} = texture(${U_TEXTURE_COLORS}, tx(${L_TEXTURE_POSITION}));
+    vec4 ${L_COLOR} = texture(
+        ${U_TEXTURE_COLORS},
+        (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(${L_TEXTURE_POSITION}, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
+            / vec3(${COLOR_TEXTURE_FACTORIES.length}., 1., 1.)
+    );
     // ${L_COLOR} = vec4((${L_NORMAL} + 1.) / 2., length(${L_NORMAL}));
     // if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
     //   ${L_COLOR} = vec4(vec3(${L_TEXTURE_DELTA}, 0., 0.), 1.);
@@ -223,7 +227,7 @@ const FRAGMENT_SHADER = `#version 300 es
     //${L_COLOR} = vec4(${L_TEXTURE_POSITION} + .5, 0.);
 
 
-    vec3 ${L_LIGHT_COLOR} = vec3((${L_COLOR}.w -.5) * 2.);
+    vec3 ${L_LIGHT_COLOR} = vec3(max(0., (${L_COLOR}.w -.5) * 2.));
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
@@ -267,12 +271,12 @@ const FRAGMENT_SHADER = `#version 300 es
         if (length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE} + ${L_BIAS} && ${L_COS_LIGHT_ANGLE_DELTA} < 0. || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}) {
           ${L_LIGHT_COLOR} += ${L_LIGHT}
               * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_LIGHT}))
-              + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.y, 0.) : 0.);
+              + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.z, 0.) : 0.);
         } else if (i == 0){
           ${L_LIGHT_COLOR} = vec3(0.);
         }
       }
-      ${L_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.y, 0.) * vec3(.5, 1., 1.);
+      ${L_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.5, 1., 1.);
     }
     ${OUT_RESULT} = vec4(pow(${L_COLOR}.xyz * ${L_LIGHT_COLOR}, vec3(.45)), 1.);
   }
@@ -366,24 +370,27 @@ const shapes = [
 
 
 // create the color/normal textures
-const texture3D = array3New(
-  TEXTURE_SIZE,
-  TEXTURE_SIZE,
-  TEXTURE_FACTORIES.length * TEXTURE_SIZE,
-  (z, y, x) => {
-    const i = x / TEXTURE_SIZE | 0;
-    const internalPoint: Vector3 = [
-      (z + .5)/TEXTURE_SIZE - .5,
-      (y + .5)/TEXTURE_SIZE - .5, 
-      ((x % TEXTURE_SIZE) + .5)/TEXTURE_SIZE - .5
-    ];
-    return TEXTURE_FACTORIES[i].map<Vector4>(f => f(...internalPoint)) as Texel;
-  },
-);
 
-const textureData = texture3D.flat(2);
+const texturesData = TEXTURE_FACTORIES.map(f => {
+  return array3New(
+      TEXTURE_SIZE,
+      TEXTURE_SIZE,
+      f.length * TEXTURE_SIZE, 
+      (z, y, x) => {
+        const i = x / TEXTURE_SIZE | 0;
+        const internalPoint: Vector3 = [
+          (z + .5)/TEXTURE_SIZE - .5,
+          (y + .5)/TEXTURE_SIZE - .5, 
+          ((x % TEXTURE_SIZE) + .5)/TEXTURE_SIZE - .5
+        ];
+        return f[i](...internalPoint);
+      },
+  );
+});
+
 [uniformTextureColors, uniformTextureNormals].forEach((uniform, i) => {
-  const data = textureData.map(v => v[i]).flat();
+  const textureData = texturesData[i];
+  const data = textureData.flat(3);
   const texture = gl.createTexture();
   const textureIndex = TEXTURE_COLOR_INDEX + i;
   gl.activeTexture(gl.TEXTURE0 + textureIndex);
@@ -410,7 +417,7 @@ const textureData = texture3D.flat(2);
       gl.TEXTURE_3D,
       0,
       gl.RGBA,
-      TEXTURE_SIZE * TEXTURE_FACTORIES.length,
+      TEXTURE_SIZE * TEXTURE_FACTORIES[i].length,
       TEXTURE_SIZE,
       TEXTURE_SIZE,
       0,
@@ -553,7 +560,6 @@ const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((
 const startX = 4;
 const startY = 4;
 
-let then = 0;
 let animationFrame: number = 0;
 let player: Entity<SkeletonPartId>;
 
@@ -581,6 +587,7 @@ window.onload = window.onclick = () => {
     rotated: [0, 0, 0],
     maxHealth: 9,
     health: 9,
+    //scale: 2,
     collisionGroup: COLLISION_GROUP_MONSTER,
     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
   });
@@ -630,6 +637,8 @@ window.onload = window.onclick = () => {
   
   let previouslyPickedUpEntities: Entity[] = []
   let worldTime = 0;
+  let then = 0;
+
   let updateCount = 0;
   let previousLights: Light[] = [];
   let previousPreviousLights: Light[] = [];
@@ -668,7 +677,7 @@ window.onload = window.onclick = () => {
         cameraPosition,
     );
 
-    const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, TextureId, number][]>> = {};
+    const instancedRenders: Partial<Record<ModelId, [Matrix4, Matrix4, ColorTextureId, NormalTextureId, number][]>> = {};
 
     levelIterateEntitiesInBounds(
         level,
@@ -737,11 +746,14 @@ window.onload = window.onclick = () => {
                       : !entity.velocity && entity.entityType == ENTITY_TYPE_ITEM
                           ? (Math.abs(Math.sin(worldTime / 1e3 + entity.id)))/9
                           : 0;
-                  const textureId = part.textureId || TEXTURE_ID_FLAME;
+                  const colorTextureIds = part.colorTextureIds;
+                  const normalTextureIds = part.normalTextureIds || [0];
+                  const colorTextureId = colorTextureIds[(entity.variant || 0) % colorTextureIds.length];
+                  const normalTextureId = normalTextureIds[(entity.variant || 0) % normalTextureIds.length];
                   if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
                     const modelInstancedRenders = instancedRenders[part.modelId]
                         || (instancedRenders[part.modelId] = []);
-                    modelInstancedRenders.push([transform, invertedTransform, textureId, luma])
+                    modelInstancedRenders.push([transform, invertedTransform, colorTextureId, normalTextureId, luma])
                   } else {
                     const lightPositions = previousLights.map(l => {
                       const partPositionAtLightRenderTime = joint.entityLightTransforms?.[l.entityId];
@@ -760,9 +772,10 @@ window.onload = window.onclick = () => {
                     gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
                     // x = intrinsic lightness multiplier
                     // y = texture id of part
-                    gl.uniform2f(
+                    gl.uniform3f(
                         uniformModelAttributes,
-                        textureId,
+                        colorTextureId,
+                        normalTextureId,
                         luma,
                     );
                 
@@ -792,14 +805,14 @@ window.onload = window.onclick = () => {
       );
 
       for (let modelId in instancedRenders) {
-        const modelInstancedRenders: [Matrix4, Matrix4, TextureId, number][] = instancedRenders[modelId];
+        const modelInstancedRenders: [Matrix4, Matrix4, ColorTextureId, NormalTextureId, number][] = instancedRenders[modelId];
         const [vao, count] = models[modelId];
         gl.bindVertexArray(vao);
-        modelInstancedRenders.forEach(([transform, invertedTransform, textureId, luma]) => {
+        modelInstancedRenders.forEach(([transform, invertedTransform, ...modelAttributes]) => {
           gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
           gl.uniformMatrix4fv(uniformModelViewMatrixInverse, false, invertedTransform);
           
-          gl.uniform2f(uniformModelAttributes, textureId, luma);
+          gl.uniform3fv(uniformModelAttributes, modelAttributes);
       
           gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
         });
@@ -1661,6 +1674,7 @@ window.onload = window.onclick = () => {
                       attachedEntity: 0,
                       rotated: [0, 0, 0],
                     }],
+                    variant: entity.variant,
                     // inherit your parent health
                     health: entity.maxHealth,
                     maxHealth: entity.maxHealth,

@@ -1,7 +1,7 @@
 ///<reference path="../util/arrays.ts"/>
 
 type Texel = [
-  // color and alpha
+  // color and alpha with variants
   Vector4,
   // normal and (self) illumination
   Vector4?,

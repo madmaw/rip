@@ -19,7 +19,7 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
   return {
     id: CLUB_PART_ID_BODY,
     modelId: MODEL_CLUB_1 + i as ModelId,
-    textureId: TEXTURE_ID_WOOD,
+    colorTextureIds: [COLOR_TEXTURE_ID_WOOD, COLOR_TEXTURE_ID_BONE, COLOR_TEXTURE_ID_METAL],
     outgoingDamage: 1 + Math.sqrt(i)/2,
     jointAttachmentHeldTransform: matrix4Translate(clubWidth/3, 0, 0),
     jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_RIGHT,

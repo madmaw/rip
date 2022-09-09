@@ -23,7 +23,7 @@ type TorchPartId =
 const PART_TORCH: EntityBody<TorchPartId> = {
   id: TORCH_PART_ID_BODY,
   modelId: MODEL_TORCH_HANDLE,
-  textureId: TEXTURE_ID_WOOD,
+  colorTextureIds: [COLOR_TEXTURE_ID_WOOD],
   // preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH, 0, 0),
   jointAttachmentHeldTransform: matrix4Translate(0, 0, 0),
   jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_LEFT,
@@ -72,7 +72,7 @@ const PART_TORCH: EntityBody<TorchPartId> = {
     id: TORCH_PART_ID_HEAD,
     preRotationTransform: matrix4Translate(TORCH_HANDLE_WIDTH/2, 0, 0),
     modelId: MODEL_TORCH_HEAD,
-    textureId: TEXTURE_ID_FLAME,
+    colorTextureIds: [COLOR_TEXTURE_ID_FLAME],
   }]
 };
 

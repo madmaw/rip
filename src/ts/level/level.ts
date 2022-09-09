@@ -412,6 +412,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     return [orientations, floorDepth];
   };
 
+  const layerVariant = layer / LEVEL_LAYER_CHUNK_SIZE | 0;
+
   levelIterateInBounds(level, [0, 0, layer], [width, height, 1], (tile: Tile, ...position: Vector3) => {
     const [x, y, z] = position;
 
@@ -424,7 +426,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
 
     let validEnemy: Entity[];
     if (floorDepth == 1 && blockedOrientations.length < 3) {
-      const maxHealth = 3;
+      const variant = Math.random() * layerVariant | 0;
+      const maxHealth = 3 + variant * 2;
       
       // don't face the wall
       const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
@@ -441,6 +444,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         maxHealth,
         collisionGroup: COLLISION_GROUP_MONSTER,
         collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
+        variant,
       }, 1);
       enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
       validEnemies.push(validEnemy = [enemy]);   
@@ -449,24 +453,43 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     if (floorDepth == 1 && blockedOrientations.length > 2 || validEnemy) {
       // club
       if (!validEnemy || Math.random() > (layer-2)/layer){
-        const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
-        const maxHealth = 7 + clubSize;
-        const clubBody = PARTS_CLUBS[clubSize];
-        const clubShape = shapes[clubBody.modelId];
-        const [_, dimensions] = shapeBounds(clubShape, 0, 1);
-        const club: Entity<ClubPartId> = entityCreate({
-          entityBody: clubBody,
-          dimensions,
-          positioned: position, 
-          entityType: ENTITY_TYPE_ITEM,
-          rotated: [0, 0, CONST_PI_0DP * 2 * Math.random()],
-          //velocity: [0, 0, 0],
-          health: maxHealth,
-          maxHealth,
-          collisionGroup: COLLISION_GROUP_ITEM,
-          collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-        }, 1);
-        (validEnemy || validWeapons).push(club);
+        const variant = Math.min(2, Math.random() * layerVariant | 0);
+        let weapon: Entity;
+        if (!FLAG_SPEARS_AS_LOOT || Math.random() > .5) {
+          const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
+          const maxHealth = 7 + clubSize + variant;
+          const clubBody = PARTS_CLUBS[clubSize];
+          const clubShape = shapes[clubBody.modelId];
+          const [_, dimensions] = shapeBounds(clubShape, 0, 1);
+          weapon = entityCreate<ClubPartId>({
+            entityBody: clubBody,
+            dimensions,
+            positioned: position, 
+            entityType: ENTITY_TYPE_ITEM,
+            rotated: [0, 0, CONST_PI_0DP * 2 * Math.random()],
+            //velocity: [0, 0, 0],
+            health: maxHealth,
+            maxHealth,
+            collisionGroup: COLLISION_GROUP_ITEM,
+            collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+            variant,
+          }, 1);
+        } else {
+          const maxHealth = 3 + variant * 2;
+          return entityCreate<SpearPartId>({
+            entityBody: SPEAR_PART,
+            dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
+            collisionGroup: COLLISION_GROUP_ITEM,
+            entityType: ENTITY_TYPE_ITEM,
+            positioned: position,
+            rotated: [0, 0, CONST_2_PI_0DP * Math.random()],
+            health: maxHealth,
+            maxHealth,
+            collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
+          }, 1);
+        }
+
+        (validEnemy || validWeapons).push(weapon);
       }
       // bottle
       if (!validEnemy || Math.random() < .03) {
@@ -495,9 +518,10 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     if (floorDepth == 2 && !invalidPitOrientations.length) {
       // pit trap
       const maxHealth = 3;
-      validTraps.push(new Array(9).fill(0).map((_, i) => {
+      validTraps.push(new Array(9).fill(0).map(() => {
         const position: Vector3 = [x + Math.random(), y + Math.random(), z - 1 + Math.random() * SPEAR_LENGTH/2];
-        return entityCreate({
+        const maxHealth = 3;
+        return entityCreate<SpearPartId>({
           entityBody: SPEAR_PART,
           dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
           collisionGroup: COLLISION_GROUP_MONSTER,
@@ -508,7 +532,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           health: maxHealth,
           maxHealth,
           collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-        });
+        });      
       }));
     }
 
@@ -558,6 +582,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           collisionGroup: COLLISION_GROUP_WALL,
           entityType: ENTITY_TYPE_WALL,
           rotated: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
+          variant: layerVariant,
         }));
         break;
       case LEVEL_DESIGN_CELL_FLOOR:
@@ -570,6 +595,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             rotated: [0, 0, 0],
             entityBody: PART_ORIENTATION_STEPS[0][0],
             collisionGroup: COLLISION_GROUP_WALL,
+            variant: layerVariant,
           });
           levelAddEntity(level, step);
         }
@@ -599,6 +625,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
               rotated: [0, 0, 0],
               entityBody: stepPart,
               collisionGroup: COLLISION_GROUP_WALL,
+              variant: layerVariant,
             });
             levelAddEntity(level, step);
             return z + dimensions[2];

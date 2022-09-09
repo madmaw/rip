@@ -10,7 +10,7 @@ type SpearPartId =
 const SPEAR_PART: EntityBody<SpearPartId> = {
   id: SPEAR_PART_ID_BODY,
   modelId: MODEL_SPEAR,
-  textureId: TEXTURE_ID_WOOD,
+  colorTextureIds: [COLOR_TEXTURE_ID_WOOD, COLOR_TEXTURE_ID_BONE, COLOR_TEXTURE_ID_METAL],
   jointAttachmentHeldTransform: matrix4Translate(SPEAR_LENGTH/4, 0, 0),
   jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_RIGHT,
   outgoingDamage: 1,

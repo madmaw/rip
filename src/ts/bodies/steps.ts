@@ -1,5 +1,6 @@
 ///<reference path="../level/entity.ts"/>
 ///<reference path="models.ts"/>
+///<reference path="wall.ts"/>
 
 const STEP_PART_ID_BODY = 0;
 
@@ -14,7 +15,8 @@ const PART_ORIENTATION_STEPS = ORIENTATIONS.map(o => {
     return {
       id: STEP_PART_ID_BODY,
       modelId: MODEL_STEP_1 + i as ModelId,
-      textureId: TEXTURE_ID_BLOCK,
+      colorTextureIds: WALL_COLOR_TEXTURE_IDS,
+      normalTextureIds: [NORMAL_TEXTURE_ID_BRICKS_1],
       preRotationTransform: matrix4Rotate(o * CONST_PI_ON_2_2DP, 0, 0, 1),
       vulnerability: -1,
     };
