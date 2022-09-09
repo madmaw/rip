@@ -100,7 +100,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
   const rightSteps = radiusRight ? (Math.PI + sphereAngle) / minRadiansPerStep | 0 : 0;
   
   // create the cylinder
-  return new Array(steps).fill(0).flatMap<Plane>((_, i) => {
+  return new Array(steps).fill(0).map<Plane[]>((_, i) => {
 
     const angle = i * Math.PI * 2 / steps;
     const sinAngle = Math.sin(angle);
@@ -133,7 +133,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
         )
       }),
     ];
-  }).concat({
+  }).flat().concat({
     // create the end pieces
     // TODO we could generate this as part fo the sphere above if we had plane/point trimming
     d: width/2 + radiusRight,
@@ -147,7 +147,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
 const planeFlipAndDuplicateOnAxis = (planes: Plane[], axis: number) => {
   const normal = [0, 0, 0];
   normal[axis] = 1;
-  return planes.flatMap(plane => {
+  return planes.map(plane => {
     const cosAngle =  vectorNDotProduct(plane.normal, normal);
     if (Math.abs(cosAngle) < EPSILON) {
       // perpendicular, we ignore
@@ -160,7 +160,7 @@ const planeFlipAndDuplicateOnAxis = (planes: Plane[], axis: number) => {
       normal: inverseNormal,
     };
     return [plane, inverse];
-  });
+  }).flat();
 };
 
 const shapeBounds = (shape: Shape, transform?: Matrix4 | Falsey, minimalDimensions?: Booleanish): Rect3 => {

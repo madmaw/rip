@@ -92,6 +92,22 @@ module.exports = function (grunt) {
                 from: /ENVIRONMENT = '\w+';/g,
                 to: "ENVIRONMENT = 'ultra';"
               },
+              // math
+              /*
+              { from: "Math.PI", to: "MathPI" },
+              { from: "Math.random", to: "Mathrandom" },
+              { from: "Math.sin", to: "Mathsin" },
+              { from: "Math.cos", to: "Mathcos" },
+              { from: "Math.tan", to: "Mathtan" },
+              { from: "Math.asin", to: "Mathasin" },
+              { from: "Math.acos", to: "Mathacos" },
+              { from: "Math.abs", to: "Mathabs" },
+              { from: "Math.max", to: "Mathmax" },
+              { from: "Math.min", to: "Mathmin" },
+              { from: "Math.pow", to: "Mathpow" },
+              { from: "Math.sqrt", to: "Mathsqrt" },
+              { from : /^/g, to: "const MathPI = Math.PI; const Mathsqrt = Math.sqrt; const Mathpow = Math.pow; const Mathrandom = Math.random;const Mathmin = Math.min;const Mathmax = Math.max;const Mathabs = Math.abs;const Mathsin = Math.sin;const Mathcos = Math.cos;const Mathasin = Math.asin;const Mathacos = Math.acos;const Mathatan2 = Math.atan2;const Mathround = Math.round;" },
+              */
               // remove all consts so CC can aggregate consecutive declarations
               { 
                 from: /(\s)const(\s)/g, 

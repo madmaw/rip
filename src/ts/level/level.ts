@@ -469,7 +469,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         (validEnemy || validWeapons).push(club);
       }
       // bottle
-      if (!validEnemy || Math.random() < .1) {
+      if (!validEnemy || Math.random() < .03) {
         const maxHealth = 2;
         const bottle: Entity<BottlePartId> = entityCreate({
           entityBody: BOTTLE_PART_BODY,

@@ -138,7 +138,7 @@ const FRAGMENT_SHADER = `#version 300 es
   out vec4 ${OUT_RESULT};
 
   vec3 tx(vec3 p) {
-    return (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(p, vec3(-.5), vec3(.5)) * vec3(${TEXTURE_SIZE/TEXTURE_SIZE_PLUS_2}, 1., 1.) + .5)
+    return (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(p, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
         / vec3(${TEXTURE_FACTORIES.length}., 1., 1.);
   }
 
@@ -223,11 +223,7 @@ const FRAGMENT_SHADER = `#version 300 es
     //${L_COLOR} = vec4(${L_TEXTURE_POSITION} + .5, 0.);
 
 
-    vec3 ${L_LIGHT_COLOR} = vec3(
-        ${L_COLOR}.w > .5
-            ? (${L_COLOR}.w -.5) * 2.
-            : 0.
-    );
+    vec3 ${L_LIGHT_COLOR} = vec3((${L_COLOR}.w -.5) * 2.);
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
@@ -370,13 +366,24 @@ const shapes = [
 
 
 // create the color/normal textures
-const texture3D = createTextures(
-    TEXTURE_FACTORIES,
-    TEXTURE_SIZE,
-);  
+const texture3D = array3New(
+  TEXTURE_SIZE,
+  TEXTURE_SIZE,
+  TEXTURE_FACTORIES.length * TEXTURE_SIZE,
+  (z, y, x) => {
+    const i = x / TEXTURE_SIZE | 0;
+    const internalPoint: Vector3 = [
+      (z + .5)/TEXTURE_SIZE - .5,
+      (y + .5)/TEXTURE_SIZE - .5, 
+      ((x % TEXTURE_SIZE) + .5)/TEXTURE_SIZE - .5
+    ];
+    return TEXTURE_FACTORIES[i].map<Vector4>(f => f(...internalPoint)) as Texel;
+  },
+);
+
 const textureData = texture3D.flat(2);
 [uniformTextureColors, uniformTextureNormals].forEach((uniform, i) => {
-  const data = textureData.flatMap(v => v[i]);
+  const data = textureData.map(v => v[i]).flat();
   const texture = gl.createTexture();
   const textureIndex = TEXTURE_COLOR_INDEX + i;
   gl.activeTexture(gl.TEXTURE0 + textureIndex);
@@ -403,7 +410,7 @@ const textureData = texture3D.flat(2);
       gl.TEXTURE_3D,
       0,
       gl.RGBA,
-      TEXTURE_SIZE_PLUS_2 * TEXTURE_FACTORIES.length,
+      TEXTURE_SIZE * TEXTURE_FACTORIES.length,
       TEXTURE_SIZE,
       TEXTURE_SIZE,
       0,
@@ -473,9 +480,9 @@ const models: readonly [WebGLVertexArrayObject, number, number][] = shapes.map((
   const [positions, hardNormals, texturePositions, indices, radius] = shape.reduce<[Vector3[], Vector3[], Vector3[], number[], number]>(
       ([positions, normals, texturePositions, indices, maxRadius], face) => {
         const points = face.perimeter.map(({ firstOutgoingIntersection }) => firstOutgoingIntersection);
-        const surfaceIndices = face.perimeter.slice(2).flatMap(
+        const surfaceIndices = face.perimeter.slice(2).map(
             (_, i) => [positions.length, positions.length + i + 1, positions.length + i + 2]
-        );
+        ).flat();
         indices.push(...surfaceIndices);
         const vertexPositions = points.map(p =>
             vectorNToPrecision(
@@ -728,7 +735,7 @@ window.onload = window.onclick = () => {
                       : !entity.velocity && entity.entityType == ENTITY_TYPE_ITEM
                           ? (Math.abs(Math.sin(worldTime / 1e3 + entity.id)))/9
                           : 0;
-                  const textureId = part.textureId || TEXTURE_ID_WHITE;
+                  const textureId = part.textureId || TEXTURE_ID_FLAME;
                   if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
                     const modelInstancedRenders = instancedRenders[part.modelId]
                         || (instancedRenders[part.modelId] = []);
@@ -1276,6 +1283,7 @@ window.onload = window.onclick = () => {
                   pickedUp = found;
                 }
               });
+
               // drop whatever we are carrying
               const joint = entity.joints.find(
                   (joint, partId) => joint.attachedEntity && (!pickedUp || partId == pickedUp.entityBody.jointAttachmentHolderPartId),

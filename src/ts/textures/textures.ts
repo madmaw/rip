@@ -8,24 +8,34 @@
 
 
 const whiteTextureFactory = createSolidTextureColorFactory([255, 255, 255, 127]);
-const boneColor: Vector4 = [255, 255, 200, 127];
+const boneColor: Vector4 = safeUnpackRGBA(
+    [...'``R@'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 255, 200, 127],
+);
 const boneTextureFactory = createSpeckleTextureFactory(
     createSolidTextureColorFactory(boneColor),
     .1,
     1,
 );
-const redTextureFactory = createSolidTextureColorFactory([255, 0, 0, 127]);
-const brickTextureFactory = createSpeckleTextureFactory(createSolidTextureColorFactory([200, 120, 100, 127]), .2, 1);
-const graniteTextureFactory = createSpeckleTextureFactory(createSolidTextureColorFactory([56, 67, 80, 127]), .4, 1);
-const cyanTextureFactory = createSolidTextureColorFactory([128, 255, 255, 127]);
-const magentaTextureFactory = createSolidTextureColorFactory([255, 0, 255, 127]);
-
-const checkeredTextureFactory = createCheckeredTextureFactory([128, 128, 180, 127], [255, 255, 255, 127], 2);
-const gradientTextureFactory = createLinearGradientTextureFactory(
-    [255, 0, 0, 127],
-    [-.5, -.5, -.5],
-    [0, 255, 0, 127],
-    [.5, .5, .5],
+const brickTextureFactory = createSpeckleTextureFactory(
+    createSolidTextureColorFactory(
+        safeUnpackRGBA(
+            [...'R>9@'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && [200, 120, 100, 127],
+        )
+    ),
+    .2,
+    1,
+);
+const sandstoneTextureFactory = createSpeckleTextureFactory(
+    createSolidTextureColorFactory(
+        safeUnpackRGBA(
+            [...'.14@'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && [56, 67, 80, 127],
+        ),
+    ),
+    .4,
+    1,
 );
 
 const rightHandNormalFactory = createShapedTextureNormalFactory([
@@ -37,7 +47,7 @@ const rightHandNormalFactory = createShapedTextureNormalFactory([
         matrix4Translate(.4, 0, 0),
     ),
   },
-  ...new Array(4).fill(0).flatMap((_, i) => {
+  ...new Array(4).fill(0).map((_, i) => {
     const a = -CONST_PI_ON_15_2DP + i * CONST_PI_ON_15_2DP;
     const t = matrix4Multiply(
         matrix4Translate(-.6, 0, 0),
@@ -58,7 +68,7 @@ const rightHandNormalFactory = createShapedTextureNormalFactory([
       )
       //type: SHAPED_RULE_TYPE_ADDITION,
     }]
-  }),
+  }).flat(),
 ]);
 const leftHandNormalFactory = (z: number, y: number, x: number) => {
   const n = rightHandNormalFactory(z, -y, x);
@@ -86,22 +96,20 @@ const shapedTextureNormalFactory = createShapedTextureNormalFactory([{
 //   type: SHAPED_RULE_TYPE_SUBTRACTION,
 }]);
 */
-const TEXTURE_ID_WHITE = 0;
-const TEXTURE_ID_FLAME = 1;
-const TEXTURE_ID_BRICKS = 2;
-const TEXTURE_ID_BLOCK = 3;
-const TEXTURE_ID_SKULL = 4;
-const TEXTURE_ID_BONE = 5
-const TEXTURE_ID_HIPS = 6;
-const TEXTURE_ID_RIBCAGE = 7;
-const TEXTURE_ID_HAND_RIGHT = 8;
-const TEXTURE_ID_HAND_LEFT = 9;
-const TEXTURE_ID_FOOT = 10;
-const TEXTURE_ID_WOOD = 11;
-const TEXTURE_ID_GOLD = 12;
+const TEXTURE_ID_FLAME = 0;
+const TEXTURE_ID_BRICKS = 1;
+const TEXTURE_ID_BLOCK = 2;
+const TEXTURE_ID_SKULL = 3;
+const TEXTURE_ID_BONE = 4
+const TEXTURE_ID_HIPS = 5;
+const TEXTURE_ID_RIBCAGE = 6;
+const TEXTURE_ID_HAND_RIGHT = 7;
+const TEXTURE_ID_HAND_LEFT = 8;
+const TEXTURE_ID_FOOT = 9;
+const TEXTURE_ID_WOOD = 10;
+const TEXTURE_ID_POTION = 11;
 
 type TextureId = 
-    | typeof TEXTURE_ID_WHITE
     | typeof TEXTURE_ID_FLAME
     | typeof TEXTURE_ID_BRICKS
     | typeof TEXTURE_ID_BLOCK
@@ -113,17 +121,23 @@ type TextureId =
     | typeof TEXTURE_ID_HAND_LEFT
     | typeof TEXTURE_ID_FOOT
     | typeof TEXTURE_ID_WOOD
-    | typeof TEXTURE_ID_GOLD
+    | typeof TEXTURE_ID_POTION
     ;
 
 const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
-  // TEXTURE_ID_WHITE
-  [whiteTextureFactory, solidTextureNormalFactory],
   // TEXTURE_ID_FLAME
-  [createSolidTextureColorFactory([255, 180, 50, 255]), solidTextureNormalFactory],
+  [
+    createSolidTextureColorFactory(
+        safeUnpackRGBA(
+            [...'`M-`'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 180, 50, 255],
+        ),
+    ),
+    solidTextureNormalFactory,
+  ],
   // TEXTURE_ID_BRICKS
   [
-    graniteTextureFactory,
+    sandstoneTextureFactory,
     createSpeckleTextureFactory(
         createBrickTextureNormalFactory(
             array3New(3, 3, 3, () => Math.random() * 3 | 0),
@@ -135,7 +149,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   ],
   // TEXTURE_ID_BLOCK
   [
-    graniteTextureFactory,
+    sandstoneTextureFactory,
     //createBrickTextureNormalFactory(array3New(2, 2, 2, (x, y, z) => x * 16 + y * 4 + z), 2),
     createSpeckleTextureFactory(
         createBrickTextureNormalFactory([[[1]]], 1),
@@ -261,7 +275,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
         //type: SHAPED_RULE_TYPE_ADDITION,
       },
       // ribs
-      ...new Array(4).fill(0).flatMap<ShapedRule>((_, i) => {
+      ...new Array(4).fill(0).map<ShapedRule[]>((_, i) => {
         const RIB_RADIUS = .05;
         const RIB_WIDTH = .49;
         const CHEST_OFFSET = .3;
@@ -306,7 +320,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
           ),
           //type: SHAPED_RULE_TYPE_ADDITION,
         }]
-      }),
+      }).flat(),
     ]),
   ],
   // TEXTURE_ID_HAND_RIGHT
@@ -346,9 +360,15 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
   [
     createSpeckleTextureFactory(
         createLinearGradientTextureFactory(
-            [33, 22, 0, 127],
+            safeUnpackRGBA(
+                [...'1+#@'],
+                FLAG_UNPACK_SUPPLY_ORIGINALS && [66, 44, 11, 127]
+            ),
             [-.5, 0, 0],
-            [164, 116, 73, 127],
+            safeUnpackRGBA(
+                [...'RA2@'],
+                FLAG_UNPACK_SUPPLY_ORIGINALS && [200, 130, 73, 127],
+            ),
             [.25, 0, 0],
         ),
         .4,
@@ -357,15 +377,20 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
     //solidTextureNormalFactory,
     createSpeckleTextureFactory(solidTextureNormalFactory, .2),
   ],
-  // TEXTURE_ID_GOLD (with neck hole)
+  // TEXTURE_ID_POTION
   [
     createLinearGradientTextureFactory(
-        [255, 64, 128, 170],
+        safeUnpackRGBA(
+            [...'`0@K'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 64, 128, 170],
+        ),
         [.5, 0, 0],
-        [255, 0, 0, 255],
+        safeUnpackRGBA(
+            [...'`  `'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 0, 0, 255],
+        ),
         [-.5, 0, 0],
     ),
-    //solidTextureNormalFactory,
     solidTextureNormalFactory,
   ],
 ];

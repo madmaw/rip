@@ -25,18 +25,6 @@ const haxShortenMethods = <F, T extends F>(o: F, variableName: string): T => {
   return o as any;
 };
 
-const MathPI = Math.PI;
-const Mathsqrt = Math.sqrt;
-const Mathpow = Math.pow;
-const Mathrandom = Math.random;
-const Mathmin = Math.min;
-const Mathmax = Math.max;
-const Mathabs = Math.abs;
-const Mathsin = Math.sin;
-const Mathcos = Math.cos;
-const Mathatan2 = Math.atan2;
-const Mathround = Math.round;
-
 const CONST_PI_0DP = 3;
 const CONST_2_PI_0DP = 6;
 const CONST_PI_ON_3_0DP = 1;

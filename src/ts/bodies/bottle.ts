@@ -19,7 +19,7 @@ type BottlePartId =
 const BOTTLE_PART_BODY: EntityBody<BottlePartId> = {
   id: BOTTLE_PART_ID_BODY,
   modelId: MODEL_BOTTLE,
-  textureId: TEXTURE_ID_GOLD, 
+  textureId: TEXTURE_ID_POTION, 
   jointAttachmentHeldTransform: matrix4Multiply(
       matrix4Rotate(Math.PI/2, 1, 0, 0),
       matrix4Translate(-BOTTLE_LENGTH/2 - BOTTLE_RADIUS, 0, BOTTLE_RADIUS/2)

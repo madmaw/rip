@@ -42,6 +42,7 @@ const unpackNumberBuilder = (scale: number, offset: number): Unpacker<number> =>
 }
 
 const unpackAngle = unpackNumberBuilder(CONST_2_PI_2DP, -CONST_PI_2DP);
+// 0 to 64 (TODO should be 0..63)
 const unpackUnsignedInteger = unpackNumberBuilder(64, 0);
 // goes from -2 to 2
 const unpackFloat2 = unpackNumberBuilder(4, -2);
@@ -51,6 +52,8 @@ const unpackFloat1 = unpackNumberBuilder(2, -1);
 const unpackFloatHalf = unpackNumberBuilder(1, -.5);
 // goes from 0 to 0.1
 const unpackUnsignedFloatPoint1 = unpackNumberBuilder(.1, 0);
+// goes from 0 to 255
+const unpackColorComponent = unpackNumberBuilder(255, 0);
 
 const unpackRecordBuilder = <Key extends string | number, Value>(
     keyUnpacker: Unpacker<Key>, valueUnpacker: Unpacker<Value>
@@ -68,6 +71,8 @@ const unpackRecordBuilder = <Key extends string | number, Value>(
 
 const unpackVector3Rotations = unpackSizedArrayBuilder(unpackFixedLengthArrayBuilder<Vector3>(unpackAngle, 3));
 const unpackVector3Normal = unpackFixedLengthArrayBuilder<Vector3>(unpackFloat1, 3);
+
+const unpackVector4RGBA: Unpacker<Vector4> = unpackFixedLengthArrayBuilder(unpackColorComponent, 4);
 
 const unpackEntityBodyPartAnimationSequences = unpackRecordBuilder<number, EntityBodyPartAnimationSequence>(
     unpackUnsignedInteger,
@@ -97,13 +102,13 @@ type Packer<T> = (value: T) => string[];
 
 const packTupleBuilder = <R extends T[], T = any>(...packers: Packer<T>[]): Packer<R> => {
   return (value: R): string[]=> {
-    return packers.flatMap((v, i) => v(value[i])) as any;
+    return packers.map((v, i) => v(value[i])).flat() as any;
   };
 };
 
 const packFixedLengthArrayBuilder = <A extends T[], T = any>(packer: Packer<T>, length: number): Packer<A> => {
   return (value: T[]): string[] => {
-    return value.flatMap(packer);
+    return value.map(packer).flat();
   };
 };
 
@@ -121,7 +126,7 @@ const packNumberBuilder = (scale: number, offset: number): Packer<number> => {
 
 // -PI..PI
 const packAngle = packNumberBuilder(CONST_2_PI_2DP, -CONST_PI_2DP);
-// 0..64
+// 0..64 (TODO should be 0..63)
 const packUnsignedInteger = packNumberBuilder(64, 0);
 // -2..2
 const packFloat2 = packNumberBuilder(4, -2);
@@ -131,6 +136,8 @@ const packFloat1 = packNumberBuilder(2, -1);
 const packFloatPoint5 = packNumberBuilder(1, -.5);
 // 0..0.1
 const packUnsignedFloatPoint1 = packNumberBuilder(.1, 0);
+// 0 to 255
+const packColorComponent = packNumberBuilder(255, 0);
 
 const packParsedNumberBuilder = (packer: Packer<number>): Packer<string> => {
   return (value: string) => packer(parseInt(value));
@@ -154,6 +161,8 @@ const packRecordBuilder = <Key extends string | number, Value>(keyPacker: Packer
 
 const packVector3Rotations = packSizedArrayBuilder(packFixedLengthArrayBuilder<Vector3>(packAngle, 3));
 const packVector3Normal = packFixedLengthArrayBuilder<Vector3>(packFloat1, 3)
+const packVector4RGBA = packFixedLengthArrayBuilder(packColorComponent, 4);
+
 
 const packEntityBodyPartAnimationSequences = packRecordBuilder<number, EntityBodyPartAnimationSequence>(
   packParsedNumberBuilder(packUnsignedInteger),
@@ -215,3 +224,10 @@ const safeUnpackPlanes = FLAG_UNPACK_CHECK_ORIGINALS
         FLAG_UNPACK_CHECK_ORIGINALS && packSmallPlanes,
     )
     : unpackSmallPlanes;
+
+const safeUnpackRGBA = FLAG_UNPACK_CHECK_ORIGINALS
+    ? safeUnpackerBuilder<Vector4>(
+        unpackVector4RGBA,
+        FLAG_UNPACK_CHECK_ORIGINALS && packVector4RGBA,
+    )
+    : unpackVector4RGBA;
