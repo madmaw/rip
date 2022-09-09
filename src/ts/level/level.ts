@@ -46,7 +46,7 @@ const levelPopulateGraph = (level: Level) => {
           : 0;
       const toPos = fromPos.map((v, i) => v + offset[i]);
       // to position is in bounds
-      if (toPos.every((v, i) => v >= 0 && v < level.dimensions[i])) {
+      if (!toPos.some((v, i) => v < 0 || v >= level.dimensions[i])) {
         const [toX, toY, originalTpZ] = toPos;
         const startingZ = originalTpZ + zOffset
         for (let toZ = startingZ; toZ >= 0; toZ--) {
@@ -101,7 +101,7 @@ const levelIterateEntitiesInBounds = (
     for (let entityId in tile.entities) {
       if (!iteratedEntities[entityId]) {
         const entity = tile.entities[entityId];
-        if (rect3Intersection(position, dimensions, entity.positioned, entity.dimensions).every(v => v > 0)) {
+        if (!rect3Intersection(position, dimensions, entity.positioned, entity.dimensions).some(v => v < 0)) {
           f(entity, ...pos);
         }
         iteratedEntities[entityId] = 1;
@@ -299,7 +299,7 @@ const levelAppendLayers = (level: Level, layers: number, startingX?: number, sta
         // only allow one adjacent, contiguous corridor, force the corridors to intersect 
         // or to connect to a stairway
         const connected = adjacency.some(v => v == 1);
-        if (adjacency.every(v => v >= 0)
+        if (!adjacency.some(v => v < 0)
             && (
                 connected
                 //|| upwardStairs && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
@@ -330,7 +330,7 @@ const levelAppendLayers = (level: Level, layers: number, startingX?: number, sta
           if (
               (!downHole || Math.random() > .9)
               && corridorLength > 3
-              && adjacency.slice(-2).every(i => i == 0)
+              && !adjacency.slice(-2).some(i => i)
               && adjacency[corridorLength - 3] < 2
               && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
               && (

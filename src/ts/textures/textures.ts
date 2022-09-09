@@ -282,12 +282,12 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
         const rib = shapeFromPlanes(planesCapsule(6, RIB_WIDTH, RIB_RADIUS));
         //const rib = shapeFromPlanes(planesCube(RIB_WIDTH, RIB_RADIUS, RIB_RADIUS));
         const z = .4 - i * .11;
-        const yAngle = i * -CONST_PI_ON_1_6_1DP;
+        const yAngle = i * -CONST_PI_ON_9_1DP;
         return [{
           shaped: rib,
           transforms: matrix4Multiply(
             matrix4Translate(CHEST_OFFSET, 0, z),
-            matrix4Rotate(Math.PI/1.7, 0, 0, 1),
+            matrix4Rotate(CONST_PI_ON_1_7_1DP, 0, 0, 1),
             matrix4Rotate(-yAngle, 0, 1, 0),
             matrix4Translate(RIB_WIDTH/2, 0, 0),
           ),
@@ -296,7 +296,7 @@ const TEXTURE_FACTORIES: [TextureFactory, TextureFactory][] = [
           shaped: rib,
           transforms: matrix4Multiply(
             matrix4Translate(CHEST_OFFSET, 0, z),
-            matrix4Rotate(-Math.PI/1.7, 0, 0, 1),
+            matrix4Rotate(-CONST_PI_ON_1_7_1DP, 0, 0, 1),
             matrix4Rotate(-yAngle, 0, 1, 0),
             matrix4Translate(RIB_WIDTH/2, 0, 0),
           ),

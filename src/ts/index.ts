@@ -617,7 +617,9 @@ window.onload = window.onclick = () => {
   }
   window.onkeydown = (e: KeyboardEvent) => {
     keySet(e.keyCode as KeyCode, then, 1);
-    e.preventDefault();
+    if (FLAG_PREVENT_EVENT_DEFAULT) {
+      e.preventDefault();
+    }
   };  
   window.onkeyup = (e: KeyboardEvent) => keySet(e.keyCode as KeyCode, then, 0);
   
@@ -1517,7 +1519,7 @@ window.onload = window.onclick = () => {
                   entity['previousIntersection'][collisionEntity.id] = intersection;
                 }
   
-                if (intersection.every(v => v >= 0)) {
+                if (!intersection.some(v => v < 0)) {
                   if (collisionEntity.entityType == ENTITY_TYPE_SPIKE) {
                     const spikeInverse = matrix4Invert(matrix4RotateInOrder(...collisionEntity.rotated));
                     const inverseVelocity = vector3TransformMatrix4(spikeInverse, ...entity.velocity);

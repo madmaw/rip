@@ -71,8 +71,8 @@ const unpackRecordBuilder = <Key extends string | number, Value>(
 
 const unpackVector3Rotations = unpackSizedArrayBuilder(unpackFixedLengthArrayBuilder<Vector3>(unpackAngle, 3));
 const unpackVector3Normal = unpackFixedLengthArrayBuilder<Vector3>(unpackFloat1, 3);
-
 const unpackVector4RGBA: Unpacker<Vector4> = unpackFixedLengthArrayBuilder(unpackColorComponent, 4);
+const unpackMatrix4: Unpacker<Matrix4> = unpackFixedLengthArrayBuilder(unpackFloat1, 16);
 
 const unpackEntityBodyPartAnimationSequences = unpackRecordBuilder<number, EntityBodyPartAnimationSequence>(
     unpackUnsignedInteger,
@@ -162,7 +162,7 @@ const packRecordBuilder = <Key extends string | number, Value>(keyPacker: Packer
 const packVector3Rotations = packSizedArrayBuilder(packFixedLengthArrayBuilder<Vector3>(packAngle, 3));
 const packVector3Normal = packFixedLengthArrayBuilder<Vector3>(packFloat1, 3)
 const packVector4RGBA = packFixedLengthArrayBuilder(packColorComponent, 4);
-
+const packMatrix4 = packFixedLengthArrayBuilder(packFloat1, 16);
 
 const packEntityBodyPartAnimationSequences = packRecordBuilder<number, EntityBodyPartAnimationSequence>(
   packParsedNumberBuilder(packUnsignedInteger),
@@ -231,3 +231,10 @@ const safeUnpackRGBA = FLAG_UNPACK_CHECK_ORIGINALS
         FLAG_UNPACK_CHECK_ORIGINALS && packVector4RGBA,
     )
     : unpackVector4RGBA;
+
+const safeUnpackMatrix4 = FLAG_UNPACK_CHECK_ORIGINALS
+    ? safeUnpackerBuilder<Matrix4>(
+        unpackMatrix4,
+        FLAG_UNPACK_CHECK_ORIGINALS && packMatrix4,
+    )
+    : unpackMatrix4

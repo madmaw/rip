@@ -319,9 +319,9 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
       // remove any faces that contain points that are outside the other planes (alternatively, might be able to 
       // detect CW points and remove that way)
       .filter(f => {
-        return f.perimeter.every(p => {
+        return !f.perimeter.some(p => {
           const point = vector3TransformMatrix4(f.transformFromCoordinateSpace, ...p.firstOutgoingIntersection, 0);
-          return faces.every(face => vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] < EPSILON);
+          return faces.some(face => vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] > EPSILON);
         });
       })
       // remove any surfaces that no longer intersect with any plane used in the shape
@@ -346,8 +346,8 @@ const shapeContainsPointsFromShape = (
     );
     return face.perimeter.some(p => {
       const point = vector3TransformMatrix4(transform, ...p.firstOutgoingIntersection, 0);
-      return container.every(face => {
-        return vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] < EPSILON;
+      return !container.some(face => {
+        return vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] > EPSILON;
       });
     });
   });

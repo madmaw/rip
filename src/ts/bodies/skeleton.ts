@@ -567,11 +567,11 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       0,
       SKELETON_FEMUR_LENGTH + SKELETON_SHIN_WIDTH + SKELETON_FOOT_DEPTH/2 - SKELETON_DEPTH/2,
   ),
-  postRotationTransform: matrix4Translate(
-      0,
-      0,
-      0,
-  ),
+  // postRotationTransform: matrix4Translate(
+  //     0,
+  //     0,
+  //     0,
+  // ),
   childs: [
     // upper body
     {

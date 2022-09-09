@@ -59,6 +59,9 @@ const animLerp = (
 
 const animComposite = (...anims: ((start: number) => Anim)[]): Anim => {
   let currentAnim: Anim | Falsey = 0;
+  if (FLAG_CHECK_FOR_EMPTY_ANIMATIONS && !anims.length) {
+    throw new Error();
+  }
   return (now: number): Booleanish => {
     if (!currentAnim) {
       currentAnim = anims.shift()(now);

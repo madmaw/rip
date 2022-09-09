@@ -112,7 +112,7 @@ const vector2SquaredDistance = (v: Vector2, w: Vector2) => {
 }
 
 const vectorNEquals = <T extends number[]>(v1: T, v2: T) => {
-  return v1.every((v, i) => v == v2[i]);
+  return !v1.some((v, i) => v != v2[i]);
 }
 
 const vectorNToPrecision = <T extends number[]>(v: T): T => {

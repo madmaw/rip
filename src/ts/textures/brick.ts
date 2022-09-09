@@ -15,7 +15,7 @@ const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension
     const brickId = descriptor[x][y][z];
     const planes = planesCube(blockDimension, blockDimension, blockDimension);
     BRICK_AXISES.forEach(axis => {
-      const cosAngle = vectorNDotProduct(VECTOR3_UP, axis);
+    const cosAngle = vectorNDotProduct(VECTOR3_UP, axis);
       const angle = Math.acos(cosAngle);
       const rotationAxis = cosAngle < 1 - EPSILON
           ? vectorNNormalize(vector3CrossProduct(VECTOR3_UP, axis))
@@ -27,7 +27,7 @@ const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension
         const transform = matrix4Rotate(angle, ...axis);
         const sameAdjacent = offsetPoints.some(offsetPoint => {
           const offset = vector3TransformMatrix4(transform, ...offsetPoint).map(Math.round);
-          if (offset.every((v, i) => v + pos[i] >= 0 && v + pos[i] < dimension)) {
+          if (!offset.some((v, i) => v + pos[i] < 0 || v + pos[i] >= dimension)) {
             const [ox, oy, oz] = offset;
             const result = descriptor[x + ox][y + oy][z + oz] == brickId;
             //console.log(pos, offset, axis, angle, offsetPoint, result);

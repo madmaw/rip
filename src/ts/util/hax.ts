@@ -48,6 +48,7 @@ const CONST_3_PI_ON_2_3DP = 4.712;
 
 const CONST_PI_ON_1_5_1DP = 2.1;
 const CONST_PI_ON_1_6_1DP = 2;
+const CONST_PI_ON_1_7_1DP = 1.8;
 const CONST_PI_ON_1_8_1DP = 1.7;
 const CONST_PI_ON_2_5_1DP = 1.3;
 const CONST_PI_ON_2_7_1DP = 1.2;
