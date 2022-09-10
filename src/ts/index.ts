@@ -710,7 +710,9 @@ window.onload = window.onclick = () => {
                   lights.push({
                     pos,
                     entityId: entity.id,
-                    luminosity: Math.min(joint.light, worldTime/5e3),
+                    luminosity: FLAG_FADE_IN
+                        ? Math.min(joint.light, worldTime/5e3)
+                        : joint.light,
                   });
                 }
                 if (renderEntities[entity.id]) {

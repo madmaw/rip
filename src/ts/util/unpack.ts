@@ -94,6 +94,41 @@ const unpackSmallPlane: Unpacker<Plane> = (packed: string[]) => {
 
 const unpackSmallPlanes = unpackSizedArrayBuilder(unpackSmallPlane); 
 
+const unpackUnsignedIntegerArray = unpackSizedArrayBuilder(unpackUnsignedInteger);
+
+const unpackEntityBodyPart: Unpacker<Part<number>> = (packed: string[]) => {
+  const id = unpackUnsignedInteger(packed);
+  const modelId = unpackUnsignedInteger(packed) as ModelId;
+  const incomingDamageMultiplier = unpackFloat2(packed);
+  const outgoingDamage = unpackFloat2(packed);
+  const colorTextureIds = unpackUnsignedIntegerArray(packed) as ColorTextureId[];
+  const normalTextureIds = unpackUnsignedIntegerArray(packed) as NormalTextureId[];
+  const preRotationTransform = unpackMatrix4(packed);
+  const postRotationTransform = unpackMatrix4(packed);
+  const childs = unpackEntityBodyPartArray(packed);
+  const jointAttachmentHeldTransform = unpackMatrix4(packed);
+  const jointAttachmentHolderTransform = unpackMatrix4(packed);
+  const jointAttachmentHolderPartId = unpackUnsignedInteger(packed);
+
+  return {
+    id,
+    modelId,
+    incomingDamageMultiplier,
+    outgoingDamage,
+    colorTextureIds,
+    normalTextureIds,
+    preRotationTransform,
+    postRotationTransform,
+    childs,
+    jointAttachmentHeldTransform,
+    jointAttachmentHolderTransform,
+    jointAttachmentHolderPartId,
+  };
+};
+
+const unpackEntityBodyPartArray = unpackSizedArrayBuilder(unpackEntityBodyPart);
+
+
 //const unpackPlanes = unpackSizedArrayBuilder()
 
 // packing
@@ -113,7 +148,7 @@ const packFixedLengthArrayBuilder = <A extends T[], T = any>(packer: Packer<T>, 
 };
 
 const packSizedArrayBuilder = <T>(packer: Packer<T>) => {
-  return (value: T[]): string[] => {
+  return (value: readonly T[]): string[] => {
     return value.reduce((acc, v) => {
       return [...acc, ...packer(v)];
     }, packUnsignedInteger(value.length));
@@ -181,19 +216,49 @@ const packSmallPlane: Packer<Plane> = (value: Plane): string[] => {
 
 const packSmallPlanes = packSizedArrayBuilder(packSmallPlane);
 
+const packUnsignedIntegerArray = packSizedArrayBuilder(packUnsignedInteger);
 
+const packEntityBodyPart: Packer<Part<number>> = (value: Part<number>) => {
+  return [
+    ...packUnsignedInteger(value.id),
+    ...packUnsignedInteger(value.modelId),
+    ...packFloat2(value.incomingDamageMultiplier || 0),
+    ...packFloat2(value.outgoingDamage || 0),
+    ...packUnsignedIntegerArray(value.colorTextureIds),
+    ...packUnsignedIntegerArray(value.normalTextureIds || []),
+    ...packMatrix4(value.preRotationTransform || matrix4Identity()), // identity matrix compresses well?
+    ...packMatrix4(value.postRotationTransform || matrix4Identity()),
+    ...packEntityBodyPartArray(value.childs || []),
+    ...packMatrix4(value.jointAttachmentHeldTransform || matrix4Identity()),
+    ...packMatrix4(value.jointAttachmentHolderTransform || matrix4Identity()),
+    ...packUnsignedInteger(value.jointAttachmentHolderPartId || 0),
+    // JOINT attachment holder animations
+  ];
+};
+
+const packEntityBodyPartArray = packSizedArrayBuilder(packEntityBodyPart);
 
 // safe
 
 type SafeUnpacker<T> = (packed: string[], original?: T | Falsey) => T;
 
 const safeUnpackerBuilder = <T>(unpacker: Unpacker<T>, packer?: Packer<T> | Falsey): SafeUnpacker<T> => {
-  return (packed: string[], original?: T | Falsey) => {
-    if (FLAG_UNPACK_CHECK_ORIGINALS && packer && original) {
-      const packedOriginal = packer(original).join('');
-      if (packed.join('') != packedOriginal) {
+  return (packed?: string[], original?: T | Falsey) => {
+    if (FLAG_UNPACK_CHECK_ORIGINALS && packer && original && packed) {
+      const packedOriginal = packer(original);
+      if (packed.join('') != packedOriginal.join('')) {
+        const repackedOriginal = packer(unpacker([...packedOriginal]));
+        if (repackedOriginal.join('') != packedOriginal.join('')) {
+          // packer is busted!
+          const diff = repackedOriginal.map((v, i) => packedOriginal[i] == v ? [] : [v, packedOriginal[i], i]).filter(i => i.length > 0);
+          throw new Error(diff.map(([c1, c2, i]) => `${i}: ${c1}/${c2}`).join(' '));
+        }
+        const unprintable = packedOriginal.findIndex(c => c.charCodeAt(0) > UNPACK_STARTING_CHAR_CODE + 64) 
+        if (unprintable >= 0) {
+          throw new Error('unprintable character at '+unprintable+' in '+packedOriginal.join(''));
+        }
         try {
-          throw new Error(`expected '${packedOriginal.replace(/\'/g, '\\\'')}' got '${packed.join('')}' for ${JSON.stringify(original)}`)
+          throw new Error(`expected '${packedOriginal.join('').replace(/\\/g, '\\\\').replace(/\'/g, '\\\'')}' got '${packed.join('').replace(/\'/g, '\\\'')}' for ${JSON.stringify(original)}`)
         } catch (e) {
           console.warn(e);
         }
@@ -240,4 +305,11 @@ const safeUnpackMatrix4 = FLAG_UNPACK_CHECK_ORIGINALS
         unpackMatrix4,
         FLAG_UNPACK_CHECK_ORIGINALS && packMatrix4,
     )
-    : unpackMatrix4
+    : unpackMatrix4;
+
+const safeUnpackEntityBodyPart = FLAG_UNPACK_CHECK_ORIGINALS
+    ? safeUnpackerBuilder<Part<number>>(
+          unpackEntityBodyPart,
+          FLAG_UNPACK_CHECK_ORIGINALS && packEntityBodyPart
+    )
+    : unpackEntityBodyPart;

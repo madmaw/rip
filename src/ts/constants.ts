@@ -32,7 +32,7 @@ const CUBE_MAP_PERPSECTIVE_TRANSFORM = matrix4Perspective(
     CUBE_MAP_PERPSECTIVE_Z_FAR,
 );
 const CUBE_MAP_ROTATION_TRANSFORMS: Matrix4[] = safeUnpackVector3Rotations(
-    [...'&`0@`P@P``0```@@``@'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'&`0@`P@P``0```@@``@'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [
       // +ve X
       [Math.PI, -Math.PI/2, 0],

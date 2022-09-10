@@ -39,7 +39,7 @@ const BOTTLE_PART_BODY: EntityBody<BottlePartId> = {
       },
       sequences: [
         safeUnpackAnimationSequence(
-            [...' !@;@! @!!@8@! @%!@<@!"@&!@3;!"@,!@=@! @'],
+            !FLAG_UNPACK_USE_ORIGINALS && [...' !@;@! @!!@8@! @%!@<@!"@&!@3;!"@,!@=@! @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HEAD]: [[
                 [0, -Math.PI/4, 0],

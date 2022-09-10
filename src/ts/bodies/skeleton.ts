@@ -77,7 +77,7 @@ const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
 
 
 const SKELETON_DEFAULT_ROTATIONS = safeUnpackVector3Rotations(
-  [...'/@C@@=@@@@@K@@<@@K@@<@@J@@J@@J@@J@@@@@@@@@@@@@'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...'/@C@@=@@@@@K@@<@@K@@<@@J@@J@@J@@J@@@@@@@@@@@@@'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && [
     //SKELETON_PART_ID_RIBCAGE
     [0, Math.PI/10, 0],
@@ -146,7 +146,7 @@ const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnim
 
 const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        [...'!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;  @("@P@@ME  @)"@F@@M@  @*"@M@@F@  @'],
+        !FLAG_UNPACK_USE_ORIGINALS && [...'!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;  @("@P@@ME  @)"@F@@M@  @*"@M@@F@  @'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, 0],
@@ -195,7 +195,7 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
 
 const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        [...'!"@==@=C  @""@CD@C<!#@#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<:@U<!"@("@UD@<F!"@)"@P@@J@!"@*"@J@@P@!"@'],
+        !FLAG_UNPACK_USE_ORIGINALS && [...'!"@==@=C  @""@CD@C<!#@#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<:@U<!"@("@UD@<F!"@)"@P@@J@!"@*"@J@@P@!"@'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, -Math.PI/12],
@@ -241,8 +241,8 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
 );
 
 const SKELETON_USE_SECONDARY_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    [...' "@@@@@;! @""@@@@D@! @%"@U@@@D! @&"@+;@<@!!B\'"@K@@P@  @,"@@@P@P!!B'],
-    {
+    !FLAG_UNPACK_USE_ORIGINALS && [...' "@@@@@;! @""@@@@D@! @%"@U@@@D! @&"@+;@<@!!B\'"@K@@P@  @,"@@@P@K!!B'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_RIBCAGE]: [[
         [0, 0, 0],
         [0, 0, -Math.PI/6],
@@ -282,7 +282,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 };
 
 const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    [...'!"@;K@;5! @""@=5@CK! @#"@K0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
+    !FLAG_UNPACK_USE_ORIGINALS && [...'!"@;K@;5! @""@=5@CK! @#"@K0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HEAD]: [[
         [0, -Math.PI/6, Math.PI/3],
@@ -319,7 +319,7 @@ const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 );
 
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    [...' "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'"@J@@F@  @("@J@@F@  @'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...' "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'"@J@@F@  @("@J@@F@  @'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HIPS]: [[
         [0, 0, 0],
@@ -354,7 +354,7 @@ const SKELETON_CLUB_ATTACK_LIGHT_SEQUENCE: EntityBodyAnimationSequence<number> =
 };
 
 const SKELETON_CLUB_ATTACK_HEAVY_SEQUENCE: EntityBodyAnimationSequence<number> = safeUnpackAnimationSequence(
-  [...' "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@H@!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!X'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...' "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@H@!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!X'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && {
     [SKELETON_PART_ID_HIPS]: [[
       [0, 0, 0],
@@ -495,7 +495,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       //translate: [0, 0, -SKELETON_FEMUR_LENGTH],
       sequences: [
         safeUnpackAnimationSequence(
-            [...'"!@D@!"@#!@X@  @$!@5@  @%!@X@  @&!@5@  @\'"@;@@@@  @("@;@@@@  @'],
+            !FLAG_UNPACK_USE_ORIGINALS && [...'"!@D@!"@#!@X@  @$!@5@  @%!@X@  @&!@5@  @\'"@;@@@@  @("@;@@@@  @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HIPS]: [[
                 [0, Math.PI/8, 0],
@@ -539,7 +539,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       translated: [0, 0, -SKELETON_SHIN_WIDTH],
       sequences: [
         safeUnpackAnimationSequence(
-            [...'!!@;@! @"!@E@!"@\'!@C:! @(!@:F! @)!@V@! @*!@PF! @'],
+            !FLAG_UNPACK_USE_ORIGINALS && [...'!!@;@! @"!@E@!"@\'!@C:! @(!@:F! @)!@V@! @*!@PF! @'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HEAD]: [[
                 [0, -Math.PI/6, 0],
@@ -619,7 +619,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           | ACTION_ID_USE_SECONDARY,
       sequences: entityFlipBodyPartAnimationSequences(
           safeUnpackAnimationSequence(
-              [...' !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @'], 
+              !FLAG_UNPACK_USE_ORIGINALS && [...' !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @'], 
               FLAG_UNPACK_SUPPLY_ORIGINALS && {
                 [SKELETON_PART_ID_HEAD]: [
                   [[0, -Math.PI/6, -Math.PI/3]], 
@@ -651,22 +651,21 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       ),
     }
   },
+  pushback: 2,
+  // ...safeUnpackEntityBodyPart(
+  //     !FLAG_UNPACK_USE_ORIGINALS && [...'"(P@"#%!$`@@@@`@@@@`@>@@``@@@@`@@@@`@@@@`# &P@"#%!%`@@@@`@@@@`@@@A``@@@@`@@@@`@@@B`#!\'`@"$&!#`@@@@`@@@@`@@@D``@@@@`@@@@`@@@@` P@$@@`@@\\@P@@@@``@@@@`@@@@`@@@@`,#)@P"#%!!`@@@@`@@@@`@@=A``@@@@`@@@@`@A@@`!$*@@"#%!!`@@@@`@@@@`@B@@``@@@@`@@@@`@A@@`!+-@P"#%!&`@@@@`@@@@`@A@@``@@@@`@@@@`@A@@` `@@@@`@@@@`@@@@`@@`@@`@@ @@@@AA` `@@@@`@@@@`@@@@``@@@@`@@@@`@@@@`  @@@@`@@@@ @B?@``@@@@`@@@@`@@@@`+%)@P"#%!!`@@@@`@@@@`@@CA``@@@@`@@@@`@A@@`!&*@@"#%!!`@@@@`@@@@`@B@@``@@@@`@@@@`@A@@`!,-@P"#%!\'`@@@@`@@@@`@A@@``@@@@`@@@@`@A@@` `@@@@`@@@@`@@@@`@@`@@`@@ @@@@?A` `@@@@`@@@@`@@@@``@@@@`@@@@`@@@@`  @@@@`@@@@ @B?@``@@@@`@@@@`@@@@`+`@@@@`@@@@`@@@@``@@@@`@@@@`@@@@` \'+@P"#%!!`@@@@`@@@@`@@>?``@@@@`@@@@`@B@@`!),@@"#%!!`@@@@`@@@@`@B@@``@@@@`@@@@`@B@@`!-.@@"#%!"`@@@@`@@@@`@D@@`J@"@@`@@^@J@>@A` `@@@@`@@@@`@@@@``@@@@`@@@@`@@@@` `@@@@`@@@@`@@@@``@@@@`@@@@`@@@@`  @@@@`@@@@ @B?@``@@@@`@@@@`@@@@`+(+@P"#%!!`@@@@`@@@@`@@B?``@@@@`@@@@`@B@@`!*,@@"#%!!`@@@@`@@@@`@B@@``@@@@`@@@@`@B@@`!-.@@"#%!"`@@@@`@@@@`@D@@`J@"@@`@@^@J@>@A` `@@@@`@@@@`@@@@``@@@@`@@@@`@@@@` `@@@@`@@@@`@@@@``@@@@`@@@@`@@@@`  @@@@`@@@@ @B?@``@@@@`@@@@`@@@@`+`@@@@`@@@@`@@@@``@@@@`@@@@`@@@@` '],
+  //     FLAG_UNPACK_SUPPLY_ORIGINALS && {
+  // packing doesn't appear to be worth it, probably because the code to compress a complex object like this takes more space than it saves
   id: SKELETON_PART_ID_HIPS,
   modelId: MODEL_SKELETON_HIPS,
   colorTextureIds: SKELETON_COLOR_TEXTURE_IDS,
   normalTextureIds: [NORMAL_TEXTURE_ID_HIPS],
-  pushback: 2,
   incomingDamageMultiplier: 1,
   preRotationTransform: matrix4Translate(
       -SKELETON_DIMENSION/4,
       0,
       SKELETON_FEMUR_LENGTH + SKELETON_SHIN_WIDTH + SKELETON_FOOT_DEPTH/2 - SKELETON_DEPTH/2,
   ),
-  // postRotationTransform: matrix4Translate(
-  //     0,
-  //     0,
-  //     0,
-  // ),
   childs: [
     // upper body
     {
@@ -963,7 +962,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
   ...planeFlipAndDuplicateOnAxis(
       planeFlipAndDuplicateOnAxis(
           safeUnpackPlanes(
-              [...'#@WWZ@^6M/Z7F'],
+              !FLAG_UNPACK_USE_ORIGINALS && [...'#@WWZ@^6M/Z7F'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [
                 // shoulder
                 {
@@ -987,7 +986,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
       0,
   ),
   ...safeUnpackPlanes(
-      [...'"W@WV)@WM'],
+      !FLAG_UNPACK_USE_ORIGINALS && [...'"W@WV)@WM'],
       FLAG_UNPACK_SUPPLY_ORIGINALS && [
         // collar
         {
@@ -1011,7 +1010,7 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
   ),
   ...planeFlipAndDuplicateOnAxis(
       safeUnpackPlanes(
-          [...'*6@":`@@@.@[:VVG@R@[=SX6@@R[:*VG:*V9=@W)='],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'*6@":`@@@.@[:VVG@R@[=SX6@@R[:*VG:*V9=@W)='],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [
             // under jaw
             {

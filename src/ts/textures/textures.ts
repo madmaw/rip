@@ -9,11 +9,11 @@
 
 const whiteTextureFactory = createSolidTextureColorFactory([255, 255, 255, 127]);
 const boneColor: Vector4 = safeUnpackRGBA(
-    [...'``R@'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'``R9'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 255, 200, 99],
 );
 const charredBoneColor: Vector4 = safeUnpackRGBA(
-    [...'279@'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'*-4@'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 50, 80, 127],
 );
 
@@ -92,11 +92,11 @@ const COLOR_TEXTURE_ID_STONE_5 = 12;
 const COLOR_TEXTURE_STONE_COUNT = 5;
 
 const COLOR_TEXTURE_STONE_FROM = safeUnpackRGBA(
-    [...'.149'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'*4>@'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 80, 120, 127],
 );
 const COLOR_TEXTURE_STONE_TO = safeUnpackRGBA(
-    [...'R>9@'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'\\C9('],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [240, 140, 100, 30],
 );
 
@@ -153,7 +153,7 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   //COLOR_TEXTURE_ID_FLAME
   createSolidTextureColorFactory(
       safeUnpackRGBA(
-          [...'`M-`'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'`M-`'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 180, 50, 255],
       ),
   ),
@@ -161,12 +161,12 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   createSpeckleTextureFactory(
       createLinearGradientTextureFactory(
           safeUnpackRGBA(
-              [...'1+#@'],
+              !FLAG_UNPACK_USE_ORIGINALS && [...'1+#@'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [66, 44, 11, 127]
           ),
           [-.5, 0, 0],
           safeUnpackRGBA(
-              [...'RA2@'],
+              !FLAG_UNPACK_USE_ORIGINALS && [...'RA2@'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [200, 130, 73, 127],
           ),
           [.25, 0, 0],
@@ -177,12 +177,12 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_POTION_HEALING
   createLinearGradientTextureFactory(
       safeUnpackRGBA(
-          [...'`0@K'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'`0@K'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 64, 128, 170],
       ),
       [.5, 0, 0],
       safeUnpackRGBA(
-          [...'`  `'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'`  `'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 0, 0, 255],
       ),
       [-.5, 0, 0],
@@ -196,7 +196,10 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_SKULL
   createSpeckleTextureFactory(
       createRadialGradientTextureFactory(
-          [255, 0, 0, 255],
+          safeUnpackRGBA(
+              !FLAG_UNPACK_USE_ORIGINALS && [...'`  `'],
+              FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 0, 0, 255],
+          ),
           [0, 0, 0],
           boneColor,
           .4,
@@ -213,7 +216,10 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_SKULL_BLACKENED  
   createSpeckleTextureFactory(
       createRadialGradientTextureFactory(
-          [0, 199, 255, 255],
+          safeUnpackRGBA(
+              !FLAG_UNPACK_USE_ORIGINALS && [...' R``'],
+              FLAG_UNPACK_SUPPLY_ORIGINALS && [0, 199, 255, 255],
+          ),
           [0, 0, 0],
           charredBoneColor,
           .4,
@@ -225,12 +231,12 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // TODO what would a radial gradient look like here instead?
   createLinearGradientTextureFactory(
       safeUnpackRGBA(
-          [...'1239'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'1239'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 99]
       ),
       [-.5, 0, 0],
       safeUnpackRGBA(
-          [...'>AF*'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'>AF*'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 40],
       ),
       [.25, 0, 0],

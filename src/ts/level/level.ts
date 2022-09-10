@@ -456,7 +456,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     if (floorDepth == 1 && blockedOrientations.length > 2 || validEnemy) {
       // weapon
       if (!validEnemy || Math.random() > (layer-2)/layer){
-        const variant = Math.min(2, Math.random() * layerVariant | 0);
+        //const variant = Math.min(2, Math.random() * layerVariant | 0);
+        const variant = 2;
         let weapon: Entity;
         if (!FLAG_SPEARS_AS_LOOT || Math.random() > .2) {
           const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
