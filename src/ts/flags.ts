@@ -8,7 +8,7 @@ const FLAG_THROTTLE_LIGHT_RENDERING = false;
 const FLAG_TEXTURE_CLAMP_TO_EDGE = false;
 // prevents banding on bump maps
 const FLAG_TEXTURE_SCALE_NEAREST = true;
-const FLAG_GAMEPAD_SUPPORT = ENVIRONMENT != 'ultra';
+const FLAG_MULTIKEY_SUPPORT = ENVIRONMENT != 'ultra' && false;
 const FLAG_ALLOW_ZOOM = ENVIRONMENT == 'test';
 const FLAG_INSTANCED_RENDERING = ENVIRONMENT != 'ultra';
 const FLAG_DEBUG_COLLISIONS = false;

@@ -100,7 +100,23 @@ const inputKeyStates: Partial<Record<KeyCode, KeyState>> = {};
 // if readtimestamp is supplied, we only read the value once
 const inputRead = (input: Input, readTimestamp?: number, ignoreTimestamp?: Booleanish): number => {
   const keys = INPUT_KEYS[input];
-  return keys.reduce((intensity, keyCode) => {
+  if (FLAG_MULTIKEY_SUPPORT) {
+    return (keys as KeyCode[]).reduce((intensity, keyCode) => {
+      const keyState = inputKeyStates[keyCode];
+      if (keyState) {
+        const [keyIntensity, keyWorldTimeSet, keyWorldTimeRead] = keyState;
+        if (
+            readTimestamp && keyWorldTimeRead < keyWorldTimeSet 
+            || keyIntensity && (readTimestamp && ignoreTimestamp || !readTimestamp)
+        ) {
+          keyState[2] = readTimestamp || 0;
+          return Math.max(intensity, keyIntensity || 1);
+        }
+      }
+      return intensity;
+    }, 0);  
+  } else {
+    const keyCode = keys as KeyCode;
     const keyState = inputKeyStates[keyCode];
     if (keyState) {
       const [keyIntensity, keyWorldTimeSet, keyWorldTimeRead] = keyState;
@@ -109,11 +125,11 @@ const inputRead = (input: Input, readTimestamp?: number, ignoreTimestamp?: Boole
           || keyIntensity && (readTimestamp && ignoreTimestamp || !readTimestamp)
       ) {
         keyState[2] = readTimestamp || 0;
-        return Math.max(intensity, keyIntensity || 1);
+        return keyIntensity;
       }
     }
-    return intensity;
-  }, 0);
+    return 0;
+  }
 };
 
 const keySet = (keyCode: KeyCode, now: number, intensity: number) => {
@@ -123,25 +139,25 @@ const keySet = (keyCode: KeyCode, now: number, intensity: number) => {
   }
 };
 
-const INPUT_KEYS: Record<Input, KeyCode[]> & KeyCode[][] = [
+const INPUT_KEYS: Record<Input, KeyCode[] | KeyCode> & (KeyCode[] | KeyCode)[] = [
   // LEFT
-  FLAG_GAMEPAD_SUPPORT ? [KEY_LEFT, KEY_E] : [KEY_LEFT], 
+  FLAG_MULTIKEY_SUPPORT ? [KEY_LEFT, KEY_E] : KEY_LEFT, 
   // RIGHT
-  FLAG_GAMEPAD_SUPPORT ? [KEY_RIGHT, KEY_F] : [KEY_RIGHT],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_RIGHT, KEY_F] : KEY_RIGHT,
   // UP
-  FLAG_GAMEPAD_SUPPORT ? [KEY_UP, KEY_SPACE, KEY_C] : [KEY_UP, KEY_SPACE],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_UP, KEY_SPACE, KEY_C] : KEY_UP,
   // DOWN
-  FLAG_GAMEPAD_SUPPORT ? [KEY_DOWN] : [KEY_DOWN],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_DOWN] : KEY_DOWN,
   // RUN
-  FLAG_GAMEPAD_SUPPORT ? [KEY_SHIFT, KEY_CAPS_LOCK, KEY_G] : [KEY_SHIFT, KEY_CAPS_LOCK],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_SHIFT, KEY_CAPS_LOCK, KEY_G] : KEY_SHIFT,
   // ROTATE_CAMERA_LEFT
-  FLAG_GAMEPAD_SUPPORT ? [KEY_Z, KEY_K] : [KEY_Z],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_Z, KEY_K] : KEY_Z,
   // ROTATE_CAMERA_RIGHT
-  FLAG_GAMEPAD_SUPPORT ? [KEY_X, KEY_M] : [KEY_X],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_X, KEY_M] : KEY_X,
   // INTERACT
-  FLAG_GAMEPAD_SUPPORT ? [KEY_G, KEY_D] : [KEY_D],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_G, KEY_D] : KEY_D,
   // ATTACK LIGHT
-  FLAG_GAMEPAD_SUPPORT ? [KEY_J, KEY_A] : [KEY_A],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_J, KEY_A] : KEY_A,
   // ATTACK HEAVY
-  FLAG_GAMEPAD_SUPPORT ? [KEY_I, KEY_S]: [KEY_S],
+  FLAG_MULTIKEY_SUPPORT ? [KEY_I, KEY_S]: KEY_S,
 ]

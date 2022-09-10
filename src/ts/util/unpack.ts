@@ -115,7 +115,7 @@ const packFixedLengthArrayBuilder = <A extends T[], T = any>(packer: Packer<T>, 
 const packSizedArrayBuilder = <T>(packer: Packer<T>) => {
   return (value: T[]): string[] => {
     return value.reduce((acc, v) => {
-      return acc.concat(...packer(v));
+      return [...acc, ...packer(v)];
     }, packUnsignedInteger(value.length));
   };
 };
@@ -175,10 +175,13 @@ const packEntityBodyPartAnimationSequences = packRecordBuilder<number, EntityBod
 );
 
 const packSmallPlane: Packer<Plane> = (value: Plane): string[] => {
+  // not used in production code, so concat does not inflat size
   return packVector3Normal(vectorNNormalize(value.normal)).concat(packUnsignedFloatPoint1(value.d));
 };
 
 const packSmallPlanes = packSizedArrayBuilder(packSmallPlane);
+
+
 
 // safe
 

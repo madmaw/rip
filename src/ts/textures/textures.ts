@@ -10,11 +10,11 @@
 const whiteTextureFactory = createSolidTextureColorFactory([255, 255, 255, 127]);
 const boneColor: Vector4 = safeUnpackRGBA(
     [...'``R@'],
-    FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 255, 200, 127],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 255, 200, 99],
 );
 const charredBoneColor: Vector4 = safeUnpackRGBA(
     [...'279@'],
-    FLAG_UNPACK_SUPPLY_ORIGINALS && [70, 90, 99, 127],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 50, 80, 127],
 );
 
 const rightHandNormalFactory = createShapedTextureNormalFactory([
@@ -93,7 +93,7 @@ const COLOR_TEXTURE_STONE_COUNT = 5;
 
 const COLOR_TEXTURE_STONE_FROM = safeUnpackRGBA(
     [...'.149'],
-    FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 50, 80, 127],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 80, 120, 127],
 );
 const COLOR_TEXTURE_STONE_TO = safeUnpackRGBA(
     [...'R>9@'],

@@ -1,7 +1,10 @@
 const haxShortenMethods = <F, T extends F>(o: F, variableName: string): T => {
   const mapped = new Map<string, string>();
   for(const k in o) {
-    const shortened = k.replace(/(^..)[a-z]*([A-Z]?)?[a-z]*([A-Z]?)?[a-z]*([A-Z]?)?[a-z]*(.+)$/, '$1$2$3$4$5');
+    const regex = FLAG_DEBUG_SHORTENED_METHODS
+        ? /^([a-z].)[a-z]*([A-Z]?[a-z]?)[a-z]*([A-Z]?)\D*(.+)$/
+        : /^(..)[a-z]*([A-Z]?[a-z]?)[a-z]*([A-Z]?)\D*(.+)$/
+    const shortened = k.replace(regex, '$1$2$3$4');
     if (FLAG_DEBUG_SHORTENED_METHODS) {
       if (shortened != k) {
         if (o[shortened]) {

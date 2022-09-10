@@ -90,7 +90,7 @@ const VERTEX_SHADER = `#version 300 es
 const OUT_RESULT = FLAG_LONG_GL_VARIABLE_NAMES ? 'result' : '_';
 
 const L_CAMERA_AND_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCameraDelta' : 'a';
-const L_TEXTURE_SCALE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureScale' : 'b';
+//const L_TEXTURE_SCALE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureScale' : 'b';
 const L_MODEL_CAMERA_AND_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelCameraNormal' : 'c';
 const L_TEXTURE_DELTA_AND_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureDelta' : 'd';
 const L_TEXTURE_POSITION_AND_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTexturePosition' : 'e';
@@ -99,14 +99,14 @@ const L_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lPosition' : 'g';
 const L_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lNormal' : 'h';
 // intentionally left i
 const L_FOUND_TEXTURE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lFoundTexture' : 'j';
-const L_MINIMUM_TEXTURE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lMinTextureDelta' : 'k';
+const L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lMinTextureDelta' : 'k';
 const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
 // const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
 const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
 //const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
 //const L_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightColor' : 'p';
 //const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
-const L_COS_LIGHT_ANGLE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCosLightAngleDelta' : 'r';
+//const L_COS_LIGHT_ANGLE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCosLightAngleDelta' : 'r';
 const L_LIGHT_TEXEL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTexel' : 's';
 //const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't'; // unused
 //const L_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightNormal' : 'u';
@@ -141,7 +141,6 @@ const FRAGMENT_SHADER = `#version 300 es
 
   void main() {
     vec3 ${L_CAMERA_AND_LIGHT_DELTA} = ${V_POSITION}.xyz - ${U_CAMERA_POSITION};
-    float ${L_TEXTURE_SCALE} = length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION});
     vec3 ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_AND_LIGHT_DELTA}, 1.) -
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
@@ -151,26 +150,25 @@ const FRAGMENT_SHADER = `#version 300 es
     vec3 ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION};
     vec4 ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
     vec3 ${L_POSITION} = ${V_POSITION}.xyz;
-    vec3 ${L_NORMAL} = normalize(${V_NORMAL});
+    float ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = 0.;
 
     if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
-      bool ${L_FOUND_TEXTURE} = false;
-      float ${L_MINIMUM_TEXTURE_DELTA} = 0.;
+      int ${L_FOUND_TEXTURE} = 0;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-        float ${L_TEST} = ${L_FOUND_TEXTURE}
-            ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_DELTA})/2.
+        float ${L_TEST} = ${L_FOUND_TEXTURE} > 0
+            ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
             : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
         ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST};
         ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
         if (
           ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
         ) {
-          ${L_FOUND_TEXTURE} = true;
+          ${L_FOUND_TEXTURE} = 1;
           ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
         } else {
-          if (${L_FOUND_TEXTURE}) {
-            ${L_MINIMUM_TEXTURE_DELTA} = ${L_TEST};
+          if (${L_FOUND_TEXTURE} > 0) {
+            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
           } else {
             ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
           }
@@ -188,15 +186,15 @@ const FRAGMENT_SHADER = `#version 300 es
                   1.
               )
       ).xyz;
-      ${L_NORMAL} = normalize(
-          abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z) < .5
-              ? (
-                  ${U_MODEL_VIEW_MATRIX} * vec4(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * 2. - 1., 1.)
-                  - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
-              ).xyz
-              : ${V_NORMAL}
-      );
     }
+    vec3 ${L_NORMAL} = normalize(
+        abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z) < .5
+            ? (
+                ${U_MODEL_VIEW_MATRIX} * vec4(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * 2. - 1., 1.)
+                - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
+            ).xyz
+            : ${V_NORMAL}
+    );
 
     float ${L_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
     ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
@@ -218,7 +216,7 @@ const FRAGMENT_SHADER = `#version 300 es
                     ? vec3(0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y, 0)
                     : vec3(0, 0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
         );
-        float ${L_COS_LIGHT_ANGLE_DELTA} = dot(${L_NORMAL}, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
+        ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = dot(${L_NORMAL}, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
         // cannot index into samplers!
         vec4 ${L_LIGHT_TEXEL} = i == 0
             ? texture(${U_LIGHT_TEXTURES}[0], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
@@ -233,9 +231,14 @@ const FRAGMENT_SHADER = `#version 300 es
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
             ) * dot(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}, ${L_LIGHT_TEXTURE_NORMAL}))
             // ensure bumps are not in shadow
-            + ${L_DEPTH} * 2. * ${L_TEXTURE_SCALE} / dot(normalize(${V_NORMAL}), ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
+            + ${L_DEPTH}
+                * 2.
+                * length(${V_MODEL_POSITION})
+                // texture scale
+                * dot(normalize(${V_NORMAL}), ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
+                /length(${V_TEXTURE_POSITION});
         ${L_TEXTURE_DELTA_AND_LIGHT} = mix(
-                max(0., -${L_COS_LIGHT_ANGLE_DELTA}),
+                max(0., -${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}),
                 1.,
                 pow(max(0., (${MIN_LIGHT_THROW_C} - length(${L_CAMERA_AND_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w), 2.)
             )
@@ -245,8 +248,8 @@ const FRAGMENT_SHADER = `#version 300 es
             length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
                 // bias
                 // TODO distance in bias seems wrong
-                + pow(${L_LIGHT_DISTANCE}, 2.) * (2. - pow(${L_COS_LIGHT_ANGLE_DELTA}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.
-            && ${L_COS_LIGHT_ANGLE_DELTA} < 0.
+                + pow(${L_LIGHT_DISTANCE}, 2.) * (2. - pow(${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+            && ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} < 0.
             || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
         ) {
           ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} += ${L_TEXTURE_DELTA_AND_LIGHT}
@@ -745,7 +748,10 @@ window.onload = window.onclick = () => {
                     });
                     gl.uniform4fv(
                         uniformLightPositions,
-                        lightPositions.flat(2).concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)),
+                        [
+                          ...lightPositions.flat(2),
+                          ...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0),
+                        ],
                     );
     
                     gl.uniformMatrix4fv(uniformModelViewMatrix, false, transform);
@@ -775,13 +781,15 @@ window.onload = window.onclick = () => {
       // these things don't move, so we don't need to check the light deltas
       gl.uniform4fv(
           uniformLightPositions,
-          previousLights
-              .map(l => {
-                const render = lightRenders[l.entityId];
-                return [...render[2], l.luminosity];
-              })
-              .flat(2)
-              .concat(...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0))
+          [
+            ...previousLights
+                .map(l => {
+                  const render = lightRenders[l.entityId];
+                  return [...render[2], l.luminosity];
+                })
+                .flat(2),
+            ...new Array((MAX_LIGHTS - previousLights.length) * 4).fill(0)
+          ],
       );
 
       for (let modelId in instancedRenders) {
@@ -951,11 +959,12 @@ window.onload = window.onclick = () => {
         .slice(0, MAX_LIGHTS);
     gl.uniform1iv(
         uniformLightTexures,
-        previousLights.map<number>(l => {
-          return lightRenders[l.entityId][0];
-        }).concat(
-            ...new Array(MAX_LIGHTS - previousLights.length).fill(MAX_LIGHTS),
-        ),
+        [
+          ...previousLights.map<number>(l => {
+            return lightRenders[l.entityId][0];
+          }),
+          ...new Array(MAX_LIGHTS - previousLights.length).fill(MAX_LIGHTS),
+        ],
     );
   
     const renderPosition = RENDER_DIMENSIONS.map((v, i) => playerCenter[i] - v/2) as Vector3;

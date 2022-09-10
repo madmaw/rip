@@ -261,7 +261,7 @@ const SKELETON_USE_SECONDARY_SEQUENCE: Partial<Record<SkeletonPartId, EntityBody
       ], 1, EASE_IN_QUAD, .1],
       [SKELETON_PART_ID_HAND_LEFT]: [[
         [0, 0, 0],
-        [Math.PI/2, 0, Math.PI/2],
+        [Math.PI/2, 0, Math.PI/3],
       ], 1, EASE_IN_QUAD, .1],
       [SKELETON_PART_ID_FEMUR_RIGHT]: [[
         [0, Math.PI/3, 0],

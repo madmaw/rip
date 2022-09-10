@@ -112,6 +112,15 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
           [cosSideAngle, sinAngle * sinSideAngle, cosAngle * sinSideAngle],
           radiusRight,
       ), 
+      {
+        // create the end pieces
+        // TODO we could generate this as part fo the sphere above if we had plane/point trimming
+        d: width/2 + radiusRight,
+        normal: [1, 0, 0],
+      }, {
+        d: width/2 + radiusLeft,
+        normal: [-1, 0, 0],
+      },
       ...new Array(leftSteps).fill(0).map((_, j) => {
         const a = Math.PI/2 + sphereAngle + (Math.PI/2 - sphereAngle) * (j+.5) / leftSteps;
         const sin = Math.sin(a);
@@ -133,15 +142,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
         )
       }),
     ];
-  }).flat().concat({
-    // create the end pieces
-    // TODO we could generate this as part fo the sphere above if we had plane/point trimming
-    d: width/2 + radiusRight,
-    normal: [1, 0, 0],
-  }, {
-    d: width/2 + radiusLeft,
-    normal: [-1, 0, 0],
-  });
+  }).flat();
 };
 
 const planeFlipAndDuplicateOnAxis = (planes: Plane[], axis: number) => {
