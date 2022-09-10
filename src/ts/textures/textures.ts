@@ -373,7 +373,7 @@ const NORMAL_TEXTURE_FACTORIES: TextureFactory[] = [
       shaped: shapeFromPlanes(planesCapsule(6, .8, .05)),
       transforms: matrix4Multiply(
         matrix4Translate(-.2, 0, 0),
-        matrix4Rotate(Math.PI/2.2, 0, 1, 0),
+        matrix4Rotate(CONST_PI_ON_2_2_1DP, 0, 1, 0),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
     },

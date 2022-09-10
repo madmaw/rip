@@ -28,8 +28,8 @@ const SPEAR_PART: EntityBody<SpearPartId> = {
         // adjust existing attack
         ...SKELETON_HEAVY_ATTACK_SEQUENCE,
         [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
-          [0, Math.PI/1.5, 0],
-          [0, -Math.PI/4, -Math.PI/3],
+          [0, CONST_PI_ON_1_5_1DP, 0],
+          [0, -CONST_PI_ON_4_1DP, -CONST_PI_ON_3_1DP],
         ], 1, EASE_IN_QUAD],
         [SKELETON_PART_ID_HAND_RIGHT]: [[
           [0, 0, 0],

@@ -77,4 +77,5 @@ const LEVEL_DIMENSION = 9;
 const LEVEL_LAYER_CHUNK_SIZE = 4;
 const RENDER_DIMENSIONS: Vector3 = [MAX_LIGHT_THROW*1.5, MAX_LIGHT_THROW*1.5, 3];
 const HEALTH_FLASH = 5;
+const WEBGL_PRECISION: 'lowp' | 'mediump' | 'highp' = ENVIRONMENT == 'ultra' ? 'lowp' : 'highp';
 

@@ -59,7 +59,7 @@ const V_MODEL_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'vModelNormal' : 'w';
 const V_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vTextureCoords' : 'v';
 
 const VERTEX_SHADER = `#version 300 es
-  precision lowp float;
+  precision ${WEBGL_PRECISION} float;
 
   uniform mat4 ${U_MODEL_VIEW_MATRIX};
   uniform mat4 ${U_PROJECTION_MATRIX};
@@ -115,8 +115,8 @@ const L_LIGHT_DISTANCE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDistance' : 'T';
 //const L_BIAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lBias' : 'S';
 
 const FRAGMENT_SHADER = `#version 300 es
-  precision lowp float;
-  precision lowp sampler3D;
+  precision ${WEBGL_PRECISION} float;
+  precision ${WEBGL_PRECISION} sampler3D;
 
   uniform mat4 ${U_MODEL_VIEW_MATRIX};
   uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
@@ -174,7 +174,9 @@ const FRAGMENT_SHADER = `#version 300 es
           }
         }  
       }
+      // texture position
       ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};
+      // texture normal
       ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
       if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
         discard;
@@ -197,11 +199,21 @@ const FRAGMENT_SHADER = `#version 300 es
     );
 
     float ${L_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
+    //bool shouldHaveDiscarded = ${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD};
+    // texture color
     ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
         ${U_TEXTURE_COLORS},
         (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
             / vec3(${COLOR_TEXTURE_FACTORIES.length}., 1., 1.)
     );
+    // if (shouldHaveDiscarded) {
+    //   ${L_TEXTURE_NORMAL_AND_COLOR} = vec4(
+    //       abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x)*2.,
+    //       abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y)*2.,
+    //       abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z)*2.,
+    //       1.
+    //   );
+    // }
 
     ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(max(0., (${L_TEXTURE_NORMAL_AND_COLOR}.w -.5) * 2.));
     for (int i = ${MAX_LIGHTS}; i > 0;) {
@@ -236,7 +248,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 * length(${V_MODEL_POSITION})
                 // texture scale
                 * dot(normalize(${V_NORMAL}), ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
-                /length(${V_TEXTURE_POSITION});
+                    / length(${V_TEXTURE_POSITION});
         ${L_TEXTURE_DELTA_AND_LIGHT} = mix(
                 max(0., -${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}),
                 1.,
@@ -245,22 +257,24 @@ const FRAGMENT_SHADER = `#version 300 es
             * ${U_LIGHT_POSITIONS}[i].w
             * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_CAMERA_AND_LIGHT_DELTA}))/${MAX_LIGHT_THROW_C}, 2.));
         if (
-            length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
+            // don't (add/remove) light things facing away from us
+            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} < 0.
+            && length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
                 // bias
                 // TODO distance in bias seems wrong
                 + pow(${L_LIGHT_DISTANCE}, 2.) * (2. - pow(${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.
-            && ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} < 0.
             || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
         ) {
           ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} += ${L_TEXTURE_DELTA_AND_LIGHT}
               * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_TEXTURE_DELTA_AND_LIGHT}))
               + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.z, 0.) : 0.);
-        } else if (i == 0){
+        } else if (i == 0) {
           ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(0.);
         }
       }
       ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.5, 1., 1.);
     }
+
     ${OUT_RESULT} = vec4(pow(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * ${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(.45)), 1.);
   }
 `;
@@ -378,22 +392,13 @@ const texturesData = TEXTURE_FACTORIES.map(f => {
   gl.activeTexture(gl.TEXTURE0 + textureIndex);
   gl.bindTexture(gl.TEXTURE_3D, texture);
   // TODO how much of this can we get away without?
-  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_BASE_LEVEL, 0);
+  //gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_BASE_LEVEL, 0);
   // TODO hard code log2 result
-  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAX_LEVEL, Math.log2(TEXTURE_SIZE));
+  //gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAX_LEVEL, Math.log2(TEXTURE_SIZE));
+  //gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAX_LEVEL, 5);
   // defaults
   // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
   // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  if (FLAG_TEXTURE_SCALE_NEAREST) {
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  
-  }
-
-  if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);  
-  }
 
   gl.texImage3D(
       gl.TEXTURE_3D,
@@ -407,6 +412,17 @@ const texturesData = TEXTURE_FACTORIES.map(f => {
       gl.UNSIGNED_BYTE,
       new Uint8Array(data),
   )
+
+  if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);  
+  }
+
+  if (FLAG_TEXTURE_SCALE_NEAREST) {
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  
+  }
   gl.generateMipmap(gl.TEXTURE_3D);
 
   gl.uniform1i(uniform, textureIndex);
@@ -648,7 +664,7 @@ window.onload = window.onclick = () => {
       light?: Light,
   ): Light[] => {
     const lights = [];
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
     gl.uniformMatrix4fv(
         uniformProjectionMatrix,
         false,

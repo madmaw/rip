@@ -21,7 +21,7 @@ const BOTTLE_PART_BODY: EntityBody<BottlePartId> = {
   modelId: MODEL_BOTTLE,
   colorTextureIds: [COLOR_TEXTURE_ID_POTION_HEALING], 
   jointAttachmentHeldTransform: matrix4Multiply(
-      matrix4Rotate(Math.PI/2, 1, 0, 0),
+      matrix4Rotate(CONST_PI_ON_2_1DP, 1, 0, 0),
       matrix4Translate(-BOTTLE_LENGTH/2 - BOTTLE_RADIUS, 0, BOTTLE_RADIUS/2)
   ),
   jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_LEFT,

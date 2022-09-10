@@ -58,7 +58,7 @@ const PARTS_CLUBS: EntityBody<ClubPartId>[] = new Array(NUM_CLUBS).fill(0).map((
 
 const SHAPES_CLUBS: Shape[] = new Array(NUM_CLUBS).fill(0).map((_, i) => {
   return shapeFromPlanes(planesCapsule(
-      6,
+      5,
       BASE_CLUB_WIDTH + CLUB_WIDTH_FACTOR * i,
       CLUB_RADIUS_LEFT,
       BASE_CLUB_RADIUS_RIGHT + i * CLUB_RADIUS_RIGHT_FACTOR,

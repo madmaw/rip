@@ -462,8 +462,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
           const maxHealth = 7 + clubSize + variant * 3;
           const clubBody = PARTS_CLUBS[clubSize];
-          const clubShape = shapes[clubBody.modelId];
-          const [_, dimensions] = shapeBounds(clubShape, 0, 1);
+          const dimensions = new Array(3).fill(
+              BASE_CLUB_RADIUS_RIGHT + clubSize * CLUB_RADIUS_RIGHT_FACTOR,
+          ) as Vector3;
           weapon = entityCreate<ClubPartId>({
             entityBody: clubBody,
             dimensions,
@@ -545,7 +546,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         && adjacentWalls.length
         && incomingStairs.length
         // at least one torch per level
-        && (!layerTorches || Math.random() > (layer - 3)/layer)
+        && (!FLAG_DWINDILING_TORCHES || (!layerTorches || Math.random() > (layer - 3)/layer))
     ) {
       const orientation = adjacentWalls[Math.random() * adjacentWalls.length | 0];
       const [dx, dy] = ORIENTATION_OFFSETS[orientation];
@@ -571,7 +572,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         }],
       });
       levelAddEntity(level, torch);
-      layerTorches++;
+      if (FLAG_DWINDILING_TORCHES) {
+        layerTorches++;
+      }
     }
 
     const cell = level.tiles[x][y][z].cell;
@@ -583,7 +586,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           entityBody: PART_WALL,
           collisionGroup: COLLISION_GROUP_WALL,
           entityType: ENTITY_TYPE_WALL,
-          ['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
+          //['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
+          ['r']: [0, 0, 0],
           variantIndex: layerVariant,
         }));
         break;

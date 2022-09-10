@@ -25,38 +25,18 @@ type Face = {
 
 type Shape = Face[];
 
-const planesCube = (
-    width: number,
-    height: number,
-    depth: number,
-): Plane[] => {
-  // TODO can we iterate over this instead?
-  return [
-    {
-      normal: [-1, 0, 0],
-      d: width/2,
-    },
-    {
-      normal: [1, 0, 0],
-      d: width/2,
-    },
-    {
-      normal: [0, -1, 0],
-      d: height/2,
-    },
-    {
-      normal: [0, 1, 0],
-      d: height/2,
-    },
-    {
-      normal: [0, 0, -1],
-      d: depth/2,
-    },
-    {
-      normal: [0, 0, 1],
-      d: depth/2,
-    },
-  ];
+const planesCube = (...dimension: Vector3): Plane[] => {
+  return dimension.map((v, i) => {
+    const normal = new Array(3).fill(0) as Vector3;
+    normal[i] = 1;
+    return [{
+      normal,
+      d: v/2,
+    }, {
+      normal: vectorNScale(normal, -1),
+      d: v/2,
+    }];
+  }).flat();
 };
 
 const planeFromPointAndNormal = (p: Vector3, n: Vector3, d: number = 0): Plane => {
@@ -88,21 +68,20 @@ const planeTransform = (p: Plane, transform: Matrix4) => {
 };
 
 const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusRight: number = radiusLeft): Plane[] => {
-  const endSteps = steps / 2 | 0;
 
   const sphereAngle = Math.asin((radiusRight - radiusLeft)/width);
-  const sideAngle = Math.PI/2 + sphereAngle;
+  const sideAngle = CONST_PI_ON_2_1DP + sphereAngle;
   const sinSideAngle = Math.sin(sideAngle);
   const cosSideAngle = Math.cos(sideAngle);
 
-  const minRadiansPerStep = Math.PI*2/steps;
-  const leftSteps = radiusLeft ? (Math.PI - sphereAngle) / minRadiansPerStep | 0 : 0;
-  const rightSteps = radiusRight ? (Math.PI + sphereAngle) / minRadiansPerStep | 0 : 0;
+  const minRadiansPerStep = CONST_PI_1DP/steps;
+  const leftSteps = radiusLeft ? (CONST_PI_1DP - sphereAngle) / minRadiansPerStep | 0 : 0;
+  const rightSteps = radiusRight ? (CONST_PI_1DP + sphereAngle) / minRadiansPerStep | 0 : 0;
   
   // create the cylinder
   return new Array(steps).fill(0).map<Plane[]>((_, i) => {
 
-    const angle = i * Math.PI * 2 / steps;
+    const angle = i * CONST_2_PI_1DP / steps;
     const sinAngle = Math.sin(angle);
     const cosAngle = Math.cos(angle);
 
@@ -122,7 +101,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
         normal: [-1, 0, 0],
       },
       ...new Array(leftSteps).fill(0).map((_, j) => {
-        const a = Math.PI/2 + sphereAngle + (Math.PI/2 - sphereAngle) * (j+.5) / leftSteps;
+        const a = CONST_PI_ON_2_1DP + sphereAngle + (CONST_PI_ON_2_1DP - sphereAngle) * (j+.5) / leftSteps;
         const sin = Math.sin(a);
         const cos = Math.cos(a);
         return planeFromPointAndNormal(
@@ -132,7 +111,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
         )
       }),
       ...new Array(rightSteps).fill(0).map((_, j) => {
-        const a = Math.PI/2 - sphereAngle - (Math.PI/2 + sphereAngle) * (j+.5) / rightSteps;
+        const a = CONST_PI_ON_2_1DP - sphereAngle - (CONST_PI_ON_2_1DP + sphereAngle) * (j+.5) / rightSteps;
         const sin = Math.sin(a);
         const cos = Math.cos(a);
         return planeFromPointAndNormal(
@@ -274,10 +253,8 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
           // => d2 * (ny1 * nx2 - nx1 * ny2) = nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1
           // => d2 = (nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1)/(ny1 * nx2 - nx1 * ny2)
         
-          const nx1 = compare.dir[0];
-          const ny1 = compare.dir[1];
-          const px1 = compare.point[0];
-          const py1 = compare.point[1];
+          const [nx1, ny1] = compare.dir;
+          const [px1, py1] = compare.point;
           const d = (nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1)/(ny1 * nx2 - nx1 * ny2);
           if (maxD == null || d > maxD) {
             minLine = compare;
