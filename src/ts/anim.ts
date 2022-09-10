@@ -28,9 +28,10 @@ const animDeltaRotation = (from: Vector3, to: Vector3) => {
   return Math.acos(cosDiffNormal);
 }
 
-const animLerp = (
+const animLerp = <T, F extends keyof T>(
     start: number,
-    into: Vector3,
+    on: T,
+    field: F,
     to: Vector3,
     duration: number,
     easing: Easing,
@@ -38,18 +39,17 @@ const animLerp = (
     onComplete?: (() => void) | Falsey,
     ///logPrefix?: string,
 ) => {
-  const from = [...into];
-  //logPrefix && console.log(logPrefix, duration, start);
+  // TODO is there a way to specify that the field has to be a Vector3?
+  const from: Vector3 = on[field] as any;
   return (now: number): Booleanish => {
     const delta = now - start;
     const proportion = duration ? Math.min(delta / duration, 1) : 1;
     const progress = easing(proportion);
-    //logPrefix && console.log(logPrefix, now, delta, progress, proportion);
-    arrayMapAndSet(into, (_, i) => {
-      const diff = wrapAngles ? mathAngleDiff(from[i], to[i]) : to[i] - from[i];
+    on[field] = from.map((v, i) => {
+      const diff = wrapAngles ? mathAngleDiff(v, to[i]) : to[i] - v;
       const result = from[i] + diff * progress;
       return result;
-    });
+    }) as any;
     if (proportion | 0) {
       onComplete && onComplete();
       return 1;

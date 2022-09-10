@@ -17,7 +17,7 @@ const levelPopulateGraph = (level: Level) => {
       [0, 0, 0],
       level.dimensions,
       (entity, ...pos) => {
-        const area = rect3Intersection(pos, [1, 1, 1], entity.positioned, entity.dimensions).reduce(
+        const area = rect3Intersection(pos, [1, 1, 1], entity['p'], entity.dimensions).reduce(
           (acc, v) => {
             return acc * v;
           },
@@ -101,7 +101,7 @@ const levelIterateEntitiesInBounds = (
     for (let entityId in tile.entities) {
       if (!iteratedEntities[entityId]) {
         const entity = tile.entities[entityId];
-        if (!rect3Intersection(position, dimensions, entity.positioned, entity.dimensions).some(v => v < 0)) {
+        if (!rect3Intersection(position, dimensions, entity['p'], entity.dimensions).some(v => v < 0)) {
           f(entity, ...pos);
         }
         iteratedEntities[entityId] = 1;
@@ -112,13 +112,13 @@ const levelIterateEntitiesInBounds = (
 
 const levelAddEntity = (level: Level, entity: Entity) => levelIterateInBounds(
     level,
-    entity.positioned,
+    entity['p'],
     entity.dimensions,
     tile => tile.entities[entity.id] = entity,
 );
 const levelRemoveEntity = (level: Level, entity: Entity) => levelIterateInBounds(
     level,
-    entity.positioned,
+    entity['p'],
     entity.dimensions,
     tile => {
       delete tile.entities[entity.id]
@@ -435,14 +435,14 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       // don't face the wall
       const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
       const enemy: Entity<SkeletonPartId> = entityCreate({
-        positioned: position,
+        ['p']: position,
         dimensions: [SKELETON_DIMENSION * scale, SKELETON_DIMENSION * scale, SKELETON_DEPTH * scale],
         oriented: orientation,
         entityBody: PART_SKELETON_BODY,
         entityType: ENTITY_TYPE_HOSTILE,
         acc: .005,
         velocity: [0, 0, 0],
-        rotated: [0, 0, orientation * CONST_PI_ON_2_1DP],
+        ['r']: [0, 0, orientation * CONST_PI_ON_2_1DP],
         health: maxHealth,
         maxHealth,
         collisionGroup: COLLISION_GROUP_MONSTER,
@@ -456,8 +456,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     if (floorDepth == 1 && blockedOrientations.length > 2 || validEnemy) {
       // weapon
       if (!validEnemy || Math.random() > (layer-2)/layer){
-        //const variant = Math.min(2, Math.random() * layerVariant | 0);
-        const variant = 2;
+        const variant = Math.min(2, Math.random() * layerVariant | 0);
         let weapon: Entity;
         if (!FLAG_SPEARS_AS_LOOT || Math.random() > .2) {
           const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
@@ -468,9 +467,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           weapon = entityCreate<ClubPartId>({
             entityBody: clubBody,
             dimensions,
-            positioned: position, 
+            ['p']: position, 
             entityType: ENTITY_TYPE_ITEM,
-            rotated: [0, 0, CONST_PI_0DP * 2 * Math.random()],
+            ['r']: [0, 0, CONST_PI_0DP * 2 * Math.random()],
             //velocity: [0, 0, 0],
             health: maxHealth,
             maxHealth,
@@ -485,8 +484,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
             collisionGroup: COLLISION_GROUP_ITEM,
             entityType: ENTITY_TYPE_ITEM,
-            positioned: position,
-            rotated: [0, 0, CONST_2_PI_0DP * Math.random()],
+            ['p']: position,
+            ['r']: [0, 0, CONST_2_PI_0DP * Math.random()],
             health: maxHealth,
             maxHealth,
             collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
@@ -502,9 +501,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           entityBody: BOTTLE_PART_BODY,
           collisionGroup: COLLISION_GROUP_ITEM,
           dimensions: [BOTTLE_RADIUS*2, BOTTLE_RADIUS*2, BOTTLE_RADIUS*2],
-          positioned: position,
+          ['p']: position,
           entityType: ENTITY_TYPE_ITEM,
-          rotated: [0, -CONST_PI_ON_2_1DP, 0],
+          ['r']: [0, -CONST_PI_ON_2_1DP, 0],
           health: maxHealth,
           maxHealth,
           collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
@@ -529,8 +528,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
           collisionGroup: COLLISION_GROUP_MONSTER,
           entityType: ENTITY_TYPE_SPIKE,
-          positioned: position,
-          rotated: [CONST_PI_ON_6_1DP - CONST_PI_ON_3_0DP * Math.random(), -CONST_PI_ON_2_1DP, 0],
+          ['p']: position,
+          ['r']: [CONST_PI_ON_6_1DP - CONST_PI_ON_3_0DP * Math.random(), -CONST_PI_ON_2_1DP, 0],
           //rotated: [0, -CONST_PI_ON_2_1DP, 0],
           health: maxHealth,
           maxHealth,
@@ -550,24 +549,24 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     ) {
       const orientation = adjacentWalls[Math.random() * adjacentWalls.length | 0];
       const [dx, dy] = ORIENTATION_OFFSETS[orientation];
-      const t = matrix4Translate(x + .5 + dx/2.1, y + .5 + dy/2.1, z + .5);
-      const [position, dimensions] = shapeBounds(shapes[MODEL_TORCH_HANDLE], t, 1);
+      const position: Vector3 = [x + .5 + dx/2.1 - TORCH_HANDLE_WIDTH, y + .5 + dy/2.1 - TORCH_HANDLE_WIDTH, z + .5];
+      const dimensions: Vector3 = [TORCH_HANDLE_WIDTH * 2, TORCH_HANDLE_WIDTH * 2, TORCH_HEAD_RADIUS * 2];
       const torch: Entity<TorchPartId> = entityCreate({
         entityBody: PART_TORCH,
         entityType: ENTITY_TYPE_TORCH,
-        positioned: position,
+        ['p']: position,
         dimensions,
         collisionGroup: COLLISION_GROUP_ITEM,
         collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
         // TODO x rotation (but it interferes with z rotation)
-        rotated: [-CONST_PI_ON_3_0DP * dy, CONST_PI_ON_3_0DP * dx, (orientation + 2) * CONST_PI_ON_2_1DP],
+        ['r']: [-CONST_PI_ON_3_0DP * dy, CONST_PI_ON_3_0DP * dx, (orientation + 2) * CONST_PI_ON_2_1DP],
         // velocity: [0, 0, 0], intentionally have no velocity so we sit on the wall
         health: TORCH_MAX_HEALTH,
         maxHealth: TORCH_MAX_HEALTH,
         joints: [{
-          rotated: [0, 0, 0],
+          ['r']: [0, 0, 0],
         }, {
-          rotated: [0, 0, 0],
+          ['r']: [0, 0, 0],
           light: TORCH_BRIGHTNESS,
         }],
       });
@@ -579,12 +578,12 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     switch (cell) {
       case LEVEL_DESIGN_CELL_WALL:
         levelAddEntity(level, entityCreate({
-          positioned: position,
+          ['p']: position,
           dimensions: [1, 1, 1],
           entityBody: PART_WALL,
           collisionGroup: COLLISION_GROUP_WALL,
           entityType: ENTITY_TYPE_WALL,
-          rotated: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
+          ['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
           variantIndex: layerVariant,
         }));
         break;
@@ -593,9 +592,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           // reuse the bottom step
           const step: Entity = entityCreate({
             entityType: ENTITY_TYPE_WALL,
-            positioned: [x, y, z - STEP_DEPTH],
+            ['p']: [x, y, z - STEP_DEPTH],
             dimensions: [1, 1, STEP_DEPTH],
-            rotated: [0, 0, 0],
+            ['r']: [0, 0, 0],
             entityBody: PART_ORIENTATION_STEPS[0][0],
             collisionGroup: COLLISION_GROUP_WALL,
             variantIndex: layerVariant,
@@ -623,9 +622,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             const step: Entity = entityCreate({
               entityType: ENTITY_TYPE_STAIR,
               oriented: stepOrientation,
-              positioned,
+              ['p']: positioned,
               dimensions,
-              rotated: [0, 0, 0],
+              ['r']: [0, 0, 0],
               entityBody: stepPart,
               collisionGroup: COLLISION_GROUP_WALL,
               variantIndex: layerVariant,
@@ -659,7 +658,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       const e = flatTileEntities[0];
 
       // avoid collisions
-      const populatedTile = populatedTiles[e.positioned[0] | 0][e.positioned[1] | 0];
+      const populatedTile = populatedTiles[e['p'][0] | 0][e['p'][1] | 0];
       // traps can have collisions
       if (!populatedTile[0] || i == 3) {
         flatTileEntities.forEach(e => {

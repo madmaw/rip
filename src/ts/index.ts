@@ -266,7 +266,6 @@ const FRAGMENT_SHADER = `#version 300 es
 `;
 
 const gl = Z.getContext('webgl2'/* , {antialias: false}*/);
-
 if (FLAG_SHOW_GL_ERRORS && gl == null) {
   throw new Error('no webgl2');
 }
@@ -560,14 +559,14 @@ window.onload = window.onclick = () => {
   
   // and a player
   player = entityCreate({
-    positioned: [startX + .5 - SKELETON_DIMENSION/2, startY + .5 - SKELETON_DIMENSION/2, 1.1],
+    ['p']: [startX + .5 - SKELETON_DIMENSION/2, startY + .5 - SKELETON_DIMENSION/2, 1.1],
     dimensions: [SKELETON_DIMENSION, SKELETON_DIMENSION, SKELETON_DEPTH],
     oriented: ORIENTATION_EAST,
     entityBody: PART_SKELETON_BODY,
     entityType: ENTITY_TYPE_PLAYER,
     acc: .005,
     velocity: [0, 0, 0],
-    rotated: [0, 0, 0],
+    ['r']: [0, 0, 0],
     maxHealth: 9,
     health: 9,
     variantIndex: 1,
@@ -688,7 +687,7 @@ window.onload = window.onclick = () => {
                 // if the attached entity is dead, drop it
                 const attachedEntity = joint.attachedEntity;
                 if (attachedEntity && attachedEntity.maxHealth && attachedEntity.health <= 0) {
-                  attachedEntity.positioned = partPosition;
+                  attachedEntity['p'] = partPosition;
                   attachedEntity.velocity = [0, 0, 0];
                   joint.attachedEntity = 0;
                   // it will disintegrate on the next tick
@@ -991,7 +990,7 @@ window.onload = window.onclick = () => {
           // update animations
           if (!entity.joints && entity.entityBody.defaultJointRotations) {
             entity.joints = entity.entityBody.defaultJointRotations.map(rotation => ({
-              rotated: [...rotation],
+              ['r']: [...rotation],
             }));
           }
           [...(entity.joints || []), entity].forEach((joint: Joint) => {
@@ -1276,7 +1275,8 @@ window.onload = window.onclick = () => {
               const to: Vector3 = [0, 0, targetAngle];
               entity.anim = animLerp(
                   worldTime,
-                  entity.rotated,
+                  entity,
+                  'r',
                   to,
                   299,
                   EASINGS[EASE_IN_OUT_QUAD],
@@ -1309,18 +1309,18 @@ window.onload = window.onclick = () => {
                 const held = joint.attachedEntity as Entity;
                 if (FLAG_DROP_ITEMS_FORWARD) {
                   const delta = ORIENTATION_OFFSETS[entity.oriented];
-                  held.positioned = entityCenter.map(
+                  held['p'] = entityCenter.map(
                       (v, i) => v + ((entity.dimensions[i] - held.dimensions[i]) * (delta[i] || 0) - held.dimensions[i])/2,
                   ) as Vector3;
                   held.velocity = entity.velocity.map(((v, i) => v + (delta[i] || .5) * .001)) as Vector3;
                 } else {
-                  held.positioned = entityCenter.map(
+                  held['p'] = entityCenter.map(
                       (v, i) => v + (entity.dimensions[i] - held.dimensions[i])/2,
                   ) as Vector3;
                   // should already have 0 speed
                   //held.velocity = [0, 0, 0];
                 }
-                held.rotated = [...entity.rotated];
+                held['r'] = entity['r'];
                 levelAddEntity(level, held);
                 joint.attachedEntity = 0;
               }
@@ -1340,7 +1340,7 @@ window.onload = window.onclick = () => {
             const movable = entity as Moveable;
             
             // limit velocity
-            arrayMapAndSet(movable.velocity, (c, i) => {
+            movable.velocity = movable.velocity.map((c, i) => {
               const v = targetVelocity[i];
               let velocity = v;
               if (i < 2 && entity.acc && !ignoreLateralAcceleration) {
@@ -1354,7 +1354,7 @@ window.onload = window.onclick = () => {
                       velocity,
                   )
               );
-            });
+            }) as Vector3;
   
             // move toward centerline of cross-orientation
             if (entity.oriented != null && deltaTime) {
@@ -1383,7 +1383,7 @@ window.onload = window.onclick = () => {
             });
             if (attacking) {
               // get a big area (we don't know how large the animations are)
-              const position = entity.positioned.map(v => v - MAX_ATTACK_RADIUS) as Vector3;
+              const position = entity.p.map(v => v - MAX_ATTACK_RADIUS) as Vector3;
               const dimensions = entity.dimensions.map(v => v + MAX_ATTACK_RADIUS * 2) as Vector3;
               levelIterateEntitiesInBounds(level, position, dimensions, victim => {
                 // work out the most appropriate action for each victim
@@ -1481,10 +1481,10 @@ window.onload = window.onclick = () => {
             let verticalIntersectionCount = 0;
   
             do {
-              const targetPosition = entity.positioned.map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
-              const maximalPosition = entity.positioned.map((v, i) => Math.min(v, targetPosition[i]) - EPSILON) as Vector3;
+              const targetPosition = entity['p'].map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
+              const maximalPosition = entity['p'].map((v, i) => Math.min(v, targetPosition[i]) - EPSILON) as Vector3;
               const maximalDimensions = entity.dimensions.map(
-                  (v, i) => v + Math.abs(targetPosition[i] - entity.positioned[i]) + EPSILON * 2,
+                  (v, i) => v + Math.abs(targetPosition[i] - entity['p'][i]) + EPSILON * 2,
               ) as Vector3;
   
               let maxOverlapDelta = 0;
@@ -1499,18 +1499,18 @@ window.onload = window.onclick = () => {
                   return;
                 }
                 const startingIntersection = rect3Intersection(
-                  entity.positioned,
+                  entity['p'],
                   entity.dimensions,
-                  collisionEntity.positioned,
+                  collisionEntity['p'],
                   collisionEntity.dimensions,
                 );
                 if (FLAG_DEBUG_COLLISIONS && startingIntersection.every(v => v > 0)) {
                     console.log('collions', iterations);
                     console.log('started inside');
-                    console.log('position', entity.positioned);
+                    console.log('position', entity['p']);
                     console.log('dimensions', entity.dimensions);
                     console.log('velocity', entity.velocity);
-                    console.log('collision position', collisionEntity.positioned);
+                    console.log('collision position', collisionEntity['p']);
                     console.log('collision dimensions' , collisionEntity.dimensions);
                     console.log('intersection', startingIntersection);
                     console.log('previous collision', entity.previousCollision);
@@ -1526,7 +1526,7 @@ window.onload = window.onclick = () => {
                 const intersection = rect3Intersection(
                     maximalPosition,
                     maximalDimensions,
-                    collisionEntity.positioned,
+                    collisionEntity['p'],
                     collisionEntity.dimensions,
                 );
                 if (FLAG_DEBUG_COLLISIONS) {
@@ -1538,7 +1538,7 @@ window.onload = window.onclick = () => {
   
                 if (!intersection.some(v => v < 0)) {
                   if (collisionEntity.entityType == ENTITY_TYPE_SPIKE) {
-                    const spikeInverse = matrix4Invert(matrix4RotateInOrder(...collisionEntity.rotated));
+                    const spikeInverse = matrix4Invert(matrix4RotateInOrder(...collisionEntity['r']));
                     const inverseVelocity = vector3TransformMatrix4(spikeInverse, ...entity.velocity);
                     // only get hurt if we hit it front on
                     if (inverseVelocity[0] < -SKELETON_WALK_SPEED*2 && !(entity.invulnerableUntil > worldTime)) {
@@ -1609,7 +1609,7 @@ window.onload = window.onclick = () => {
                 const moveDelta = Math.max(0, remainingDelta - maxOverlapDelta) - EPSILON;
                 remainingDelta = maxOverlapDelta;
                 if (FLAG_DEBUG_COLLISIONS) {
-                  entity['previousPosition'] = [...entity.positioned];
+                  entity['previousPosition'] = [...entity['p']];
                   entity['previousVelocity'] = [...entity.velocity];
                   entity['previousMoveDelta'] = moveDelta;
                   entity['previousCollisions'] = iterations;
@@ -1617,7 +1617,7 @@ window.onload = window.onclick = () => {
                   entity['previousMaximalDimensions'] = maximalDimensions;  
                   entity['previousTargetPosition'] = targetPosition;
                 }
-                arrayMapAndSet(entity.positioned, (v, i) => v + entity.velocity[i] * moveDelta);
+                entity['p'] = entity['p'].map((v, i) => v + entity.velocity[i] * moveDelta) as Vector3;
                 if (maxCollisionEntity) {
                   if (FLAG_DEBUG_COLLISIONS) {
                     entity.previousCollision = {
@@ -1630,7 +1630,7 @@ window.onload = window.onclick = () => {
                   // check if we can step up
                   // TODO: only do this if we are a creature
                   if (maxOverlapIndex != 2
-                      && entity.positioned[2] > maxCollisionEntity.positioned[2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
+                      && entity['p'][2] > maxCollisionEntity['p'][2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
                   ) {
                     verticalIntersectionCount++;
                   }
@@ -1676,10 +1676,10 @@ window.onload = window.onclick = () => {
                       ...joint,
                       animAction: 0,
                       attachedEntity: 0,
-                      rotated: [0, 0, 0],
+                      ['r']: [0, 0, 0],
                     }],
                     variantIndex: entity.variantIndex,
-                    scale: entity.scaled,
+                    scaled: entity.scaled,
                     // inherit your parent health
                     health: entity.maxHealth,
                     maxHealth: entity.maxHealth,
@@ -1694,14 +1694,14 @@ window.onload = window.onclick = () => {
                         ? COLLISION_GROUP_WALL
                         : 0,
                     dimensions,
-                    positioned: position,
+                    ['p']: position,
                     // TODO use current rotation 
-                    rotated: [0, 0, Math.random() * CONST_2_PI_0DP],
+                    ['r']: [0, 0, Math.random() * CONST_2_PI_0DP],
                   });
                 } else {
                   // drop whatever they're holding
                   partEntity = e;
-                  partEntity.positioned = position;
+                  partEntity['p'] = position;
                 }
                 if (partEntity) {
                   partEntity.velocity = entity.velocity

@@ -41,6 +41,6 @@ const array3New = <T>(width: number, height: number, depth: number, f?: (x: numb
 //   }
 // };
 
-const arrayMapAndSet = <T>(arr: T[], f: (t: T, i: number) => T): void => {
-  arr.forEach((t, i) => arr[i] = f(t, i));
-};
+// const arrayMapAndSet = <T>(arr: T[], f: (t: T, i: number) => T): void => {
+//   arr.forEach((t, i) => arr[i] = f(t, i));
+// };
