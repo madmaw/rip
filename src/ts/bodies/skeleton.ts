@@ -64,7 +64,7 @@ const SKELETON_PART_ID_FOOT_LEFT = 14;
 
 const SKELETON_GLOW = .25;
 
-const SKELETON_COLOR_TEXTURE_IDS: ColorTextureId[] = [COLOR_TEXTURE_ID_BONE_BLACKENED, COLOR_TEXTURE_ID_BONE];
+const SKELETON_COLOR_TEXTURE_IDS: ColorTextureId[] = [COLOR_TEXTURE_ID_BONE, COLOR_TEXTURE_ID_BONE_BLACKENED, ];
 
 const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
   [SKELETON_PART_ID_HUMERUS_LEFT]: SKELETON_PART_ID_HUMERUS_RIGHT,
@@ -686,7 +686,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         {
           id: SKELETON_PART_ID_HEAD,
           modelId: MODEL_SKELETON_HEAD,
-          colorTextureIds: [COLOR_TEXTURE_ID_SKULL_BLACKENED, COLOR_TEXTURE_ID_SKULL],
+          colorTextureIds: [COLOR_TEXTURE_ID_SKULL, COLOR_TEXTURE_ID_SKULL_BLACKENED],
           normalTextureIds: [NORMAL_TEXTURE_ID_SKULL],
           incomingDamageMultiplier: 2,
           preRotationTransform: matrix4Translate(

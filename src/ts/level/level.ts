@@ -120,7 +120,9 @@ const levelRemoveEntity = (level: Level, entity: Entity) => levelIterateInBounds
     level,
     entity.positioned,
     entity.dimensions,
-    tile => delete tile.entities[entity.id],
+    tile => {
+      delete tile.entities[entity.id]
+    },
 );
 
 const LEVEL_DESIGN_CELL_STAIR_EAST = 0;
@@ -427,9 +429,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     let validEnemy: Entity[];
     if (floorDepth == 1 && blockedOrientations.length < 3) {
       let variant = (1 - Math.pow(Math.random(), layerVariant)) * (layerVariant + 1) | 0;
-      const scale = .8 + (variant % 4 | 0) * .2;
+      const scale = .8 + Math.min(4, variant | 0) * .2;
       const maxHealth = 3 + variant * 2;
-      variant = variant / 4 | 0;
       
       // don't face the wall
       const orientation = ORIENTATIONS.find(o => blockedOrientations.indexOf(o) < 0);
@@ -446,8 +447,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         maxHealth,
         collisionGroup: COLLISION_GROUP_MONSTER,
         collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
-        variant,
-        scale,
+        scaled: scale,
       }, 1);
       enemy.joints[SKELETON_PART_ID_HEAD].light = SKELETON_GLOW;
       validEnemies.push(validEnemy = [enemy]);   
@@ -475,7 +475,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             maxHealth,
             collisionGroup: COLLISION_GROUP_ITEM,
             collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-            variant,
+            variantIndex: variant,
           }, 1);
         } else {
           const maxHealth = 3 + variant * 3;
@@ -489,7 +489,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             health: maxHealth,
             maxHealth,
             collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
-            variant,
+            variantIndex: variant,
           }, 1);
         }
         (validEnemy || validWeapons).push(weapon);
@@ -584,7 +584,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           collisionGroup: COLLISION_GROUP_WALL,
           entityType: ENTITY_TYPE_WALL,
           rotated: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
-          variant: layerVariant,
+          variantIndex: layerVariant,
         }));
         break;
       case LEVEL_DESIGN_CELL_FLOOR:
@@ -597,7 +597,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             rotated: [0, 0, 0],
             entityBody: PART_ORIENTATION_STEPS[0][0],
             collisionGroup: COLLISION_GROUP_WALL,
-            variant: layerVariant,
+            variantIndex: layerVariant,
           });
           levelAddEntity(level, step);
         }
@@ -627,7 +627,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
               rotated: [0, 0, 0],
               entityBody: stepPart,
               collisionGroup: COLLISION_GROUP_WALL,
-              variant: layerVariant,
+              variantIndex: layerVariant,
             });
             levelAddEntity(level, step);
             return z + dimensions[2];

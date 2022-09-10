@@ -119,8 +119,8 @@ type EntityBase<T extends number> = {
   invulnerableUntil?: number,
   collisionGroup: CollisionGroup,
   collisionMask?: number,
-  variant?: number,
-  scale?: number,
+  variantIndex?: number,
+  scaled?: number,
 } & Pick<Joint, 'rotated' | 'anim' | 'animAction'>;
 
 type Immovable = {
@@ -256,7 +256,7 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
           (v, i) => v/2 + entity.positioned[i] + (entity.offsetted?.[i] || 0)) as Vector3),
       ),
       matrix4RotateInOrder(...entity.rotated),
-      entity.scale && matrix4Scale(entity.scale),
+      entity.scaled && matrix4Scale(entity.scaled),
   ),
   inheritedOutgoingDamageMultiplier: number = 0,
 ) => {
@@ -292,7 +292,7 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
             part.jointAttachmentHolderTransform,
             // TODO this might need to be after rotation
             joint.attachedEntity.entityBody.jointAttachmentHeldTransform,
-            matrix4Scale((joint.attachedEntity.scale || 1)/(entity.scale || 1)),
+            matrix4Scale((joint.attachedEntity.scaled || 1)/(entity.scaled || 1)),
         ),
         childPartOutgoingDamageMultiplier,
     )

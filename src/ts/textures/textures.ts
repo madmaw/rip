@@ -16,26 +16,6 @@ const charredBoneColor: Vector4 = safeUnpackRGBA(
     [...'279@'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [70, 90, 99, 127],
 );
-const brickTextureFactory = createSpeckleTextureFactory(
-    createSolidTextureColorFactory(
-        safeUnpackRGBA(
-            [...'R>9@'],
-            FLAG_UNPACK_SUPPLY_ORIGINALS && [200, 120, 100, 127],
-        )
-    ),
-    .2,
-    1,
-);
-const sandstoneTextureFactory = createSpeckleTextureFactory(
-    createSolidTextureColorFactory(
-        safeUnpackRGBA(
-            [...'.149'],
-            FLAG_UNPACK_SUPPLY_ORIGINALS && [56, 67, 80, 99],
-        ),
-    ),
-    .4,
-    1,
-);
 
 const rightHandNormalFactory = createShapedTextureNormalFactory([
   {
@@ -98,45 +78,62 @@ const shapedTextureNormalFactory = createShapedTextureNormalFactory([{
 const COLOR_TEXTURE_ID_FLAME = 0;
 const COLOR_TEXTURE_ID_WOOD = 1;
 const COLOR_TEXTURE_ID_POTION_HEALING = 2;
-const COLOR_TEXTURE_ID_SANDSTONE = 3;
-const COLOR_TEXTURE_ID_GRANITE = 4;
-const COLOR_TEXTURE_ID_BONE = 5;
-const COLOR_TEXTURE_ID_SKULL = 6;
-const COLOR_TEXTURE_ID_BONE_BLACKENED = 7;
-const COLOR_TEXTURE_ID_SKULL_BLACKENED = 8;
-const COLOR_TEXTURE_ID_METAL = 9;
+const COLOR_TEXTURE_ID_BONE = 3;
+const COLOR_TEXTURE_ID_SKULL = 4;
+const COLOR_TEXTURE_ID_BONE_BLACKENED = 5;
+const COLOR_TEXTURE_ID_SKULL_BLACKENED = 6;
+const COLOR_TEXTURE_ID_METAL = 7;
+const COLOR_TEXTURE_ID_STONE_1 = 8;
+const COLOR_TEXTURE_ID_STONE_2 = 9;
+const COLOR_TEXTURE_ID_STONE_3 = 10;
+const COLOR_TEXTURE_ID_STONE_4 = 11;
+const COLOR_TEXTURE_ID_STONE_5 = 12;
+
+const COLOR_TEXTURE_STONE_COUNT = 5;
+
+const COLOR_TEXTURE_STONE_FROM = safeUnpackRGBA(
+    [...'.149'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 50, 80, 127],
+);
+const COLOR_TEXTURE_STONE_TO = safeUnpackRGBA(
+    [...'R>9@'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [240, 140, 100, 30],
+);
+
+const NORMAL_TEXTURE_BRICKS_COUNT = 4;
 
 const NORMAL_TEXTURE_ID_SOLID = 0;
-const NORMAL_TEXTURE_ID_BRICKS_1 = 1;
-const NORMAL_TEXTURE_ID_BRICKS_2 = 2;
-const NORMAL_TEXTURE_ID_BRICKS_3 = 3;
-const NORMAL_TEXTURE_ID_BONE = 4;
-const NORMAL_TEXTURE_ID_FOOT = 5;
-const NORMAL_TEXTURE_ID_SKULL = 6;
-const NORMAL_TEXTURE_ID_HIPS = 7;
-const NORMAL_TEXTURE_ID_RIBCAGE = 8;
-const NORMAL_TEXTURE_ID_HAND_RIGHT = 9;
-const NORMAL_TEXTURE_ID_HAND_LEFT = 10;
+const NORMAL_TEXTURE_ID_BONE = 1;
+const NORMAL_TEXTURE_ID_FOOT = 2;
+const NORMAL_TEXTURE_ID_SKULL = 3;
+const NORMAL_TEXTURE_ID_HIPS = 4;
+const NORMAL_TEXTURE_ID_RIBCAGE = 5;
+const NORMAL_TEXTURE_ID_HAND_RIGHT = 6;
+const NORMAL_TEXTURE_ID_HAND_LEFT = 7;
+const NORMAL_TEXTURE_ID_BRICKS_1 = 8;
+const NORMAL_TEXTURE_ID_BRICKS_2 = 9;
+const NORMAL_TEXTURE_ID_BRICKS_3 = 10;
+const NORMAL_TEXTURE_ID_BRICKS_4 = 11;
 
 
 type ColorTextureId = 
     | typeof COLOR_TEXTURE_ID_FLAME
     | typeof COLOR_TEXTURE_ID_WOOD
     | typeof COLOR_TEXTURE_ID_POTION_HEALING
-    | typeof COLOR_TEXTURE_ID_SANDSTONE
-    | typeof COLOR_TEXTURE_ID_GRANITE
     | typeof COLOR_TEXTURE_ID_BONE
     | typeof COLOR_TEXTURE_ID_BONE_BLACKENED
     | typeof COLOR_TEXTURE_ID_SKULL
     | typeof COLOR_TEXTURE_ID_SKULL_BLACKENED
     | typeof COLOR_TEXTURE_ID_METAL
+    | typeof COLOR_TEXTURE_ID_STONE_1
+    | typeof COLOR_TEXTURE_ID_STONE_2
+    | typeof COLOR_TEXTURE_ID_STONE_3
+    | typeof COLOR_TEXTURE_ID_STONE_4
+    | typeof COLOR_TEXTURE_ID_STONE_5
     ;
 
 type NormalTextureId =
     | typeof NORMAL_TEXTURE_ID_SOLID
-    | typeof NORMAL_TEXTURE_ID_BRICKS_1
-    | typeof NORMAL_TEXTURE_ID_BRICKS_2
-    | typeof NORMAL_TEXTURE_ID_BRICKS_3
     | typeof NORMAL_TEXTURE_ID_BONE
     | typeof NORMAL_TEXTURE_ID_FOOT
     | typeof NORMAL_TEXTURE_ID_SKULL
@@ -144,6 +141,10 @@ type NormalTextureId =
     | typeof NORMAL_TEXTURE_ID_RIBCAGE
     | typeof NORMAL_TEXTURE_ID_HAND_RIGHT
     | typeof NORMAL_TEXTURE_ID_HAND_LEFT
+    | typeof NORMAL_TEXTURE_ID_BRICKS_1
+    | typeof NORMAL_TEXTURE_ID_BRICKS_2
+    | typeof NORMAL_TEXTURE_ID_BRICKS_3
+    | typeof NORMAL_TEXTURE_ID_BRICKS_4
     ;
 
 
@@ -186,10 +187,6 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
       ),
       [-.5, 0, 0],
   ),
-  // COLOR_TEXTURE_SANDSTONE
-  sandstoneTextureFactory,
-  // COLOR_TEXTURE_GRANITE
-  brickTextureFactory,
   // COLOR_TEXTURE_ID_BONE
   createSpeckleTextureFactory(
       createSolidTextureColorFactory(boneColor),
@@ -199,7 +196,7 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_SKULL
   createSpeckleTextureFactory(
       createRadialGradientTextureFactory(
-          [0, 199, 255, 255],
+          [255, 0, 0, 255],
           [0, 0, 0],
           boneColor,
           .4,
@@ -216,7 +213,7 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_SKULL_BLACKENED  
   createSpeckleTextureFactory(
       createRadialGradientTextureFactory(
-          [255, 0, 0, 255],
+          [0, 199, 255, 255],
           [0, 0, 0],
           charredBoneColor,
           .4,
@@ -227,45 +224,34 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // COLOR_TEXTURE_ID_METAL
   // TODO what would a radial gradient look like here instead?
   createLinearGradientTextureFactory(
-    safeUnpackRGBA(
-        [...'1239'],
-        FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 99]
-    ),
-    [-.5, 0, 0],
-    safeUnpackRGBA(
-        [...'>AF*'],
-        FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 40],
-    ),
-    [.25, 0, 0],
-),
-
-  
-]
+      safeUnpackRGBA(
+          [...'1239'],
+          FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 99]
+      ),
+      [-.5, 0, 0],
+      safeUnpackRGBA(
+          [...'>AF*'],
+          FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 40],
+      ),
+      [.25, 0, 0],
+  ),
+  // COLOR_TEXTURES
+  ...new Array(COLOR_TEXTURE_STONE_COUNT).fill(0).map((_, i) => {
+    return createSpeckleTextureFactory(
+        createSolidTextureColorFactory(
+            COLOR_TEXTURE_STONE_FROM.map(
+                (v, i) => v + (COLOR_TEXTURE_STONE_TO[i] - v) * i/(COLOR_TEXTURE_STONE_COUNT-1) | 0,
+            ) as Vector4,
+        ),
+        .3,
+        1,
+    );
+  }),
+];
 
 const NORMAL_TEXTURE_FACTORIES: TextureFactory[] = [
   // NORMAL_TEXTURE_ID_SOLID
   solidTextureNormalFactory,
-  // NORMAL_TEXTURE_ID_BRICKS_1
-  createSpeckleTextureFactory(
-      createBrickTextureNormalFactory([[[0]]], 1),
-      .2,
-  ),
-  // NORMAL_TEXTURE_ID_BRICKS_2
-  createSpeckleTextureFactory(
-      createBrickTextureNormalFactory(
-          array3New(2, 2, 2, () => Math.random() * 3 | 0),
-          2,
-      ),
-      .2,
-  ),
-  // NORMAL_TEXTURE_ID_BRICKS_3
-  createSpeckleTextureFactory(
-      createBrickTextureNormalFactory(
-          array3New(3, 3, 3, () => Math.random() * 3 | 0),
-          3,
-      ),
-      .2,
-  ),
   // NORMAL_TEXTURE_ID_BONE
   createShapedTextureNormalFactory([
     {
@@ -437,6 +423,17 @@ const NORMAL_TEXTURE_FACTORIES: TextureFactory[] = [
   rightHandNormalFactory,
   // NORMAL_TEXTURE_ID_HAND_LEFT
   leftHandNormalFactory,
+  // BRICKS
+  ...new Array(NORMAL_TEXTURE_BRICKS_COUNT).fill(0).map((_, i) => {
+    const dimension = i+1;
+    return createSpeckleTextureFactory(
+        createBrickTextureNormalFactory(
+            array3New(dimension, dimension, dimension, () => Math.random() * 3 | 0),
+            dimension,
+        ),
+        ((NORMAL_TEXTURE_BRICKS_COUNT) - i)/(NORMAL_TEXTURE_BRICKS_COUNT * 9),
+    );
+  }),
 ];
 
 const TEXTURE_FACTORIES = [COLOR_TEXTURE_FACTORIES, NORMAL_TEXTURE_FACTORIES];

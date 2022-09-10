@@ -58,8 +58,6 @@ const V_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vModelPosition' : 'x';
 const V_MODEL_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'vModelNormal' : 'w';
 const V_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vTextureCoords' : 'v';
 
-const L_POSITION_VS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lPosition' : 'a';
-
 const VERTEX_SHADER = `#version 300 es
   precision lowp float;
 
@@ -69,24 +67,23 @@ const VERTEX_SHADER = `#version 300 es
   in vec4 ${A_VERTEX_POSIITON};
   in vec3 ${A_VERTEX_NORMAL};
   in vec3 ${A_TEXTURE_POSITION};
-  out vec3 ${V_POSITION};
+
+  out vec4 ${V_POSITION};
   out vec3 ${V_MODEL_POSITION};
   out vec3 ${V_NORMAL};
   out vec3 ${V_MODEL_NORMAL};
-
   out vec3 ${V_TEXTURE_POSITION};
 
   void main() {
     ${V_MODEL_POSITION} = ${A_VERTEX_POSIITON}.xyz;
     ${V_TEXTURE_POSITION} = ${A_TEXTURE_POSITION};
-    vec4 ${L_POSITION_VS} = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
-    ${V_POSITION} = ${L_POSITION_VS}.xyz;
+    ${V_POSITION} = ${U_MODEL_VIEW_MATRIX} * ${A_VERTEX_POSIITON};
     ${V_NORMAL} = normalize(
         ${U_MODEL_VIEW_MATRIX} * vec4(${A_VERTEX_NORMAL}, 1.)
         - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
     ).xyz;
     ${V_MODEL_NORMAL} = ${A_VERTEX_NORMAL};
-    gl_Position = ${U_PROJECTION_MATRIX} * ${L_POSITION_VS};
+    gl_Position = ${U_PROJECTION_MATRIX} * ${V_POSITION};
   }
 `;
 
@@ -94,28 +91,28 @@ const OUT_RESULT = FLAG_LONG_GL_VARIABLE_NAMES ? 'result' : '_';
 
 const L_CAMERA_AND_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCameraDelta' : 'a';
 const L_TEXTURE_SCALE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureScale' : 'b';
-const L_MODEL_CAMERA_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelCameraNormal' : 'c';
-const L_TEXTURE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureDelta' : 'd';
-const L_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTexturePosition' : 'e';
-const L_TEXTURE_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureNormal' : 'f';
+const L_MODEL_CAMERA_AND_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelCameraNormal' : 'c';
+const L_TEXTURE_DELTA_AND_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureDelta' : 'd';
+const L_TEXTURE_POSITION_AND_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTexturePosition' : 'e';
+const L_TEXTURE_NORMAL_AND_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureNormal' : 'f';
 const L_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lPosition' : 'g';
 const L_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lNormal' : 'h';
 // intentionally left i
 const L_FOUND_TEXTURE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lFoundTexture' : 'j';
 const L_MINIMUM_TEXTURE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lMinTextureDelta' : 'k';
 const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
-const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
+// const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
 const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
-const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
-const L_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightColor' : 'p';
-const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
+//const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
+//const L_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightColor' : 'p';
+//const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
 const L_COS_LIGHT_ANGLE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCosLightAngleDelta' : 'r';
 const L_LIGHT_TEXEL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTexel' : 's';
 //const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't'; // unused
-const L_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightNormal' : 'u';
+//const L_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightNormal' : 'u';
 const L_LIGHT_TEXTURE_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTextureNormal' : 'U';
 const L_LIGHT_DISTANCE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDistance' : 'T';
-const L_BIAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lBias' : 'S';
+//const L_BIAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lBias' : 'S';
 
 const FRAGMENT_SHADER = `#version 300 es
   precision lowp float;
@@ -130,7 +127,7 @@ const FRAGMENT_SHADER = `#version 300 es
   uniform sampler3D ${U_TEXTURE_COLORS};
   uniform sampler3D ${U_TEXTURE_NORMALS};
 
-  in vec3 ${V_POSITION};
+  in vec4 ${V_POSITION};
   in vec3 ${V_MODEL_POSITION};
   in vec3 ${V_NORMAL};
   in vec3 ${V_MODEL_NORMAL};
@@ -143,142 +140,125 @@ const FRAGMENT_SHADER = `#version 300 es
   }
 
   void main() {
-    vec3 ${L_CAMERA_AND_LIGHT_DELTA} = ${V_POSITION} - ${U_CAMERA_POSITION};
+    vec3 ${L_CAMERA_AND_LIGHT_DELTA} = ${V_POSITION}.xyz - ${U_CAMERA_POSITION};
     float ${L_TEXTURE_SCALE} = length(${V_MODEL_POSITION})/length(${V_TEXTURE_POSITION});
-    vec3 ${L_MODEL_CAMERA_NORMAL} = normalize(
+    vec3 ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_AND_LIGHT_DELTA}, 1.) -
         ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
     ).xyz;
     
-    float ${L_TEXTURE_DELTA} = 0.;
-    vec3 ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION};
-    vec4 ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION}));
-    vec3 ${L_POSITION} = ${V_POSITION};
+    float ${L_TEXTURE_DELTA_AND_LIGHT} = 0.;
+    vec3 ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION};
+    vec4 ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
+    vec3 ${L_POSITION} = ${V_POSITION}.xyz;
     vec3 ${L_NORMAL} = normalize(${V_NORMAL});
 
-    if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+    if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
       bool ${L_FOUND_TEXTURE} = false;
       float ${L_MINIMUM_TEXTURE_DELTA} = 0.;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
         float ${L_TEST} = ${L_FOUND_TEXTURE}
-            ? (${L_TEXTURE_DELTA} + ${L_MINIMUM_TEXTURE_DELTA})/2.
-            : ${L_TEXTURE_DELTA} + ${TEXTURE_LOOP_STEP_SIZE};
-        ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEST};
-        ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION}));
+            ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_DELTA})/2.
+            : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
+        ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST};
+        ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
         if (
-          ${L_TEXTURE_NORMAL}.w > ${TEXTURE_ALPHA_THRESHOLD}
+          ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
         ) {
           ${L_FOUND_TEXTURE} = true;
-          ${L_TEXTURE_DELTA} = ${L_TEST};
+          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
         } else {
           if (${L_FOUND_TEXTURE}) {
             ${L_MINIMUM_TEXTURE_DELTA} = ${L_TEST};
           } else {
-            ${L_TEXTURE_DELTA} = ${L_TEST};
+            ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
           }
         }  
       }
-      ${L_TEXTURE_POSITION} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
-      ${L_TEXTURE_NORMAL} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION}));
-      vec3 ${L_MODEL_POSITION} = ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
-      if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}
-          // || abs(${L_MODEL_POSITION}.x) > .5
-          // || abs(${L_MODEL_POSITION}.y) > .5
-          // || abs(${L_MODEL_POSITION}.z) > .5
-      ) {
+      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};
+      ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
+      if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
         discard;
       }
-      ${L_POSITION} = (${U_MODEL_VIEW_MATRIX} * vec4(${L_MODEL_POSITION}, 1.)).xyz;
+      ${L_POSITION} = (
+          ${U_MODEL_VIEW_MATRIX}
+              * vec4(
+                  ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT},
+                  1.
+              )
+      ).xyz;
       ${L_NORMAL} = normalize(
-          abs(${L_TEXTURE_POSITION}.x) < .5 && abs(${L_TEXTURE_POSITION}.y) < .5 && abs(${L_TEXTURE_POSITION}.z) < .5
+          abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z) < .5
               ? (
-                  ${U_MODEL_VIEW_MATRIX} * vec4(${L_TEXTURE_NORMAL}.xyz * 2. - 1., 1.)
+                  ${U_MODEL_VIEW_MATRIX} * vec4(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * 2. - 1., 1.)
                   - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
               ).xyz
               : ${V_NORMAL}
       );
     }
 
-    float ${L_DEPTH} = ${L_TEXTURE_DELTA} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
-    vec4 ${L_COLOR} = texture(
+    float ${L_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
+    ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
         ${U_TEXTURE_COLORS},
-        (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(${L_TEXTURE_POSITION}, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
+        (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
             / vec3(${COLOR_TEXTURE_FACTORIES.length}., 1., 1.)
     );
-    // ${L_COLOR} = vec4((${L_NORMAL} + 1.) / 2., length(${L_NORMAL}));
-    // if (${L_TEXTURE_NORMAL}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-    //   ${L_COLOR} = vec4(vec3(${L_TEXTURE_DELTA}, 0., 0.), 1.);
-    // }
-    // vec3 ${L_MODEL_POSITION} = ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA};
-    // if (abs(${L_MODEL_POSITION}.x) > .5
-    //     || abs(${L_MODEL_POSITION}.y) > .5
-    //     || abs(${L_MODEL_POSITION}.z) > .5
-    // ) {
-    //   ${L_COLOR} = vec4(vec3(0, 0., 1.), 1.);
-    // }
 
-
-    //${L_POSITION} = ${V_POSITION};
-    //${L_POSITION} = (${U_MODEL_VIEW_MATRIX} * vec4(${V_TEXTURE_POSITION}, 1.)).xyz;
-    //${L_COLOR} = vec4(${L_POSITION} / 3., 1.);
-    //${L_COLOR} = vec4(${V_MODEL_POSITION} + ${L_MODEL_CAMERA_NORMAL} * ${L_TEXTURE_DELTA} + .5, 1.);
-    //${L_COLOR} = vec4(vec3(.5 + ${L_TEXTURE_DELTA} * 2.), 1.);
-    //${L_COLOR} = vec4(${L_TEXTURE_POSITION} + .5, 0.);
-
-
-    vec3 ${L_LIGHT_COLOR} = vec3(max(0., (${L_COLOR}.w -.5) * 2.));
+    ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(max(0., (${L_TEXTURE_NORMAL_AND_COLOR}.w -.5) * 2.));
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
         ${L_CAMERA_AND_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
-        vec3 ${L_LIGHT_NORMAL} = normalize(${L_CAMERA_AND_LIGHT_DELTA});
+        ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(${L_CAMERA_AND_LIGHT_DELTA});
         vec3 ${L_LIGHT_TEXTURE_NORMAL} = normalize(
-            abs(${L_LIGHT_NORMAL}.x) > abs(${L_LIGHT_NORMAL}.y) && abs(${L_LIGHT_NORMAL}.x) > abs(${L_LIGHT_NORMAL}.z)
-                ? vec3(${L_LIGHT_NORMAL}.x, 0, 0)
-                : abs(${L_LIGHT_NORMAL}.y) > abs(${L_LIGHT_NORMAL}.z)
-                    ? vec3(0, ${L_LIGHT_NORMAL}.y, 0)
-                    : vec3(0, 0, ${L_LIGHT_NORMAL}.z)
+            abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y) && abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
+                ? vec3(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x, 0, 0)
+                : abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
+                    ? vec3(0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y, 0)
+                    : vec3(0, 0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
         );
-        float ${L_COS_LIGHT_ANGLE_DELTA} = dot(${L_NORMAL}, ${L_LIGHT_NORMAL});
-        //${L_COLOR} = vec4(vec3(length(${L_CAMERA_AND_LIGHT_DELTA})/4.), 1.);
+        float ${L_COS_LIGHT_ANGLE_DELTA} = dot(${L_NORMAL}, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
         // cannot index into samplers!
         vec4 ${L_LIGHT_TEXEL} = i == 0
-            ? texture(${U_LIGHT_TEXTURES}[0], ${L_LIGHT_NORMAL})
+            ? texture(${U_LIGHT_TEXTURES}[0], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
             : i == 1
-                ? texture(${U_LIGHT_TEXTURES}[1], ${L_LIGHT_NORMAL})
+                ? texture(${U_LIGHT_TEXTURES}[1], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
                 : i == 2
-                    ? texture(${U_LIGHT_TEXTURES}[2], ${L_LIGHT_NORMAL})
-                    : texture(${U_LIGHT_TEXTURES}[3], ${L_LIGHT_NORMAL});
-        // vec4 ${L_LIGHT_TEXEL} = texture(${U_LIGHT_TEXTURES}[0], ${L_LIGHT_NORMAL});
+                    ? texture(${U_LIGHT_TEXTURES}[2], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
+                    : texture(${U_LIGHT_TEXTURES}[3], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
     
         float ${L_LIGHT_DISTANCE} = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
             / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * ${L_LIGHT_TEXEL}.x - 1.)
                 * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
-            ) * dot(${L_LIGHT_NORMAL}, ${L_LIGHT_TEXTURE_NORMAL}))
+            ) * dot(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}, ${L_LIGHT_TEXTURE_NORMAL}))
             // ensure bumps are not in shadow
-            + ${L_DEPTH} * 2. * ${L_TEXTURE_SCALE} / dot(normalize(${V_NORMAL}), ${L_LIGHT_NORMAL});
-        // TODO distance in bias seems wrong
-        float ${L_BIAS} = pow(${L_LIGHT_DISTANCE}, 2.)
-            * (2. - pow(${L_COS_LIGHT_ANGLE_DELTA}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.;
-        float ${L_LIGHT} = mix(
+            + ${L_DEPTH} * 2. * ${L_TEXTURE_SCALE} / dot(normalize(${V_NORMAL}), ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
+        ${L_TEXTURE_DELTA_AND_LIGHT} = mix(
                 max(0., -${L_COS_LIGHT_ANGLE_DELTA}),
                 1.,
                 pow(max(0., (${MIN_LIGHT_THROW_C} - length(${L_CAMERA_AND_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w), 2.)
             )
             * ${U_LIGHT_POSITIONS}[i].w
             * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_CAMERA_AND_LIGHT_DELTA}))/${MAX_LIGHT_THROW_C}, 2.));
-        if (length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE} + ${L_BIAS} && ${L_COS_LIGHT_ANGLE_DELTA} < 0. || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}) {
-          ${L_LIGHT_COLOR} += ${L_LIGHT}
-              * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_LIGHT}))
+        if (
+            length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
+                // bias
+                // TODO distance in bias seems wrong
+                + pow(${L_LIGHT_DISTANCE}, 2.) * (2. - pow(${L_COS_LIGHT_ANGLE_DELTA}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+            && ${L_COS_LIGHT_ANGLE_DELTA} < 0.
+            || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
+        ) {
+          ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} += ${L_TEXTURE_DELTA_AND_LIGHT}
+              * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_TEXTURE_DELTA_AND_LIGHT}))
               + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.z, 0.) : 0.);
         } else if (i == 0){
-          ${L_LIGHT_COLOR} = vec3(0.);
+          ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(0.);
         }
       }
-      ${L_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.5, 1., 1.);
+      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.5, 1., 1.);
     }
-    ${OUT_RESULT} = vec4(pow(${L_COLOR}.xyz * ${L_LIGHT_COLOR}, vec3(.45)), 1.);
+    ${OUT_RESULT} = vec4(pow(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * ${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(.45)), 1.);
   }
 `;
 
@@ -587,7 +567,7 @@ window.onload = window.onclick = () => {
     rotated: [0, 0, 0],
     maxHealth: 9,
     health: 9,
-    variant: 1,
+    variantIndex: 1,
     collisionGroup: COLLISION_GROUP_MONSTER,
     collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_MONSTER,
   });
@@ -748,8 +728,8 @@ window.onload = window.onclick = () => {
                           : 0;
                   const colorTextureIds = part.colorTextureIds;
                   const normalTextureIds = part.normalTextureIds || [0];
-                  const colorTextureId = colorTextureIds[(entity.variant || 0) % colorTextureIds.length];
-                  const normalTextureId = normalTextureIds[(entity.variant || 0) % normalTextureIds.length];
+                  const colorTextureId = colorTextureIds[(entity.variantIndex || 0) % colorTextureIds.length];
+                  const normalTextureId = normalTextureIds[(entity.variantIndex || 0) % normalTextureIds.length];
                   if (FLAG_INSTANCED_RENDERING && !entity.velocity) {
                     const modelInstancedRenders = instancedRenders[part.modelId]
                         || (instancedRenders[part.modelId] = []);
@@ -1145,7 +1125,11 @@ window.onload = window.onclick = () => {
               if (entity.entityType == ENTITY_TYPE_HOSTILE) {
                 entity.aggro = Math.max(0, (entity.aggro || 0) - deltaTime);
                 // AI
-                if ((!entity.activePathTime || entity.activePathTime < worldTime - AI_RECALCULATION_TIME) && !entity.aggro){
+                if ((!entity.activePathTime
+                    || entity.activePathTime < worldTime - AI_RECALCULATION_TIME) && !entity.aggro
+                    // they've been hit
+                    || FLAG_AGGRO_ON_HIT && !entity.activeTarget && !entity.aggro
+                ){
                   // look around
                   let bestTarget: Entity;
                   let bestTargetValue = 0;
@@ -1216,7 +1200,7 @@ window.onload = window.onclick = () => {
                                   ? 0
                                   // if the action specifies no range, we assume it's not an attack and want the
                                   // target to actually be as far away as possible
-                                  : Math.abs(distance - ((actionAnimations.range * (entity.scale || 1)) || AI_DIRECT_MOVE_RADIUS));
+                                  : Math.abs(distance - ((actionAnimations.range * (entity.scaled || 1)) || AI_DIRECT_MOVE_RADIUS));
                                   
                               return [action, delta];
                             })
@@ -1229,7 +1213,7 @@ window.onload = window.onclick = () => {
                       targetAction = ACTION_ID_DUCK;
                     }
                     const animations = entityGetActionAnims(entity, targetAction);
-                    const maxActionRange = (animations.range * (entity.scale || 1)) || 0;
+                    const maxActionRange = (animations.range * (entity.scaled || 1)) || 0;
                     const minActionRange = maxActionRange * minActionRangeMultiplier;
                     const targetActionAvailable = !targetAction || (availableActions & targetAction);
                     const doingTargetAction = entity.joints.some(joint => joint.animAction == targetAction);
@@ -1459,6 +1443,9 @@ window.onload = window.onclick = () => {
                   } else if (maxDamage) {
                     // start the damage received animation
                     victim.health -= maxDamage;
+                    if (FLAG_AGGRO_ON_HIT) {
+                      victim.aggro += 1e3;
+                    }
                     victim.invulnerableUntil = worldTime + DAMAGE_INVULNERABILITY_DURATION;
                     entityStartAnimation(worldTime, victim, ACTION_ID_TAKE_DAMAGE);
                   }
@@ -1680,8 +1667,8 @@ window.onload = window.onclick = () => {
                       attachedEntity: 0,
                       rotated: [0, 0, 0],
                     }],
-                    variant: entity.variant,
-                    scale: entity.scale,
+                    variantIndex: entity.variantIndex,
+                    scale: entity.scaled,
                     // inherit your parent health
                     health: entity.maxHealth,
                     maxHealth: entity.maxHealth,
