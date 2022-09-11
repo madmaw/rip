@@ -103,5 +103,5 @@ const PART_TORCH: EntityBody<TorchPartId> = {
   }]
 };
 
-const SHAPE_TORCH_HANDLE = shapeFromPlanes(planesCapsule(6, TORCH_HANDLE_WIDTH, TORCH_HANDLE_RADIUS/2, TORCH_HANDLE_RADIUS));
+const SHAPE_TORCH_HANDLE = shapeFromPlanes(planesCapsule(4, TORCH_HANDLE_WIDTH, TORCH_HANDLE_RADIUS/2, TORCH_HANDLE_RADIUS));
 const SHAPE_TORCH_HEAD = shapeFromPlanes(planesCapsule(6, TORCH_HEAD_WIDTH, TORCH_HEAD_RADIUS));

@@ -664,7 +664,7 @@ window.onload = window.onclick = () => {
       light?: Light,
   ): Light[] => {
     const lights = [];
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.uniformMatrix4fv(
         uniformProjectionMatrix,
         false,
@@ -1148,7 +1148,7 @@ window.onload = window.onclick = () => {
               }
             } else {
               action = ACTION_ID_IDLE;
-              if (entity.entityType == ENTITY_TYPE_HOSTILE) {
+              if (entity.entityType == ENTITY_TYPE_MONSTER) {
                 entity.aggro = Math.max(0, (entity.aggro || 0) - deltaTime);
                 // AI
                 if ((!entity.activePathTime
@@ -1644,8 +1644,8 @@ window.onload = window.onclick = () => {
                     };  
                   }
                   // check if we can step up
-                  // TODO: only do this if we are a creature
                   if (maxOverlapIndex != 2
+                      && (entity.entityType == ENTITY_TYPE_MONSTER || entity.entityType == ENTITY_TYPE_PLAYER)
                       && entity['p'][2] > maxCollisionEntity['p'][2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
                   ) {
                     verticalIntersectionCount++;

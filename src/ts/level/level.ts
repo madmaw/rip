@@ -439,7 +439,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         dimensions: [SKELETON_DIMENSION * scale, SKELETON_DIMENSION * scale, SKELETON_DEPTH * scale],
         oriented: orientation,
         entityBody: PART_SKELETON_BODY,
-        entityType: ENTITY_TYPE_HOSTILE,
+        entityType: ENTITY_TYPE_MONSTER,
         acc: .005,
         velocity: [0, 0, 0],
         ['r']: [0, 0, orientation * CONST_PI_ON_2_1DP],
@@ -458,7 +458,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       if (!validEnemy || Math.random() > (layer-2)/layer){
         const variant = Math.min(2, Math.random() * layerVariant | 0);
         let weapon: Entity;
-        if (!FLAG_SPEARS_AS_LOOT || Math.random() > .2) {
+        if (!FLAG_SPEARS_AS_LOOT || Math.random() > 1.2) {
           const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
           const maxHealth = 7 + clubSize + variant * 3;
           const clubBody = PARTS_CLUBS[clubSize];
@@ -471,7 +471,6 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             ['p']: position, 
             entityType: ENTITY_TYPE_ITEM,
             ['r']: [0, 0, CONST_PI_0DP * 2 * Math.random()],
-            //velocity: [0, 0, 0],
             health: maxHealth,
             maxHealth,
             collisionGroup: COLLISION_GROUP_ITEM,
@@ -586,8 +585,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           entityBody: PART_WALL,
           collisionGroup: COLLISION_GROUP_WALL,
           entityType: ENTITY_TYPE_WALL,
-          //['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
-          ['r']: [0, 0, 0],
+          ['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
           variantIndex: layerVariant,
         }));
         break;

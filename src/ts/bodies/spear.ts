@@ -65,7 +65,10 @@ const SHAPE_SPEAR_BODY = shapeFromPlanes([
   ...planesCapsule(3, SPEAR_LENGTH, SPEAR_RADIUS),
   ...new Array(4).fill(0).map((_, i) => {
     const a = i/4 * CONST_2_PI_0DP;
-    return planeFromPointAndNormal([SPEAR_LENGTH/2, 0, 0], [SPEAR_COS, SPEAR_SIN * Math.cos(a), SPEAR_SIN * Math.sin(a)]);
+    return planeFromPointAndNormal(
+        [SPEAR_LENGTH/2, 0, 0],
+        [SPEAR_COS, SPEAR_SIN * Math.cos(a),SPEAR_SIN * Math.sin(a)],
+    );
   })
 ]);
 
