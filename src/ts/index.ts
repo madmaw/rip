@@ -217,13 +217,6 @@ const FRAGMENT_SHADER = `#version 300 es
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
         ${L_CAMERA_AND_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
         ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(${L_CAMERA_AND_LIGHT_DELTA});
-        vec3 ${L_LIGHT_TEXTURE_NORMAL} = normalize(
-            abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y) && abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
-                ? vec3(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x, 0, 0)
-                : abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
-                    ? vec3(0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y, 0)
-                    : vec3(0, 0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
-        );
         ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = dot(${L_NORMAL}, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
         // cannot index into samplers!
         vec4 ${L_LIGHT_TEXEL} = i == 0
@@ -235,9 +228,21 @@ const FRAGMENT_SHADER = `#version 300 es
                     : texture(${U_LIGHT_TEXTURES}[3], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
     
         float ${L_LIGHT_DISTANCE} = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
-            / ((${CUBE_MAP_PERPSECTIVE_Z_FAR}. + ${CUBE_MAP_PERPSECTIVE_Z_NEAR} - (2. * ${L_LIGHT_TEXEL}.x - 1.)
-                * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
-            ) * dot(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}, ${L_LIGHT_TEXTURE_NORMAL}))
+            / (
+                (${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+                    + ${CUBE_MAP_PERPSECTIVE_Z_NEAR}
+                    - (2. * ${L_LIGHT_TEXEL}.x - 1.) * (${CUBE_MAP_PERPSECTIVE_Z_FAR}. - ${CUBE_MAP_PERPSECTIVE_Z_NEAR})
+                ) * dot(
+                    ${L_MODEL_CAMERA_AND_LIGHT_NORMAL},
+                    normalize(
+                        abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y) && abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
+                            ? vec3(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.x, 0, 0)
+                            : abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y) > abs(${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
+                                ? vec3(0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.y, 0)
+                                : vec3(0, 0, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}.z)
+                    )
+                )
+            )
             // ensure bumps are not in shadow
             + ${L_DEPTH}
                 * 2.
@@ -877,11 +882,11 @@ window.onload = window.onclick = () => {
           // there is no accumulator or the accumulator age is > 0
           const needsNewLightRender = !lightRender && (!acc || acc[2]);
           if (needsNewLightRender) {
-            const availableTextureIndices = new Set(CUBE_MAP_LIGHTS_TEXTURE_INDICES);
+            const availableTextureIndices = [...CUBE_MAP_LIGHTS_TEXTURE_INDICES];
             let leastAppealingEntityId: string | undefined;
             for (let entityId in lightRenders) {
               const lightRender = lightRenders[entityId];
-              availableTextureIndices.delete(lightRender[0]);
+              availableTextureIndices.splice(availableTextureIndices.indexOf(lightRender[0]), 1);
               // ensure we aren't stealing another active light's texture
               if (!arr.some(light => light.entityId == entityId as any)
                     && (!leastAppealingEntityId
@@ -889,8 +894,8 @@ window.onload = window.onclick = () => {
                 leastAppealingEntityId = entityId;
               }
             }
-            if (availableTextureIndices.size) {
-              availableTextureIndex = [...availableTextureIndices][0];
+            if (availableTextureIndices.length) {
+              availableTextureIndex = availableTextureIndices[0];
             } else {
               availableTextureIndex = lightRenders[leastAppealingEntityId][0];
               delete lightRenders[leastAppealingEntityId];
@@ -1435,7 +1440,9 @@ window.onload = window.onclick = () => {
                             overlap = shapeFromPlanes([...entityPartPlanes, ...victimPartPlanes]).length > 3;
                           }
                           if (overlap) {
-                            const damage = entityPartDamage * (victimPart.incomingDamageMultiplier || 0);
+                            const damage = (entityPartDamage + (weaponEntity?.variantIndex || 0))
+                                * (weaponEntity.scaled || 1)
+                                * (victimPart.incomingDamageMultiplier || 0);
                             if (damage > maxDamage) {
                               maxDamage = damage;
                               maxWeapon = weaponEntity;
@@ -1461,7 +1468,9 @@ window.onload = window.onclick = () => {
                                 entityMidpoint(entity),
                             )
                           ),
-                          .001 * Math.max(maxWeapon?.entityBody.pushback || 0, maxDamage || 1),
+                          .001
+                              * Math.max(maxWeapon?.entityBody.pushback || 1) 
+                              * (maxWeapon?.scaled || 1) / (victim.scaled || 1),
                       ),
                   );
                   if (blocked) {

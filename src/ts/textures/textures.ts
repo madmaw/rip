@@ -246,7 +246,7 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
     return createSpeckleTextureFactory(
         createSolidTextureColorFactory(
             COLOR_TEXTURE_STONE_FROM.map(
-                (v, i) => v + (COLOR_TEXTURE_STONE_TO[i] - v) * i/(COLOR_TEXTURE_STONE_COUNT-1) | 0,
+                (v, j) => v + (COLOR_TEXTURE_STONE_TO[j] - v) * i/(COLOR_TEXTURE_STONE_COUNT-1) | 0,
             ) as Vector4,
         ),
         .3,

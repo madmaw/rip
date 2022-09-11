@@ -296,9 +296,9 @@ const entityIterateParts = <PartId extends number, EntityType extends PartialEnt
         matrix4Multiply(
             transform,
             part.jointAttachmentHolderTransform,
+            matrix4Scale((joint.attachedEntity.scaled || 1)/(entity.scaled || 1)),
             // TODO this might need to be after rotation
             joint.attachedEntity.entityBody.jointAttachmentHeldTransform,
-            matrix4Scale((joint.attachedEntity.scaled || 1)/(entity.scaled || 1)),
         ),
         childPartOutgoingDamageMultiplier,
     )
@@ -366,10 +366,9 @@ const entityMidpoint = (entity: Entity): Vector3 => {
   }) as Vector3;
 };
 
-const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: ActionId) => {
+const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: ActionId): EntityBodyAnimation<T> => {
   let bodyAnimations: EntityBodyAnimation<number> | Falsey = entity.joints.reduce<Falsey | EntityBodyAnimation<number>>(
-      (acc, joint) => acc
-          || joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action],
+      (acc, joint) => joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action] || acc,
       0,
   ) || entity.entityBody.anims?.[action];
   if (action == ACTION_ID_CANCEL) {
