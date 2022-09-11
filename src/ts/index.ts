@@ -1688,7 +1688,6 @@ window.onload = window.onclick = () => {
                 let partEntity: Entity;
                 if (e == entity) {
                   // turn their body parts into items
-                  const [position, dimensions] = shapeBounds(shapes[part.modelId], transform, 1);
                   partEntity = entityCreate({
                     // create generic self-contained entity for each body part
                     entityBody: {
@@ -1711,14 +1710,12 @@ window.onload = window.onclick = () => {
                     collisionGroup: COLLISION_GROUP_ITEM,
                     // turn anything that can be held into an item (maybe)
                     collisionMask: Math.random() < .5
-                        // only create objects for parts that do something
-                        && part.jointAttachmentHolderPartId
-                        // the zero'th part is assumed to be what we are held by if we are a tool
-                        // as result, we don't want to add the handle back into the world
-                        && part.id
+                        // only create objects that have bounds defined
+                        && part.dimensions
                         ? COLLISION_GROUP_WALL
                         : 0,
-                    dimensions,
+                    dimensions: (part.dimensions || [0, 0, 0]).map(v => v * (entity.scaled || 1)) as Vector3,
+                    // TODO center on position will be more accurate
                     ['p']: position,
                     // TODO use current rotation 
                     ['r']: [0, 0, Math.random() * CONST_2_PI_0DP],

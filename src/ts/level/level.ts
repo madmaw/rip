@@ -598,7 +598,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
             ['p']: [x, y, z - STEP_DEPTH],
             dimensions: [1, 1, STEP_DEPTH],
             ['r']: [0, 0, 0],
-            entityBody: PART_ORIENTATION_STEPS[0][0],
+            entityBody: PART_STEPS[0],
             collisionGroup: COLLISION_GROUP_WALL,
             variantIndex: layerVariant,
           });
@@ -612,22 +612,25 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         // staircase
         {
           const stepOrientation = cell as Orientation;
-          const stepParts = PART_ORIENTATION_STEPS[stepOrientation];
-          const transform = matrix4Multiply(
-              matrix4Translate(...position),
-              matrix4Translate(.5, .5, 0),
-              matrix4Rotate(CONST_PI_ON_2_2DP * (stepOrientation + 2), 0, 0, 1),
-          );
+          const stepParts = PART_STEPS;
+          const zAngle = CONST_PI_ON_2_2DP * (stepOrientation + 2);
           
           stepParts.reduce((z, stepPart, i) => {
-            const t = matrix4Multiply(transform, matrix4Translate(-STEP_WIDTH/2 * i, 0, z + STEP_DEPTH/2));
-            const [positioned, dimensions] = shapeBounds(SHAPE_STEPS[i], t);
+            const d = 1 - STEP_WIDTH * i;
+            let dimensions: Vector3 = [d, 1, STEP_DEPTH];
+            if (stepOrientation % 2) {
+              dimensions = [dimensions[1], dimensions[0], dimensions[2]];
+            }
             const step: Entity = entityCreate({
               entityType: ENTITY_TYPE_STAIR,
               oriented: stepOrientation,
-              ['p']: positioned,
+              ['p']: [
+                position[0] + (stepOrientation == ORIENTATION_EAST ? 1 - d : 0),
+                position[1] + (stepOrientation == ORIENTATION_NORTH ? 1 - d : 0),
+                position[2] + z,
+              ],
               dimensions,
-              ['r']: [0, 0, 0],
+              ['r']: [0, 0, zAngle],
               entityBody: stepPart,
               collisionGroup: COLLISION_GROUP_WALL,
               variantIndex: layerVariant,

@@ -221,6 +221,7 @@ type Part<ID extends number> = {
   readonly incomingDamageMultiplier?: number,
   readonly outgoingDamage?: number,
   readonly childs?: readonly Part<ID>[],
+  readonly dimensions?: Vector3,
   // and where is this part held when carried
   readonly jointAttachmentHeldTransform?: Matrix4 | Falsey,
   // when picked up, what does this attach to

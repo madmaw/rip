@@ -10,17 +10,17 @@ const NUM_STEPS = 5;
 const STEP_DEPTH = 1/NUM_STEPS;
 const STEP_WIDTH = STEP_DEPTH;
 
-const PART_ORIENTATION_STEPS = ORIENTATIONS.map(o => {
-  return new Array(NUM_STEPS).fill(0).map<Part<StepPartId>>((_, i) => {
-    return {
-      id: STEP_PART_ID_BODY,
-      modelId: MODEL_STEP_1 + i as ModelId,
-      colorTextureIds: WALL_COLOR_TEXTURE_IDS,
-      normalTextureIds: [NORMAL_TEXTURE_ID_BRICKS_1],
-      preRotationTransform: matrix4Rotate(o * CONST_PI_ON_2_2DP, 0, 0, 1),
-      vulnerability: -1,
-    };
-  });
+const PART_STEPS = new Array(NUM_STEPS).fill(0).map<Part<StepPartId>>((_, i) => {
+  const d = 1 - STEP_WIDTH * i;
+  return {
+    id: STEP_PART_ID_BODY,
+    modelId: MODEL_STEP_1 + i as ModelId,
+    colorTextureIds: WALL_COLOR_TEXTURE_IDS,
+    normalTextureIds: [NORMAL_TEXTURE_ID_BRICKS_1],
+    preRotationTransform: matrix4Translate(d/2, .5, 0),
+    postRotationTransform: matrix4Translate(-d/2, -.5, 0),
+    vulnerability: -1,
+  };
 });
 
 const SHAPE_STEPS: Shape[] = new Array(NUM_STEPS).fill(0).map<Shape>((_, i) => {

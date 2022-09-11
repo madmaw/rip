@@ -407,7 +407,9 @@ const SKELETON_FEMUR_ATTACHMENT_INFO: Pick<
     | 'jointAttachmentHolderTransform'
     | 'jointAttachmentHolderAnims'
     | 'outgoingDamage'
+    | 'dimensions'
 > = {
+  dimensions: [SKELETON_FEMUR_RADIUS, SKELETON_FEMUR_RADIUS, SKELETON_FEMUR_RADIUS],
   jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_RIGHT,
   jointAttachmentHeldTransform: matrix4Multiply(
       matrix4Rotate(Math.PI, 0, 1, 0),
@@ -687,6 +689,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           modelId: MODEL_SKELETON_HEAD,
           colorTextureIds: [COLOR_TEXTURE_ID_SKULL, COLOR_TEXTURE_ID_SKULL_BLACKENED],
           normalTextureIds: [NORMAL_TEXTURE_ID_SKULL],
+          dimensions: [SKELETON_HEAD_WIDTH, SKELETON_HEAD_HEIGHT, SKELETON_HEAD_DEPTH],
           incomingDamageMultiplier: 2,
           preRotationTransform: matrix4Translate(
               0,
