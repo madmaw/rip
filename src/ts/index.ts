@@ -273,7 +273,7 @@ const FRAGMENT_SHADER = `#version 300 es
           ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(0.);
         }
       }
-      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.3, .8, .8);
+      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.1, .9, .9);
     }
 
     ${OUT_RESULT} = vec4(pow(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * ${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(.45)), 1.);

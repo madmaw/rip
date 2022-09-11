@@ -185,7 +185,7 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
           !FLAG_UNPACK_USE_ORIGINALS && [...'`  `'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 0, 0, 255],
       ),
-      .3,
+      .2,
   ),
   // COLOR_TEXTURE_ID_BONE
   createSpeckleTextureFactory(
