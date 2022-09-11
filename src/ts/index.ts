@@ -273,7 +273,7 @@ const FRAGMENT_SHADER = `#version 300 es
           ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(0.);
         }
       }
-      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.5, 1., 1.);
+      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.3, .8, .8);
     }
 
     ${OUT_RESULT} = vec4(pow(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * ${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(.45)), 1.);
@@ -563,15 +563,19 @@ const startY = 4;
 
 let animationFrame: number = 0;
 let player: Entity<SkeletonPartId>;
+let worldTime = 0;
 
 window.onload = window.onclick = () => {
 
-  if (player?.health > 0) {
+  // if the player is dead, or has fallen for a long time (fell into the abys probably)
+  if (player?.health > 0 && player.lastZCollision > worldTime - 3e3) {
     return;
   }
   window.cancelAnimationFrame(animationFrame);
-  const level = levelCreate(9, 9);
-  levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE, startX, startY);
+  const level = levelCreate(10, 10);
+  new Array(LEVEL_LAYER_CHUNK_SIZE).fill(0).forEach((_, i) => {
+    levelAppendLayer(level, !i && startX, !i && startY);
+  });
   
   // TODO enemy pathing
   //levelPopulateGraph(level);
@@ -637,7 +641,7 @@ window.onload = window.onclick = () => {
   let cameraZRotation = 0;
   
   let previouslyPickedUpEntities: Entity[] = []
-  let worldTime = 0;
+  worldTime = 0;
   let then = 0;
 
   let updateCount = 0;
@@ -993,7 +997,7 @@ window.onload = window.onclick = () => {
     const renderPosition = RENDER_DIMENSIONS.map((v, i) => playerCenter[i] - v/2) as Vector3;
     if (renderPosition[2] + RENDER_DIMENSIONS[2] > level.dimensions[2]) {
       // time to generate some more layers
-      levelAppendLayers(level, LEVEL_LAYER_CHUNK_SIZE);
+      levelAppendLayer(level);
 
       if (FLAG_CLEAR_PREVIOUSLY_PICKED_UP_ARRAY) {
         // clear it out for performance reasons

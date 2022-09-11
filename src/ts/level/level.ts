@@ -172,10 +172,12 @@ const LEVEL_MIN_UPWARD_STAIRS = 2;
 const LEVEL_GENERATION_MAX_ATTEMPTS = 9;
 
 const levelCreate = (width: number, height: number): Level => {
-  const tiles = array3New<Tile>(width, height, 1, () => {
+  const tiles = array3New<Tile>(width, height, 1, (x, y) => {
     const entities: Record<EntityId, Entity> = {};      
     return {
-      cell: LEVEL_DESIGN_CELL_WALL,
+      cell: x && y && x < width - 1 && y < height - 1
+          ? LEVEL_DESIGN_CELL_WALL
+          : LEVEL_DESIGN_CELL_SPACE,
       entities,
     };
   });
@@ -187,177 +189,183 @@ const levelCreate = (width: number, height: number): Level => {
   return level;
 };
 
-const levelAppendLayers = (level: Level, layers: number, startingX?: number, startingY?: number) => {
+const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?: number) => {
 
   const [width, height, depth] = level.dimensions;
 
   // add corridors
-  for (let i=0; i<layers; i++) {
-    const z = depth + i;
+  const z = depth;
 
-    // look below for any up stairs
-    let downHoles: [number, number, Orientation?][];
+  // look below for any up stairs
+  let downHoles: [number, number, Orientation?][];
 
-    let excessCorridorTiles: number;
-    let orientation: Orientation = ORIENTATION_EAST;
-    let remainingAttempts = 0;
-    let upwardStairs = 0;
-    while (excessCorridorTiles > 0 || upwardStairs < LEVEL_MIN_UPWARD_STAIRS) {
-      if (!remainingAttempts) {
-        // reset the layer generation and try again
-        downHoles = [];
-        if (startingX && z == 1) {
-          downHoles.push([startingX, startingY]);
-        }  
-        for (let x=0; x<width; x++) {
-          for (let y=0; y<height; y++) {
-            const tile = level.tiles[x][y][z - 1];
-            level.tiles[x][y][z] = {
-              cell: LEVEL_DESIGN_CELL_WALL,
-              entities: {},
-            };
-            if (tile.cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH) {
-              downHoles.push([x, y, tile.cell as Orientation]);
-            }
+  let excessCorridorTiles: number;
+  let orientation: Orientation = ORIENTATION_EAST;
+  let remainingAttempts = 0;
+  let upwardStairs = 0;
+  while (excessCorridorTiles > 0 || upwardStairs < LEVEL_MIN_UPWARD_STAIRS) {
+    if (!remainingAttempts) {
+      // reset the layer generation and try again
+      downHoles = [];
+      if (startingX && z == 1) {
+        downHoles.push([startingX, startingY]);
+      }  
+      for (let x=0; x<width; x++) {
+        for (let y=0; y<height; y++) {
+          const tile = level.tiles[x][y][z - 1];
+          level.tiles[x][y][z] = {
+            cell: x && y && x < width - 1 && y < height - 1
+                ? LEVEL_DESIGN_CELL_WALL
+                : LEVEL_DESIGN_CELL_SPACE,
+            entities: {},
+          };
+          if (tile.cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH) {
+            downHoles.push([x, y, tile.cell as Orientation]);
           }
-        } 
-        remainingAttempts = LEVEL_GENERATION_MAX_ATTEMPTS;
-        excessCorridorTiles  = (width * height / 4 + z) | 0;
-        upwardStairs = 0;
-      }
-      remainingAttempts--;
-
-      let sx: number;
-      let sy: number;
-      let originalOrientation = orientation;
-      if (downHoles.length) {
-        [sx, sy, orientation = ORIENTATION_EAST] = downHoles[0];
-        originalOrientation = orientation;
-        orientation = ((Math.random() * 4) | 0) as Orientation;
-        if (orientation == (originalOrientation + 2) % 4) {
-          orientation = originalOrientation;
         }
-        // open up a space one tile back to give head room
-        level.tiles[sx - ORIENTATION_OFFSETS[originalOrientation][0]][sy - ORIENTATION_OFFSETS[originalOrientation][1]][z].cell = LEVEL_DESIGN_CELL_SPACE;
-        level.tiles[sx][sy][z].cell = LEVEL_DESIGN_CELL_SPACE;
-        sx += ORIENTATION_OFFSETS[originalOrientation][0];
-        sy += ORIENTATION_OFFSETS[originalOrientation][1];
+      } 
+      remainingAttempts = LEVEL_GENERATION_MAX_ATTEMPTS;
+      excessCorridorTiles  = (width * height / 4 + z);
+      upwardStairs = 0;
+    }
+    remainingAttempts--;
+
+    let sx: number;
+    let sy: number;
+    let originalOrientation = orientation;
+    if (downHoles.length) {
+      [sx, sy, orientation = ORIENTATION_EAST] = downHoles[0];
+      originalOrientation = orientation;
+      orientation = ((Math.random() * 4) | 0) as Orientation;
+      if (orientation == (originalOrientation + 2) % 4) {
+        orientation = originalOrientation;
       }
-      const [dx, dy] = ORIENTATION_OFFSETS[orientation];
-      if (!downHoles.length) {
-        sx = Math.random() * width | 0;
-        sy = Math.random() * height | 0;
-      }
-      // one extra because length includes current tile
-      const maxCorridorLength = Math.max(0, dx) * (width - sx)
-          + Math.max(0, -dx) * (sx + 1)
-          + Math.max(0, dy) * (height - sy)
-          + Math.max(0, -dy) * (sy + 1);
-      
-      if (maxCorridorLength >= LEVEL_MIN_CORRIDOR_LENGTH || downHoles.length) {
-        const corridorLength = ((1 - Math.pow(Math.random(), 2)) * (maxCorridorLength - LEVEL_MIN_CORRIDOR_LENGTH) | 0) + LEVEL_MIN_CORRIDOR_LENGTH;
-        const targetCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + (orientation % 2);
-        const oppositeCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + ((orientation + 1) % 2);
-        // ensure the corridor does not sit adjacent to, or atop, any other corridors
-        const fill = new Array(corridorLength).fill(0);
-        const adjacency =  fill.map<number>(( _, i) => {
+      // open up a space one tile back to give head room
+      level.tiles
+          [sx - ORIENTATION_OFFSETS[originalOrientation][0]]
+          [sy - ORIENTATION_OFFSETS[originalOrientation][1]]
+          [z].cell = LEVEL_DESIGN_CELL_SPACE;
+      level.tiles[sx][sy][z].cell = LEVEL_DESIGN_CELL_SPACE;
+      sx += ORIENTATION_OFFSETS[originalOrientation][0];
+      sy += ORIENTATION_OFFSETS[originalOrientation][1];
+    }
+    const [dx, dy] = ORIENTATION_OFFSETS[orientation];
+    if (!downHoles.length) {
+      sx = Math.random() * (width-2) + 1 | 0;
+      sy = Math.random() * (height-2) + 1 | 0;
+    }
+    // one extra because length includes current tile
+    const maxCorridorLength = Math.max(0, dx) * (width - 2 - sx)
+        + Math.max(0, -dx) * (sx)
+        + Math.max(0, dy) * (height - 2 - sy)
+        + Math.max(0, -dy) * (sy);
+    
+    if (maxCorridorLength >= LEVEL_MIN_CORRIDOR_LENGTH || downHoles.length) {
+      const corridorLength = ((1 - Math.pow(Math.random(), 4))
+          * (maxCorridorLength - LEVEL_MIN_CORRIDOR_LENGTH) | 0) + LEVEL_MIN_CORRIDOR_LENGTH;
+      const targetCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + (orientation % 2);
+      const oppositeCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + ((orientation + 1) % 2);
+      // ensure the corridor does not sit adjacent to, or atop, any other corridors
+      const fill = new Array(corridorLength).fill(0);
+      const adjacency =  fill.map<number>(( _, i) => {
+        const x = sx + i * dx;
+        const y = sy + i * dy;
+        const leftX = x + dy;
+        const leftY = y - dx;
+        const rightX = x - dy;
+        const rightY = y + dx;
+        const nextX = x + dx;
+        const nextY = y + dy;
+        return ([[x, y, z - 1], [x, y, z], [leftX, leftY, z], [rightX, rightY, z], [nextX, nextY, z]] as const)
+            .reduce<number>((acc, [tx, ty, tz], j) => {
+              if (acc >= 0) {
+                if (tx && tx < width-1 && ty && ty < height-1) {
+                  const cell = level.tiles[tx][ty][tz].cell;
+                  if (
+                      // do not allow corridors to clobber features 
+                      j == 1 && cell != LEVEL_DESIGN_CELL_WALL && cell != oppositeCellType
+                      // do not allow corridors traveling in the same direction to be adjacent
+                      || cell == targetCellType
+                      // do not allow corridors to be adjacent to stairs (above is fine)
+                      // (TODO unless stair is facing tile)
+                      || j && cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH
+                  ) {
+                    acc = -1;                      
+                  } else if (cell == oppositeCellType) {
+                    acc = Math.max(acc, z - tz + 1);
+                  } else if (!j && cell == LEVEL_DESIGN_CELL_SPACE) {
+                    // holes are not guaranteed to be only one wide, so we need to put a floor over them
+                    acc = Math.max(acc, 3);
+                  }
+                } else if (j < 2) {
+                  // don't care if edges are out of bounds
+                  acc = -1;
+                }
+              }
+              return acc;
+            }, 0);
+      });
+      // only allow one adjacent, contiguous corridor, force the corridors to intersect 
+      // or to connect to a stairway
+      const connected = adjacency.some(v => v == 1);
+      if (!adjacency.some(v => v < 0)
+          && (
+              connected
+              //|| upwardStairs && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
+              || downHoles.length
+          )
+      ) {
+        remainingAttempts = LEVEL_GENERATION_MAX_ATTEMPTS;
+
+        const downHole = downHoles.shift();
+
+        // create the corridor
+        adjacency.forEach((a, i) => {
           const x = sx + i * dx;
           const y = sy + i * dy;
-          const leftX = x + dy;
-          const leftY = y - dx;
-          const rightX = x - dy;
-          const rightY = y + dx;
-          const nextX = x + dx;
-          const nextY = y + dy;
-          return ([[x, y, z - 1], [x, y, z], [leftX, leftY, z], [rightX, rightY, z], [nextX, nextY, z]] as const)
-              .reduce<number>((acc, [tx, ty, tz], j) => {
-                if (acc >= 0) {
-                  if (tx >= 0 && tx < width && ty >= 0 && ty < height) {
-                    const cell = level.tiles[tx][ty][tz].cell;
-                    if (
-                        // do not allow corridors to clobber features 
-                        j == 1 && cell != LEVEL_DESIGN_CELL_WALL && cell != oppositeCellType
-                        // do not allow corridors traveling in the same direction to be adjacent
-                        || cell == targetCellType
-                        // do not allow corridors to be adjacent to stairs (above is fine)
-                        // (TODO unless stair is facing tile)
-                        || j && cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH
-                    ) {
-                      acc = -1;                      
-                    } else if (cell == oppositeCellType) {
-                      acc = Math.max(acc, z - tz + 1);
-                    } else if (!j && cell == LEVEL_DESIGN_CELL_SPACE) {
-                      // holes are not guaranteed to be only one wide, so we need to put a floor over them
-                      acc = Math.max(acc, 3);
-                    }
-                  } else if (j < 2) {
-                    // don't care if edges are out of bounds
-                    acc = -1;
-                  }
-                }
-                return acc;
-              }, 0);
+          const cell = a == 3 || a > 1 && downHole && !i
+              // always cover up holes
+              ? LEVEL_DESIGN_CELL_FLOOR
+              : !i && downHole?.[2] != null
+                  ? LEVEL_DESIGN_CELL_SPACE
+                  : targetCellType as LevelDesignCell;
+          level.tiles[x][y][z].cell = cell;
         });
-        // only allow one adjacent, contiguous corridor, force the corridors to intersect 
-        // or to connect to a stairway
-        const connected = adjacency.some(v => v == 1);
-        if (!adjacency.some(v => v < 0)
+
+        // (maybe) put in a up stair if there are no intersections at the end of this corridor 
+        const stairX = sx + dx * (corridorLength - 2);
+        const stairY = sy + dy * (corridorLength - 2);
+
+        if (
+            (!downHole || Math.random() > .5)
+            && corridorLength > 3
+            // ensure we aren't clobbering a cross corridor
+            && !adjacency.slice(-2).some(i => i == 1)
+            // ensure there is a platform before the stairs
+            && adjacency[corridorLength - 3] < 2
+            && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
             && (
-                connected
-                //|| upwardStairs && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
-                || downHoles.length
+                dx < 0 && stairX > LEVEL_MIN_CORRIDOR_LENGTH 
+                || dx > 0 && stairX < width - LEVEL_MIN_CORRIDOR_LENGTH - 1
+                || dy < 0 && stairY > LEVEL_MIN_CORRIDOR_LENGTH 
+                || dy > 0 && stairY < height - LEVEL_MIN_CORRIDOR_LENGTH - 1
             )
         ) {
-          remainingAttempts = LEVEL_GENERATION_MAX_ATTEMPTS;
-
-          const downHole = downHoles.shift();
-
-          // create the corridor
-          adjacency.forEach((a, i) => {
-            const x = sx + i * dx;
-            const y = sy + i * dy;
-            const cell = a == 3 || a > 1 && downHole && !i
-                // always cover up holes
-                ? LEVEL_DESIGN_CELL_FLOOR
-                : !i && downHole?.[2] != null
-                    ? LEVEL_DESIGN_CELL_SPACE
-                    : targetCellType as LevelDesignCell;
-            level.tiles[x][y][z].cell = cell;
-          });
-
-          // (maybe) put in a up stair if there are no intersections at the end of this corridor 
-          const stairX = sx + dx * (corridorLength - 2);
-          const stairY = sy + dy * (corridorLength - 2);
-
-          if (
-              (!downHole || Math.random() > .9)
-              && corridorLength > 3
-              && !adjacency.slice(-2).some(i => i)
-              && adjacency[corridorLength - 3] < 2
-              && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
-              && (
-                  dx < 0 && stairX >= LEVEL_MIN_CORRIDOR_LENGTH 
-                  || dx > 0 && stairX < width - LEVEL_MIN_CORRIDOR_LENGTH
-                  || dy < 0 && stairY >= LEVEL_MIN_CORRIDOR_LENGTH 
-                  || dy > 0 && stairY < height - LEVEL_MIN_CORRIDOR_LENGTH
-              )
-          ) {
-            // add in a up stair at the end of the corridor
-            level.tiles[stairX][stairY][z].cell = orientation;
-            // ensure there is a wall afterward
-            level.tiles[sx + dx * (corridorLength - 1)][sy + dy * (corridorLength - 1)][z].cell = LEVEL_DESIGN_CELL_WALL;
-            upwardStairs++;
-          }
-
-          excessCorridorTiles -= corridorLength;
-          orientation = (orientation + 1)%4 as Orientation;
+          // add in a up stair at the end of the corridor
+          level.tiles[stairX][stairY][z].cell = orientation;
+          // ensure there is a wall afterward
+          level.tiles[sx + dx * (corridorLength - 1)][sy + dy * (corridorLength - 1)][z].cell = LEVEL_DESIGN_CELL_WALL;
+          upwardStairs++;
         }
+
+        excessCorridorTiles -= corridorLength;
+        orientation = (orientation + 1)%4 as Orientation;
       }
     }
   }
   // grow
-  level.dimensions = [width, height, depth + layers];
-  new Array(layers).fill(0).map((_, dz) => levelPopulateLayer(level, depth + dz));
+  level.dimensions = [width, height, depth + 1];
+  levelPopulateLayer(level, z);
 };
 
 const levelPopulateLayer = (level: Level, layer: number) => {
@@ -383,10 +391,10 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           const [dx, dy] = ORIENTATION_OFFSETS[orientation];
           const tx = x + dx;
           const ty = y + dy;
-          const cell = tx >= 0
-              && tx < width
-              && ty >= 0
-              && ty < height
+          const cell = tx
+              && tx < width-1
+              && ty
+              && ty < height-1
               ? level.tiles[tx][ty][z].cell
               : LEVEL_DESIGN_CELL_OUT_OF_BOUNDS;
           if (f(cell, tx, ty, z, orientation as Orientation)) {
@@ -401,6 +409,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       while (
           cellAbove != LEVEL_DESIGN_CELL_FLOOR
           && cellBelow != LEVEL_DESIGN_CELL_WALL
+          && floorDepth < z
       ) {
         cellAbove = cellBelow;
         floorDepth++;
@@ -416,7 +425,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
 
   const layerVariant = layer / LEVEL_LAYER_CHUNK_SIZE | 0;
 
-  levelIterateInBounds(level, [0, 0, layer], [width, height, 1], (tile: Tile, ...position: Vector3) => {
+  levelIterateInBounds(level, [1, 1, layer], [width-2, height-2, 1], (tile: Tile, ...position: Vector3) => {
     const [x, y, z] = position;
 
     let layerTorches = 0;
