@@ -20,6 +20,21 @@ type TorchPartId =
     | typeof TORCH_PART_ID_HEAD
     ;
 
+const TORCH_WALK_ANIMATION: Partial<EntityBodyAnimationSequence<SkeletonPartId>> = safeUnpackAnimationSequence(
+  !FLAG_UNPACK_USE_ORIGINALS && [...'%!@@@  @&!@0@  @,!@K@  @'],
+  FLAG_UNPACK_SUPPLY_ORIGINALS && {
+    [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+      [0, 0, 0],
+    ]],
+    [SKELETON_PART_ID_FOREARM_LEFT]: [[
+      [0, -Math.PI/2, 0],
+    ]],
+    [SKELETON_PART_ID_HAND_LEFT]: [[
+      [0, Math.PI/3, 0],
+    ]],
+  },
+);
+
 const PART_TORCH: EntityBody<TorchPartId> = {
   id: TORCH_PART_ID_BODY,
   modelId: MODEL_TORCH_HANDLE,
@@ -33,16 +48,19 @@ const PART_TORCH: EntityBody<TorchPartId> = {
       // hold up
       sequences: [{
         ...SKELETON_IDLE_SEQUENCE,
-        ...safeUnpackAnimationSequence(
-            !FLAG_UNPACK_USE_ORIGINALS && [...'%!@:@  @,!@F@  @'],
-            FLAG_UNPACK_SUPPLY_ORIGINALS && {
-              [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-                [0, -Math.PI/5, 0],
-              ]],
-              [SKELETON_PART_ID_HAND_LEFT]: [[
-                [0, Math.PI/5, 0],
-              ]],              
-            }
+        ...(FLAG_IDLE_TORCH_ALOFT
+              ? safeUnpackAnimationSequence(
+                  !FLAG_UNPACK_USE_ORIGINALS && [...'%!@:@  @,!@F@  @'],
+                  FLAG_UNPACK_SUPPLY_ORIGINALS && {
+                    [SKELETON_PART_ID_HUMERUS_LEFT]: [[
+                      [0, -Math.PI/5, 0],
+                    ]],
+                    [SKELETON_PART_ID_HAND_LEFT]: [[
+                      [0, Math.PI/5, 0],
+                    ]],              
+                  }
+              )
+              : TORCH_WALK_ANIMATION
         )
       }],
     }, 
@@ -51,20 +69,7 @@ const PART_TORCH: EntityBody<TorchPartId> = {
       // hold up
       sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES.map(s => ({
         ...s,
-        ...safeUnpackAnimationSequence(
-            !FLAG_UNPACK_USE_ORIGINALS && [...'%!@@@  @&!@0@  @,!@K@  @'],
-            FLAG_UNPACK_SUPPLY_ORIGINALS && {
-              [SKELETON_PART_ID_HUMERUS_LEFT]: [[
-                [0, 0, 0],
-              ]],
-              [SKELETON_PART_ID_FOREARM_LEFT]: [[
-                [0, -Math.PI/2, 0],
-              ]],
-              [SKELETON_PART_ID_HAND_LEFT]: [[
-                [0, Math.PI/3, 0],
-              ]],
-            },
-        ),
+        ...TORCH_WALK_ANIMATION,
       })),
     },
     // [ACTION_ID_USE_SECONDARY]: {

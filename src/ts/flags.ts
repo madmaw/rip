@@ -36,3 +36,4 @@ const FLAG_DELETE_CLEAN_UP = ENVIRONMENT != 'ultra';
 const FLAG_AGGRO_ON_HIT = ENVIRONMENT != 'ultra';
 const FLAG_FADE_IN = ENVIRONMENT != 'ultra';
 const FLAG_DWINDILING_TORCHES = false;
+const FLAG_IDLE_TORCH_ALOFT = false;
