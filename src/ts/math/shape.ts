@@ -75,9 +75,9 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
   const sinSideAngle = Math.sin(sideAngle);
   const cosSideAngle = Math.cos(sideAngle);
 
-  const minRadiansPerStep = CONST_PI_ON_2_1DP/steps;
-  const leftSteps = radiusLeft ? ((CONST_PI_1DP - sphereAngle) / minRadiansPerStep | 0) || 1 : 0;
-  const rightSteps = radiusRight ? ((CONST_PI_1DP + sphereAngle) / minRadiansPerStep | 0) || 1 : 0;
+  const minRadiansPerStep = CONST_2_PI_0DP/steps;
+  const leftSteps = radiusLeft ? ((CONST_PI_ON_2_1DP - sphereAngle) / minRadiansPerStep + 1 | 0) : 0;
+  const rightSteps = radiusRight ? ((CONST_PI_ON_2_1DP + sphereAngle) / minRadiansPerStep + 1 | 0) : 0;
   
   // create the cylinder
   return new Array(steps).fill(0).map<Plane[]>((_, i) => {
@@ -102,7 +102,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
       //   normal: [-1, 0, 0],
       // },
       ...new Array(leftSteps).fill(0).map((_, j) => {
-        const a = CONST_PI_ON_2_2DP + sphereAngle + (CONST_PI_ON_2_1DP - sphereAngle) * (j+.5) / leftSteps;
+        const a = CONST_PI_ON_2_1DP + sphereAngle + (CONST_PI_ON_2_1DP - sphereAngle) * (j+.5) / leftSteps;
         const sin = Math.sin(a);
         const cos = Math.cos(a);
         return planeFromPointAndNormal(
@@ -112,7 +112,7 @@ const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusR
         )
       }),
       ...new Array(rightSteps).fill(0).map((_, j) => {
-        const a = CONST_PI_ON_2_2DP - sphereAngle - (CONST_PI_ON_2_1DP + sphereAngle) * (j+.5) / rightSteps;
+        const a = CONST_PI_ON_2_1DP - sphereAngle - (CONST_PI_ON_2_1DP + sphereAngle) * (j+.5) / rightSteps;
         const sin = Math.sin(a);
         const cos = Math.cos(a);
         return planeFromPointAndNormal(

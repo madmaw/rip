@@ -549,8 +549,8 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     ) {
       const orientation = adjacentWalls[Math.random() * adjacentWalls.length | 0];
       const [dx, dy] = ORIENTATION_OFFSETS[orientation];
-      const position: Vector3 = [x + .5 + dx/2.1 - TORCH_HANDLE_WIDTH, y + .5 + dy/2.1 - TORCH_HANDLE_WIDTH, z + .5];
-      const dimensions: Vector3 = [TORCH_HANDLE_WIDTH * 2, TORCH_HANDLE_WIDTH * 2, TORCH_HEAD_RADIUS * 2];
+      const position: Vector3 = [x + .5 + dx/2.2 - TORCH_HANDLE_WIDTH/2, y + .5 + dy/2.2 - TORCH_HANDLE_WIDTH/2, z + .5];
+      const dimensions: Vector3 = [TORCH_HANDLE_WIDTH, TORCH_HANDLE_WIDTH, TORCH_HEAD_RADIUS * 2];
       const torch: Entity<TorchPartId> = entityCreate({
         entityBody: PART_TORCH,
         entityType: ENTITY_TYPE_TORCH,

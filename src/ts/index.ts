@@ -864,6 +864,8 @@ window.onload = window.onclick = () => {
           const d2 = getLightAppeal(l2, playerCenter);
           return d1 - d2;
         });
+    const previousLightsCopy = previousLights;
+
     // find the oldest texture
     let light: Light | undefined;
     const lightRender: [number, number, number, Vector3] | 0 = previousLights.length > 0
@@ -871,7 +873,7 @@ window.onload = window.onclick = () => {
             !FLAG_THROTTLE_LIGHT_RENDERING
                 || !(updateCount % Math.max(1, MAX_LIGHTS - Math.min(previousLights.length, MAX_LIGHTS)))
         )
-        && previousLights.slice(0, MAX_LIGHTS).reduce<[number, number, number, Vector3] | 0>((acc, l, i) => {
+        && previousLights.slice(0, MAX_LIGHTS).reduce<[number, number, number, Vector3] | 0>((acc, l, i, arr) => {
           const lightRender = lightRenders[l.entityId];
           // find an unused texture
           let availableTextureIndex = 0;
@@ -879,21 +881,22 @@ window.onload = window.onclick = () => {
           const needsNewLightRender = !lightRender && (!acc || acc[2]);
           if (needsNewLightRender) {
             const availableTextureIndices = new Set(CUBE_MAP_LIGHTS_TEXTURE_INDICES);
-            let oldestEntityId: string | undefined;
+            let leastAppealingEntityId: string | undefined;
             for (let entityId in lightRenders) {
               const lightRender = lightRenders[entityId];
               availableTextureIndices.delete(lightRender[0]);
-              if (!oldestEntityId || lightRender[1] < lightRenders[oldestEntityId][1]) {
-                // TODO we may also want to verify that this isn't one of the first lights, although
-                // I think being the oldest will functionally do that in 99% of cases
-                oldestEntityId = entityId;
+              // ensure we aren't stealing another active light's texture
+              if (!arr.some(light => light.entityId == entityId as any)
+                    && (!leastAppealingEntityId
+                        || lightRender[1] < lightRenders[leastAppealingEntityId][1])) {
+                leastAppealingEntityId = entityId;
               }
             }
             if (availableTextureIndices.size) {
               availableTextureIndex = [...availableTextureIndices][0];
             } else {
-              availableTextureIndex = lightRenders[oldestEntityId][0];
-              delete lightRenders[oldestEntityId];
+              availableTextureIndex = lightRenders[leastAppealingEntityId][0];
+              delete lightRenders[leastAppealingEntityId];
             }
           }
           return needsNewLightRender
@@ -994,12 +997,6 @@ window.onload = window.onclick = () => {
         // clear it out for performance reasons
         previouslyPickedUpEntities = [];
       }
-    }
-    const previousLightIds = previousLights.map(l => l.entityId).join();
-    const previousPreviousLightIds = previousPreviousLights.map(l => l.entityId).join();
-
-    if (previousLightIds != previousPreviousLightIds) {
-      console.log(previousLightIds, previousPreviousLightIds);
     }
 
     previousPreviousLights = previousLights;
