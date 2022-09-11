@@ -152,33 +152,37 @@ const FRAGMENT_SHADER = `#version 300 es
     vec3 ${L_POSITION} = ${V_POSITION}.xyz;
     float ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = 0.;
 
+    int ${L_FOUND_TEXTURE} = 0;
     if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
-      int ${L_FOUND_TEXTURE} = 0;
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-        float ${L_TEST} = ${L_FOUND_TEXTURE} > 0
-            ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
-            : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
-        ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST};
-        ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
-        if (
-          ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
-        ) {
-          ${L_FOUND_TEXTURE} = 1;
-          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
-        } else {
-          if (${L_FOUND_TEXTURE} > 0) {
-            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
-          } else {
+        if (${L_FOUND_TEXTURE} == 0) {
+          float ${L_TEST} = ${L_FOUND_TEXTURE} > 0
+              ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
+              : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
+          ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST};
+          ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
+          if (
+            ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
+          ) {
+            ${L_FOUND_TEXTURE} = 1;
             ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
-          }
-        }  
+          } else {
+            if (${L_FOUND_TEXTURE} > 0) {
+              ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
+            } else {
+              ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+            }
+          }  
+
+        }
       }
       // texture position
       ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};
       // texture normal
       ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
-      if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      //if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      if (${L_FOUND_TEXTURE} < 1) {
         discard;
       }
       ${L_POSITION} = (
@@ -199,21 +203,12 @@ const FRAGMENT_SHADER = `#version 300 es
     );
 
     float ${L_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
-    //bool shouldHaveDiscarded = ${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD};
     // texture color
     ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
         ${U_TEXTURE_COLORS},
         (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
             / vec3(${COLOR_TEXTURE_FACTORIES.length}., 1., 1.)
     );
-    // if (shouldHaveDiscarded) {
-    //   ${L_TEXTURE_NORMAL_AND_COLOR} = vec4(
-    //       abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x)*2.,
-    //       abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y)*2.,
-    //       abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z)*2.,
-    //       1.
-    //   );
-    // }
 
     ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(max(0., (${L_TEXTURE_NORMAL_AND_COLOR}.w -.5) * 2.));
     for (int i = ${MAX_LIGHTS}; i > 0;) {
@@ -400,6 +395,17 @@ const texturesData = TEXTURE_FACTORIES.map(f => {
   // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
   // gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
+  if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);  
+  }
+
+  if (FLAG_TEXTURE_SCALE_NEAREST) {
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  
+  }
+
   gl.texImage3D(
       gl.TEXTURE_3D,
       0,
@@ -413,17 +419,7 @@ const texturesData = TEXTURE_FACTORIES.map(f => {
       new Uint8Array(data),
   )
 
-  if (FLAG_TEXTURE_CLAMP_TO_EDGE) {
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);  
-  }
-
-  if (FLAG_TEXTURE_SCALE_NEAREST) {
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  
-  }
-  gl.generateMipmap(gl.TEXTURE_3D);
+  //gl.generateMipmap(gl.TEXTURE_3D);
 
   gl.uniform1i(uniform, textureIndex);
 });
@@ -433,6 +429,11 @@ const cubeTextures = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
   const texture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + i);
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAX_LOD, 0);
+
   CUBE_MAP_ROTATION_TRANSFORMS.forEach((_, j) => {
     gl.texImage2D(
         gl.TEXTURE_CUBE_MAP_POSITIVE_X + j,
@@ -471,10 +472,9 @@ const cubeTextures = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
     //     canvas,
     // );
   });
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  // gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  // gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  //gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
 
   return texture;
 });    
@@ -1207,7 +1207,7 @@ window.onload = window.onclick = () => {
                       entity.aggro += deltaTime / distance; 
                     } else {
                       // if the target is jumping/falling we probably don't want to follow them
-                      entity.aggro = Math.min(entity.aggro, 99); 
+                      entity.aggro /= deltaTime; 
                     }
                     // walk in that direction
                     // account for target size and weapon range
@@ -1246,14 +1246,13 @@ window.onload = window.onclick = () => {
                     const inRange = distance <= maxActionRange && distance >= minActionRange;
   
                     // look at target
-                    const validOrientations: Orientation[] = [];
-                    if (distances[0] > maxActionRange) {
-                      validOrientations.push(delta[0] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST);
-                    }
-                    if (distances[1] > maxActionRange) {
-                      validOrientations.push(delta[1] > 0 ? ORIENTATION_NORTH : ORIENTATION_SOUTH);
-                    }
-  
+                    const validOrientations: Orientation[] = new Array(2).fill(0).map<Orientation[]>((_, i) => {
+                      if (distances[i] > maxActionRange || distances[i] > 0 && distances[(i+1)%2] > maxActionRange) {
+                        return [i + (delta[i] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST)] as Orientation[];
+                      }
+                      return [];
+                    }).flat();
+                    
                     if (validOrientations.indexOf(targetOrientation) < 0 && validOrientations.length) {
                       // array can be empty
                       targetOrientation = validOrientations[0];

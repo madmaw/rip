@@ -458,7 +458,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       if (!validEnemy || Math.random() > (layer-2)/layer){
         const variant = Math.min(2, Math.random() * layerVariant | 0);
         let weapon: Entity;
-        if (!FLAG_SPEARS_AS_LOOT || Math.random() > 1.2) {
+        if (!FLAG_SPEARS_AS_LOOT || Math.random() > .2) {
           const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
           const maxHealth = 7 + clubSize + variant * 3;
           const clubBody = PARTS_CLUBS[clubSize];

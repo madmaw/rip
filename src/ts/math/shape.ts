@@ -70,11 +70,12 @@ const planeTransform = (p: Plane, transform: Matrix4) => {
 const planesCapsule = (steps: number, width: number, radiusLeft: number, radiusRight: number = radiusLeft): Plane[] => {
 
   const sphereAngle = Math.asin((radiusRight - radiusLeft)/width);
+  // NOTE: for some reason this is really sensitive to changes in precision
   const sideAngle = Math.PI/2 + sphereAngle;
   const sinSideAngle = Math.sin(sideAngle);
   const cosSideAngle = Math.cos(sideAngle);
 
-  const minRadiansPerStep = CONST_PI_1DP/steps;
+  const minRadiansPerStep = CONST_PI_ON_2_1DP/steps;
   const leftSteps = radiusLeft ? ((CONST_PI_1DP - sphereAngle) / minRadiansPerStep | 0) || 1 : 0;
   const rightSteps = radiusRight ? ((CONST_PI_1DP + sphereAngle) / minRadiansPerStep | 0) || 1 : 0;
   

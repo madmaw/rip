@@ -116,7 +116,7 @@ const vectorNEquals = <T extends number[]>(v1: T, v2: T) => {
 }
 
 const vectorNToPrecision = <T extends number[]>(v: T): T => {
-  return v.map(v => Math.round(v / EPSILON) * EPSILON) as any;
+  return v.map(v => Math.round(v / EPSILON) * EPSILON) as T;
 }
 
 const rect3Intersection = (pos1: Vector3, dim1: Vector3, pos2: Vector3, dim2: Vector3) => {
