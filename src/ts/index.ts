@@ -152,39 +152,39 @@ const FRAGMENT_SHADER = `#version 300 es
     vec3 ${L_POSITION} = ${V_POSITION}.xyz;
     float ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = 0.;
 
-    int ${L_FOUND_TEXTURE} = 0;
     if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
+      int ${L_FOUND_TEXTURE} = 0;
       // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
       for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-        if (${L_FOUND_TEXTURE} == 0) {
-          float ${L_TEST} = ${L_FOUND_TEXTURE} > 0
-              ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
-              : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
-          ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST};
-          ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
-          if (
-            ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
-          ) {
-            ${L_FOUND_TEXTURE} = 1;
-            ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+        float ${L_TEST} = ${L_FOUND_TEXTURE} > 0
+            ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
+            : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
+        ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
+            ${U_TEXTURE_NORMALS},
+            tn(${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST})
+        );
+        if (
+          ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
+        ) {
+          ${L_FOUND_TEXTURE} = 1;
+          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+        } else {
+          if (${L_FOUND_TEXTURE} > 0) {
+            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
           } else {
-            if (${L_FOUND_TEXTURE} > 0) {
-              ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
-            } else {
-              ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
-            }
-          }  
-
-        }
+            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEXTURE_DELTA_AND_LIGHT};
+            ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+          }
+        }  
       }
-      // texture position
-      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};
-      // texture normal
-      ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
-      //if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
       if (${L_FOUND_TEXTURE} < 1) {
         discard;
       }
+      // texture position
+      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};  
+      // texture normal
+      ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
+      // virtual fragment position
       ${L_POSITION} = (
           ${U_MODEL_VIEW_MATRIX}
               * vec4(
@@ -193,6 +193,7 @@ const FRAGMENT_SHADER = `#version 300 es
               )
       ).xyz;
     }
+
     vec3 ${L_NORMAL} = normalize(
         abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z) < .5
             ? (
@@ -994,7 +995,13 @@ window.onload = window.onclick = () => {
         previouslyPickedUpEntities = [];
       }
     }
-  
+    const previousLightIds = previousLights.map(l => l.entityId).join();
+    const previousPreviousLightIds = previousPreviousLights.map(l => l.entityId).join();
+
+    if (previousLightIds != previousPreviousLightIds) {
+      console.log(previousLightIds, previousPreviousLightIds);
+    }
+
     previousPreviousLights = previousLights;
     previousLights = updateAndRenderLevel(
         cameraProjectionMatrix,
