@@ -1,5 +1,5 @@
 ///<reference path="bodies/bottle.ts"/>
-///<reference path="bodies/clubs.ts"/>
+///<reference path="bodies/club.ts"/>
 ///<reference path="bodies/steps.ts"/>
 ///<reference path="bodies/skeleton.ts"/>
 ///<reference path="bodies/spear.ts"/>
@@ -353,7 +353,7 @@ const shapes = [
   SHAPE_SKELETON_SHIN,
   SHAPE_SKELETON_HAND,
   SHAPE_SKELETON_FOOT,
-  ...SHAPES_CLUBS,
+  SHAPE_CLUB,
   SHAPE_TORCH_HANDLE,
   SHAPE_TORCH_HEAD,
   SHAPE_SPEAR_BODY,
@@ -420,8 +420,6 @@ const texturesData = TEXTURE_FACTORIES.map(f => {
       new Uint8Array(data),
   )
 
-  //gl.generateMipmap(gl.TEXTURE_3D);
-
   gl.uniform1i(uniform, textureIndex);
 });
 
@@ -433,7 +431,6 @@ const cubeTextures = new Array(MAX_LIGHTS+1).fill(0).map((_, i) => {
 
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAX_LOD, 0);
 
   CUBE_MAP_ROTATION_TRANSFORMS.forEach((_, j) => {
     gl.texImage2D(

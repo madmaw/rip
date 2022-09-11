@@ -159,33 +159,33 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   ),
   // COLOR_TEXTURE_ID_WOOD
   createSpeckleTextureFactory(
-      createLinearGradientTextureFactory(
+      createRadialGradientTextureFactory(
           safeUnpackRGBA(
               !FLAG_UNPACK_USE_ORIGINALS && [...'1+#@'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [66, 44, 11, 127]
           ),
           [-.5, 0, 0],
           safeUnpackRGBA(
-              !FLAG_UNPACK_USE_ORIGINALS && [...'RA2@'],
-              FLAG_UNPACK_SUPPLY_ORIGINALS && [200, 130, 73, 127],
+              !FLAG_UNPACK_USE_ORIGINALS && [...'F9(@'],
+              FLAG_UNPACK_SUPPLY_ORIGINALS && [150, 99, 30, 127],
           ),
-          [.25, 0, 0],
+          .7,
       ),
       .4,
       1,
   ),
   // COLOR_TEXTURE_ID_POTION_HEALING
-  createLinearGradientTextureFactory(
+  createRadialGradientTextureFactory(
       safeUnpackRGBA(
           !FLAG_UNPACK_USE_ORIGINALS && [...'`0@K'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 64, 128, 170],
       ),
-      [.5, 0, 0],
+      [-.2, 0, 0],
       safeUnpackRGBA(
           !FLAG_UNPACK_USE_ORIGINALS && [...'`  `'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [255, 0, 0, 255],
       ),
-      [-.5, 0, 0],
+      .3,
   ),
   // COLOR_TEXTURE_ID_BONE
   createSpeckleTextureFactory(
@@ -229,17 +229,17 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   ),
   // COLOR_TEXTURE_ID_METAL
   // TODO what would a radial gradient look like here instead?
-  createLinearGradientTextureFactory(
+  createRadialGradientTextureFactory(
       safeUnpackRGBA(
           !FLAG_UNPACK_USE_ORIGINALS && [...'1239'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 99]
       ),
-      [-.5, 0, 0],
+      [0, 0, 0],
       safeUnpackRGBA(
           !FLAG_UNPACK_USE_ORIGINALS && [...'>AF*'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 40],
       ),
-      [.25, 0, 0],
+      .4,
   ),
   // COLOR_TEXTURES
   ...new Array(COLOR_TEXTURE_STONE_COUNT).fill(0).map((_, i) => {

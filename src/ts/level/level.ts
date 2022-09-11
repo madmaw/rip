@@ -458,36 +458,37 @@ const levelPopulateLayer = (level: Level, layer: number) => {
       if (!validEnemy || Math.random() > (layer-2)/layer){
         const variant = Math.min(2, Math.random() * layerVariant | 0);
         let weapon: Entity;
+        const weaponScale = .8 + Math.random() * z/9;
         if (!FLAG_SPEARS_AS_LOOT || Math.random() > .2) {
-          const clubSize = Math.random() * Math.min(z, PARTS_CLUBS.length) | 0;
-          const maxHealth = 7 + clubSize + variant * 3;
-          const clubBody = PARTS_CLUBS[clubSize];
+          const maxHealth = 5 + weaponScale * 3 * (variant+1);
           const dimensions = new Array(3).fill(
-              BASE_CLUB_RADIUS_RIGHT + clubSize * CLUB_RADIUS_RIGHT_FACTOR,
+              CLUB_RADIUS_RIGHT * weaponScale,
           ) as Vector3;
           weapon = entityCreate<ClubPartId>({
-            entityBody: clubBody,
+            entityBody: CLUB_BODY,
+            scaled: weaponScale,
             dimensions,
             ['p']: position, 
             entityType: ENTITY_TYPE_ITEM,
             ['r']: [0, 0, CONST_PI_0DP * 2 * Math.random()],
-            health: maxHealth,
             maxHealth,
+            health: maxHealth,
             collisionGroup: COLLISION_GROUP_ITEM,
             collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
             variantIndex: variant,
           }, 1);
         } else {
-          const maxHealth = 3 + variant * 3;
+          const maxHealth = 3 + variant * 3 * (variant+1);
           weapon = entityCreate<SpearPartId>({
             entityBody: SPEAR_PART,
-            dimensions: [SPEAR_RADIUS * 2, SPEAR_RADIUS * 2, SPEAR_RADIUS * 2],
+            dimensions: [SPEAR_RADIUS * 2 * weaponScale, SPEAR_RADIUS * 2 * weaponScale, SPEAR_RADIUS * 2 * weaponScale],
             collisionGroup: COLLISION_GROUP_ITEM,
             entityType: ENTITY_TYPE_ITEM,
             ['p']: position,
             ['r']: [0, 0, CONST_2_PI_0DP * Math.random()],
-            health: maxHealth,
+            scaled: weaponScale,
             maxHealth,
+            health: maxHealth,
             collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
             variantIndex: variant,
           }, 1);
