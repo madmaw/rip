@@ -16,12 +16,15 @@ const ORIENTATIONS: Orientation[] = [
   ORIENTATION_SOUTH,
 ];
 
-const ORIENTATION_OFFSETS: Record<Orientation, Vector3> & Vector3[] = [
-  [1, 0, 0],
-  [0, 1, 0],
-  [-1, 0, 0],
-  [0, -1, 0],
-];
+const ORIENTATION_OFFSETS: Record<Orientation, Vector3> & Vector3[] = safeUnpackVector3Normals(
+    !FLAG_UNPACK_USE_ORIGINALS && [...',hHHHhH(HHH(H'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [
+      [1, 0, 0],
+      [0, 1, 0],
+      [-1, 0, 0],
+      [0, -1, 0],
+    ],
+) as any;
 
 const ENTITY_TYPE_WALL = 0;
 const ENTITY_TYPE_STAIR = 1;
@@ -369,7 +372,10 @@ const entityMidpoint = (entity: Entity): Vector3 => {
 
 const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: ActionId): EntityBodyAnimation<T> => {
   let bodyAnimations: EntityBodyAnimation<number> | Falsey = entity.joints.reduce<Falsey | EntityBodyAnimation<number>>(
-      (acc, joint) => joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action] || acc,
+      (acc, joint) => {
+        // synthesize in the warm up scaling factor
+        return joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action] || acc;
+      },
       0,
   ) || entity.entityBody.anims?.[action];
   if (action == ACTION_ID_CANCEL) {

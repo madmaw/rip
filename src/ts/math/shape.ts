@@ -166,10 +166,7 @@ const shapeBounds = (shape: Shape, transform?: Matrix4 | Falsey, minimalDimensio
 };
 
 const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()): Shape => {
-  const faces: Face[] = [];
-  for (let i=0; i<planes.length; i++) {
-    const plane = planes[i];
-    
+  return planes.map<Face>((plane, i) => {
     // create the surface
     
     const cosAngle = vectorNDotProduct(plane.normal, VECTOR3_UP);
@@ -191,12 +188,9 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
 
     // console.log('v', vectorNToPrecision(vector3TransformMatrix4(transformToCoordinateSpace, plane.normal[0] * plane.d, plane.normal[1] * plane.d, plane.normal[2] * plane.d), 100));
 
-    const edges: (PerimeterEdge & {
+    const edges = planes.map<(PerimeterEdge & {
       point: Vector2,
-    })[] = [];
-
-    for (let j=0; j<planes.length; j++) {
-      const compare = planes[j];
+    })[]>((compare, j) => {
       const dot = vectorNDotProduct(plane.normal, compare.normal);
       if (Math.abs(dot) < 1 - EPSILON) {
         // rotate to coordinate space
@@ -216,33 +210,28 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
         // console.log('  intersection direction', intersectionDirection);
         // console.log('  intersection point', intersectionPoint);
 
-        edges.push({
+        return [{
           dir: intersectionDirection.slice(0, 2) as Vector2,
           point: intersectionPoint.slice(0, 2) as Vector2,
           withPlane: compare,
-        });
+        }];
       } else {
         if (plane.d > compare.d) {
           // this plane is dead to us
           //continue outer;
         }
+        return [];
       }
-    }
+    }).flat();
 
-    // compute perimeter
-
-    //console.log('lines', JSON.stringify(lines.map(line => [line.point.slice(0, 2), line.direction.slice(0, 2)])));
-
-    for (let j=0; j<edges.length; j++) {
-      let line = edges[j];
+    edges.forEach(line => {
       const nx2 = line.dir[0];
       const ny2 = line.dir[1];
       const px2 = line.point[0];
       const py2 = line.point[1];
       let minLine: PerimeterEdge | undefined;
       let maxD: number | undefined;
-      for (let k=0; k<edges.length; k++) {
-        let compare = edges[k];
+      edges.forEach(compare => {
         let cosAngle = vectorNDotProduct([-line.dir[1], line.dir[0]], compare.dir as [number, number]);
         if (cosAngle > EPSILON) {
           // px1 + nx1 * d1 = px2 + nx2 * d2
@@ -262,13 +251,16 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
             maxD = d;
           }
         }
-      }
+      });
+
       if (maxD != null) {
         line.firstOutgoingIntersection = [px2 + nx2 * maxD, py2 + ny2 * maxD];
         line.firstOutgoingIntersectionEdge = minLine;
       }
-    }
+    });
 
+    // compute perimeter
+    //console.log('lines', JSON.stringify(lines.map(line => [line.point.slice(0, 2), line.direction.slice(0, 2)])));
     const perimeter: PerimeterEdge[] = [];
     let edge: PerimeterEdge = edges.find(edge => edge.firstOutgoingIntersectionEdge);
     while (edge) {
@@ -280,25 +272,19 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
         break;
       }
     };
-    if (perimeter.length > 2) {
-      const face: Face = {
-        transformToCoordinateSpace,
-        transformFromCoordinateSpace,
-        plane,
-        perimeter,
-      };
-  
-      faces.push(face);  
-    // } else {
-    //   console.log('dropped plane', plane);
-    }
+    return {
+      transformToCoordinateSpace,
+      transformFromCoordinateSpace,
+      plane,
+      perimeter,
+    };
+
     // console.log('surface', JSON.stringify(surface.perimeter.map(l => l.firstOutgoingIntersection)));
-  }
-  return faces
-      // remove any faces that contain points that are outside the other planes (alternatively, might be able to 
-      // detect CW points and remove that way)
-      .filter(f => {
-        return !f.perimeter.some(p => {
+  })
+      .filter((f, i, faces) => {
+        // remove any faces that contain points that are outside the other planes (alternatively, might be able to 
+        // detect CW points and remove that way)
+        return f.perimeter.length > 2 && !f.perimeter.some(p => {
           const point = vector3TransformMatrix4(f.transformFromCoordinateSpace, ...p.firstOutgoingIntersection, 0);
           return faces.some(face => vector3TransformMatrix4(face.transformToCoordinateSpace, ...point)[2] > EPSILON);
         });

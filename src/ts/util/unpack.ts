@@ -97,6 +97,8 @@ const unpackSmallPlanes = unpackSizedArrayBuilder(unpackSmallPlane);
 
 const unpackUnsignedIntegerArray = unpackSizedArrayBuilder(unpackUnsignedInteger);
 
+const unpackVector3Normals = unpackSizedArrayBuilder(unpackVector3Normal);
+
 const unpackEntityBodyPart: Unpacker<Part<number>> = (packed: string[]) => {
   const id = unpackUnsignedInteger(packed);
   const modelId = unpackUnsignedInteger(packed) as ModelId;
@@ -128,6 +130,7 @@ const unpackEntityBodyPart: Unpacker<Part<number>> = (packed: string[]) => {
 };
 
 const unpackEntityBodyPartArray = unpackSizedArrayBuilder(unpackEntityBodyPart);
+
 
 
 //const unpackPlanes = unpackSizedArrayBuilder()
@@ -239,6 +242,8 @@ const packEntityBodyPart: Packer<Part<number>> = (value: Part<number>) => {
 
 const packEntityBodyPartArray = packSizedArrayBuilder(packEntityBodyPart);
 
+const packVector3Normals = packSizedArrayBuilder(packVector3Normal);
+
 // safe
 
 type SafeUnpacker<T> = (packed: string[], original?: T | Falsey) => T;
@@ -280,6 +285,13 @@ const safeUnpackVector3Rotations = FLAG_UNPACK_CHECK_ORIGINALS
     )
     : unpackVector3Rotations;
 
+const safeUnpackVector3Normals = FLAG_UNPACK_CHECK_ORIGINALS
+    ? safeUnpackerBuilder<Vector3[]>(
+          unpackVector3Normals,
+          FLAG_UNPACK_CHECK_ORIGINALS && packVector3Normals,
+    )
+    : unpackVector3Normals;
+
 const safeUnpackAnimationSequence = FLAG_UNPACK_CHECK_ORIGINALS 
     ? safeUnpackerBuilder<EntityBodyAnimationSequence<number>>(
         unpackEntityBodyPartAnimationSequences,
@@ -311,6 +323,13 @@ const safeUnpackMatrix4 = FLAG_UNPACK_CHECK_ORIGINALS
 const safeUnpackEntityBodyPart = FLAG_UNPACK_CHECK_ORIGINALS
     ? safeUnpackerBuilder<Part<number>>(
           unpackEntityBodyPart,
-          FLAG_UNPACK_CHECK_ORIGINALS && packEntityBodyPart
+          FLAG_UNPACK_CHECK_ORIGINALS && packEntityBodyPart,
     )
     : unpackEntityBodyPart;
+
+const safeUnpackUnsignedIntegerArray = FLAG_UNPACK_CHECK_ORIGINALS
+    ? safeUnpackerBuilder<number[]>(
+      unpackUnsignedIntegerArray,
+      FLAG_UNPACK_CHECK_ORIGINALS && packUnsignedIntegerArray,
+    )
+    : unpackUnsignedIntegerArray;

@@ -5,8 +5,6 @@ type Matrix4 = [
   number, number, number, number,
 ];
 
-const FLAG_INLINE_IDENTITY_MATRIX = false;
-
 const MATRIX4_IDENTITY: Matrix4 = [
   1, 0, 0, 0,
   0, 1, 0, 0,

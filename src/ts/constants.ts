@@ -59,7 +59,8 @@ const DEFAULT_TEXTURE_SIZE = 32; // probably the best balance between quality an
 const TEXTURE_SIZE = FLAG_HASH_TEXTURE_QUALITY
     ? parseInt(window.location.hash.substring(1)) || DEFAULT_TEXTURE_SIZE
     : DEFAULT_TEXTURE_SIZE;
-const TEXTURE_EXTENT = .5 - .1/TEXTURE_SIZE;
+//const TEXTURE_EXTENT = .5 - .1/TEXTURE_SIZE;
+const TEXTURE_EXTENT = .499;
 
 const TEXTURE_LOOP_STEPS = 30;
 const TEXTURE_LOOP_STEP_SIZE = `.05`;

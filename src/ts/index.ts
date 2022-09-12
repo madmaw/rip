@@ -1164,7 +1164,7 @@ window.onload = window.onclick = () => {
                 if ((!entity.activePathTime
                     || entity.activePathTime < worldTime - AI_RECALCULATION_TIME) && !entity.aggro
                     // they've been hit
-                    || FLAG_AGGRO_ON_HIT && !entity.activeTarget && !entity.aggro
+                    || FLAG_AGGRO_ON_HIT && !entity.activeTarget && entity.aggro
                 ){
                   // look around
                   let bestTarget: Entity;
@@ -1204,7 +1204,9 @@ window.onload = window.onclick = () => {
                   entity.activePathTime = worldTime;
                 }
                 const activeTarget = entity.activeTarget;
-                if (activeTarget) {
+                let maxActionRange = 0;
+                if (activeTarget && (!activeTarget.maxHealth || activeTarget.health)) {
+
                   // are we close enough to move directly to and/or interact with the target?
                   const delta = vectorNSubtract(entityMidpoint(activeTarget), entityCenter);
                   const distances = delta.map(
@@ -1249,24 +1251,13 @@ window.onload = window.onclick = () => {
                       targetAction = ACTION_ID_DUCK;
                     }
                     const animations = entityGetActionAnims(entity, targetAction);
-                    const maxActionRange = (animations.range * (entity.scaled || 1)) || 0;
+                    maxActionRange = (animations.range * (entity.scaled || 1)) || 0;
                     const minActionRange = maxActionRange * minActionRangeMultiplier;
                     const targetActionAvailable = !targetAction || (availableActions & targetAction);
                     const doingTargetAction = entity.joints.some(joint => joint.animAction == targetAction);
                     const inRange = distance <= maxActionRange && distance >= minActionRange;
   
-                    // look at target
-                    const validOrientations: Orientation[] = new Array(2).fill(0).map<Orientation[]>((_, i) => {
-                      if (distances[i] > maxActionRange || distances[i] > 0 && distances[(i+1)%2] > maxActionRange) {
-                        return [i + (delta[i] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST)] as Orientation[];
-                      }
-                      return [];
-                    }).flat();
-                    
-                    if (validOrientations.indexOf(targetOrientation) < 0 && validOrientations.length) {
-                      // array can be empty
-                      targetOrientation = validOrientations[0];
-                    }
+
   
                     if (animations && targetAction && targetActionAvailable && inRange) {
                       action = targetAction;
@@ -1289,6 +1280,19 @@ window.onload = window.onclick = () => {
                           entity.velocity[2],
                       );
                     }
+                  }
+
+                  // look at target
+                  const validOrientations: Orientation[] = new Array(2).fill(0).map<Orientation[]>((_, i) => {
+                    if (distances[i] > maxActionRange || distances[i] > 0 && distances[(i+1)%2] > maxActionRange) {
+                      return [i + (delta[i] > 0 ? ORIENTATION_EAST : ORIENTATION_WEST)] as Orientation[];
+                    }
+                    return [];
+                  }).flat();
+                  
+                  if (validOrientations.indexOf(targetOrientation) < 0 && validOrientations.length) {
+                    // array can be empty
+                    targetOrientation = validOrientations[0];
                   }
                 }
               }
