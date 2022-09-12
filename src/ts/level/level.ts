@@ -373,7 +373,7 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
             && adjacency.length > 3
             // ensure we aren't clobbering a cross corridor
             && !adjacency.slice(-2).some(i => i == 1)
-            // ensure there is a platform before the stairs
+            // ensure there is something flat before the stairs
             && adjacency[adjacency.length - 3] < 2
             && upwardStairs < LEVEL_MAX_UPWARD_STAIRS
             && (
@@ -387,6 +387,8 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
           level.tiles[stairX][stairY][z].cell = orientation;
           // ensure there is a wall afterward
           level.tiles[sx + dx * (adjacency.length - 1)][sy + dy * (adjacency.length - 1)][z].cell = LEVEL_DESIGN_CELL_WALL;
+          // ensure there is a floor before
+          level.tiles[sx + dx * (adjacency.length - 3)][sy + dy * (adjacency.length - 3)][z].cell = LEVEL_DESIGN_CELL_FLOOR;
           upwardStairs++;
         }
 
@@ -549,7 +551,7 @@ const levelPopulateLayer = (level: Level, layer: number) => {
           maxHealth,
           collisionMask: COLLISION_GROUP_WALL | COLLISION_GROUP_ITEM,
         }, 1);
-        bottle.joints[0].light = .2;
+        bottle.joints[0].light = .25;
         (validEnemy || validHealth).push(bottle);
       }
     }

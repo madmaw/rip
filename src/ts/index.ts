@@ -1096,7 +1096,7 @@ window.onload = window.onclick = () => {
               const walkingBackward = entity.oriented == targetCameraOrientation && left
                   || entity.oriented != targetCameraOrientation && right;
   
-              let targetLateralSpeed = canWalk
+              let targetLateralSpeed = canWalk && !down
                   ? (right - left) * (1 + (canRun ? running : 0)) * SKELETON_WALK_SPEED / (walkingBackward ? 2 : 1)
                   : 0;
               if (canIdle) {
@@ -1473,7 +1473,7 @@ window.onload = window.onclick = () => {
                             )
                           ),
                           .001
-                              * Math.max(maxWeapon?.entityBody.pushback || 1) 
+                              * (maxWeapon?.entityBody.pushback || 1) 
                               * (maxWeapon?.scaled || 1) / (victim.scaled || 1),
                       ),
                   );

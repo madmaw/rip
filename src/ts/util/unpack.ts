@@ -1,6 +1,7 @@
 ///<reference path="./hax.ts"/>
 
-const UNPACK_STARTING_CHAR_CODE = 32;
+// avoid white space ' ' = 32 so we don't strip it later and \' so we don't have to escape it
+const UNPACK_STARTING_CHAR_CODE = 40;
 
 type Unpacker<T> = (c: string[]) => T;
 

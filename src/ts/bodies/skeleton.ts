@@ -77,7 +77,7 @@ const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
 
 
 const SKELETON_DEFAULT_ROTATIONS = safeUnpackVector3Rotations(
-  !FLAG_UNPACK_USE_ORIGINALS && [...'/@C@@=@@@@@K@@<@@K@@<@@J@@J@@J@@J@@@@@@@@@@@@@'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...'7HKHHEHHHHHSHHDHHSHHDHHRHHRHHRHHRHHHHHHHHHHHHH'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && [
     //SKELETON_PART_ID_RIBCAGE
     [0, Math.PI/10, 0],
@@ -146,7 +146,7 @@ const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnim
 
 const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        !FLAG_UNPACK_USE_ORIGINALS && [...'!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;! @("@P@@ME! @)"@F@@M@! @*"@M@@F@! @'],
+        !FLAG_UNPACK_USE_ORIGINALS && [...')*HEHHKH((H**HJ@HF=((H+*HNHHPH((H,*H8HH3H((H-*HPHHNH((H.*H8HH=H((H/*HUMHXC)(H0*HXHHUM)(H1*HNHHUH)(H2*HUHHNH)(H'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, 0],
@@ -195,7 +195,7 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
 
 const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        !FLAG_UNPACK_USE_ORIGINALS && [...'!"@==@=C  @""@CD@C<!#@#"@P@@@@  @$!@5@  @%"@@@@P@  @&!@5@  @\'"@<:@U<!"@("@UD@<F!"@)"@P@@J@!"@*"@J@@P@!"@'],
+        !FLAG_UNPACK_USE_ORIGINALS && [...')*HEEHEK((H**HKLHKD)+H+*HXHHHH((H,)H=H((H-*HHHHXH((H.)H=H((H/*HDBH]D)*H0*H]LHDN)*H1*HXHHRH)*H2*HRHHXH)*H'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, -Math.PI/12],
@@ -241,7 +241,7 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
 );
 
 const SKELETON_USE_SECONDARY_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    !FLAG_UNPACK_USE_ORIGINALS && [...' "@@@@@;! @""@@@@D@! @%"@U@@@D! @&"@+;@<@!!@\'"@K@@P@  @("@@@@F@  @,"@@@P@K!!E'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'(*HHHHHC)(H**HHHHLH)(H-*H]HHHL)(H.*H3CHDH))H/*HSHHXH((H0*HHHHNH((H4*HHHXHS))M'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_RIBCAGE]: [[
         [0, 0, 0],
@@ -286,7 +286,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 };
 
 const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    !FLAG_UNPACK_USE_ORIGINALS && [...'!"@;K@;5! @""@=5@CK! @#"@K0@<@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
+    !FLAG_UNPACK_USE_ORIGINALS && [...')*HCSHC=)(H**HE=HKS)(H+*HS8HDH))H,*H8HHHH))H/*HXBHUB)(H0*HNPHSH)(H2*HXHHLH((H3)HHH))X'], 
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HEAD]: [[
         [0, -Math.PI/6, Math.PI/3],
@@ -323,7 +323,7 @@ const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 );
 
 const SKELETON_IDLE_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    !FLAG_UNPACK_USE_ORIGINALS && [...' "@C@@@@  @!"@@@@<@  @""@@@@C@  @\'"@J@@F@  @("@J@@F@  @'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'(*HKHHHH((H)*HHHHDH((H**HHHHKH((H/*HRHHNH((H0*HRHHNH((H'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HIPS]: [[
         [0, 0, 0],
@@ -358,7 +358,7 @@ const SKELETON_CLUB_ATTACK_LIGHT_SEQUENCE: EntityBodyAnimationSequence<number> =
 };
 
 const SKELETON_CLUB_ATTACK_HEAVY_SEQUENCE: EntityBodyAnimationSequence<number> = safeUnpackAnimationSequence(
-  !FLAG_UNPACK_USE_ORIGINALS && [...' "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@HD!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!X'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...'(*HBHHLH)(H)*HDHHHH)(H**HHHHMH)(H+*HEHHPL))H,*H8HHHH)(H/*HXHHXH)(H0*HHHH@H)(H1*HPHHXH)(H2*HXHH]H)(H3*HNHHHH))`'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && {
     [SKELETON_PART_ID_HIPS]: [[
       [0, 0, 0],
@@ -501,7 +501,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       //translate: [0, 0, -SKELETON_FEMUR_LENGTH],
       sequences: [
         safeUnpackAnimationSequence(
-            !FLAG_UNPACK_USE_ORIGINALS && [...'"!@D@!"@#!@X@  @$!@5@  @%!@X@  @&!@5@  @\'"@;@@@@  @("@;@@@@  @'],
+            !FLAG_UNPACK_USE_ORIGINALS && [...'*)HLH)*H+)H`H((H,)H=H((H-)H`H((H.)H=H((H/*HCHHHH((H0*HCHHHH((H'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HIPS]: [[
                 [0, Math.PI/8, 0],
@@ -545,7 +545,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       translated: [0, 0, -SKELETON_SHIN_WIDTH],
       sequences: [
         safeUnpackAnimationSequence(
-            !FLAG_UNPACK_USE_ORIGINALS && [...'!!@;@! @"!@E@!"@\'!@C:! @(!@:F! @)!@V@! @*!@PF! @'],
+            !FLAG_UNPACK_USE_ORIGINALS && [...'))HCH)(H*)HMH)*H/)HKB)(H0)HBN)(H1)H^H)(H2)HXN)(H'],
             FLAG_UNPACK_SUPPLY_ORIGINALS && {
               [SKELETON_PART_ID_HEAD]: [[
                 [0, -Math.PI/6, 0],
@@ -625,7 +625,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           | ACTION_ID_USE_SECONDARY,
       sequences: entityFlipBodyPartAnimationSequences(
           safeUnpackAnimationSequence(
-              !FLAG_UNPACK_USE_ORIGINALS && [...' !@@5! @!!@;5!"@"!@=5!"@#!@D5! @$!@E@! @%!@<K! @\'!@C5! @)!@V@! @'], 
+              !FLAG_UNPACK_USE_ORIGINALS && [...'()HH=)(H))HC=)*H*)HE=)*H+)HL=)(H,)HMH)(H-)HDS)(H/)HK=)(H1)H^H)(H'], 
               FLAG_UNPACK_SUPPLY_ORIGINALS && {
                 [SKELETON_PART_ID_HEAD]: [
                   [[0, -Math.PI/6, -Math.PI/3]], 
@@ -969,7 +969,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
   ...planeFlipAndDuplicateOnAxis(
       planeFlipAndDuplicateOnAxis(
           safeUnpackPlanes(
-              !FLAG_UNPACK_USE_ORIGINALS && [...'#@WWZ@^6M/Z7F'],
+              !FLAG_UNPACK_USE_ORIGINALS && [...'+H__bHf>U7b?N'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [
                 // shoulder
                 {
@@ -993,7 +993,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
       0,
   ),
   ...safeUnpackPlanes(
-      !FLAG_UNPACK_USE_ORIGINALS && [...'"W@WV)@WM'],
+      !FLAG_UNPACK_USE_ORIGINALS && [...'*_H_^1H_U'],
       FLAG_UNPACK_SUPPLY_ORIGINALS && [
         // collar
         {
@@ -1017,7 +1017,7 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
   ),
   ...planeFlipAndDuplicateOnAxis(
       safeUnpackPlanes(
-          !FLAG_UNPACK_USE_ORIGINALS && [...'*6@":`@@@.@[:VVG@R@[=SX6@@R[:*VG:*V9=@W)='],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'2>H*BhHHH6HcB^^OHZHcE[`>HHZcB2^OB2^AEH_1E'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [
             // under jaw
             {

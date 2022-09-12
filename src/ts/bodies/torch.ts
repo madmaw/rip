@@ -21,7 +21,7 @@ type TorchPartId =
     ;
 
 const TORCH_WALK_ANIMATION: Partial<EntityBodyAnimationSequence<SkeletonPartId>> = safeUnpackAnimationSequence(
-  !FLAG_UNPACK_USE_ORIGINALS && [...'%!@@@  @&!@0@  @,!@K@  @'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...'-)HHH((H.)H8H((H4)HSH((H'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && {
     [SKELETON_PART_ID_HUMERUS_LEFT]: [[
       [0, 0, 0],
@@ -50,7 +50,7 @@ const PART_TORCH: EntityBody<TorchPartId> = {
         ...SKELETON_IDLE_SEQUENCE,
         ...(FLAG_IDLE_TORCH_ALOFT
               ? safeUnpackAnimationSequence(
-                  !FLAG_UNPACK_USE_ORIGINALS && [...'%!@:@  @,!@F@  @'],
+                  !FLAG_UNPACK_USE_ORIGINALS && [...'-)HBH((H4)HNH((H'],
                   FLAG_UNPACK_SUPPLY_ORIGINALS && {
                     [SKELETON_PART_ID_HUMERUS_LEFT]: [[
                       [0, -Math.PI/5, 0],
