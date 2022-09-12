@@ -483,7 +483,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
       sequences: SKELETON_DEFENSIVE_WALK_SEQUENCES,
     },
     [ACTION_ID_RUN]: {
-      maxSpeed: .006,
+      maxSpeed: .008,
       sequences: SKELETON_RUN_SEQUENCES,
     },
     [ACTION_ID_JUMP]: {

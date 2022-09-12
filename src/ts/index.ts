@@ -572,7 +572,7 @@ window.onload = window.onclick = () => {
     return;
   }
   window.cancelAnimationFrame(animationFrame);
-  const level = levelCreate(10, 10);
+  const level = levelCreate(9, 9);
   new Array(LEVEL_LAYER_CHUNK_SIZE).fill(0).forEach((_, i) => {
     levelAppendLayer(level, !i && startX, !i && startY);
   });
