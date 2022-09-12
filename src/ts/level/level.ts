@@ -620,75 +620,60 @@ const levelPopulateLayer = (level: Level, layer: number) => {
     }
 
     const cell = level.tiles[x][y][z].cell;
-    switch (cell) {
-      case LEVEL_DESIGN_CELL_WALL:
-        levelAddEntity(level, entityCreate({
-          ['p']: position,
-          dimensions: [1, 1, 1],
-          entityBody: PART_WALL,
-          collisionGroup: COLLISION_GROUP_WALL,
+    if (cell == LEVEL_DESIGN_CELL_WALL) {
+      levelAddEntity(level, entityCreate({
+        ['p']: position,
+        dimensions: [1, 1, 1],
+        entityBody: PART_WALL,
+        collisionGroup: COLLISION_GROUP_WALL,
+        entityType: ENTITY_TYPE_WALL,
+        ['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
+        variantIndex: layerVariant,
+      }));
+    } else if (cell == LEVEL_DESIGN_CELL_FLOOR) {
+      // floor just refers to needing a surface, doesn't
+      // mean it actually exists
+      if (z && level.tiles[x][y][z - 1].cell != LEVEL_DESIGN_CELL_WALL) {
+        // reuse the bottom step
+        const step: Entity = entityCreate({
           entityType: ENTITY_TYPE_WALL,
-          ['r']: new Array(3).fill(0).map(() => (Math.random() * 4 | 0) * CONST_PI_ON_2_2DP) as Vector3,
+          ['p']: [x, y, z - STEP_DEPTH],
+          dimensions: [1, 1, STEP_DEPTH],
+          ['r']: [0, 0, 0],
+          entityBody: PART_STEPS[0],
+          collisionGroup: COLLISION_GROUP_WALL,
           variantIndex: layerVariant,
-        }));
-        break;
-      case LEVEL_DESIGN_CELL_FLOOR:
-        // floor just refers to needing a surface, doesn't
-        // mean it actually exists
-        if (z && level.tiles[x][y][z - 1].cell != LEVEL_DESIGN_CELL_WALL) {
-          // reuse the bottom step
-          const step: Entity = entityCreate({
-            entityType: ENTITY_TYPE_WALL,
-            ['p']: [x, y, z - STEP_DEPTH],
-            dimensions: [1, 1, STEP_DEPTH],
-            ['r']: [0, 0, 0],
-            entityBody: PART_STEPS[0],
-            collisionGroup: COLLISION_GROUP_WALL,
-            variantIndex: layerVariant,
-          });
-          levelAddEntity(level, step);
+        });
+        levelAddEntity(level, step);
+      }
+    } else if (cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH) {
+      const stepOrientation = cell as Orientation;
+      const stepParts = PART_STEPS;
+      const zAngle = CONST_PI_ON_2_2DP * (stepOrientation + 2);
+      
+      stepParts.reduce((z, stepPart, i) => {
+        const d = 1 - STEP_WIDTH * i;
+        let dimensions: Vector3 = [d, 1, STEP_DEPTH];
+        if (stepOrientation % 2) {
+          dimensions = [dimensions[1], dimensions[0], dimensions[2]];
         }
-        break;
-      case LEVEL_DESIGN_CELL_STAIR_EAST:
-      case LEVEL_DESIGN_CELL_STAIR_NORTH:
-      case LEVEL_DESIGN_CELL_STAIR_WEST:
-      case LEVEL_DESIGN_CELL_STAIR_SOUTH:
-        // staircase
-        {
-          const stepOrientation = cell as Orientation;
-          const stepParts = PART_STEPS;
-          const zAngle = CONST_PI_ON_2_2DP * (stepOrientation + 2);
-          
-          stepParts.reduce((z, stepPart, i) => {
-            const d = 1 - STEP_WIDTH * i;
-            let dimensions: Vector3 = [d, 1, STEP_DEPTH];
-            if (stepOrientation % 2) {
-              dimensions = [dimensions[1], dimensions[0], dimensions[2]];
-            }
-            const step: Entity = entityCreate({
-              entityType: ENTITY_TYPE_STAIR,
-              oriented: stepOrientation,
-              ['p']: [
-                position[0] + (stepOrientation == ORIENTATION_EAST ? 1 - d : 0),
-                position[1] + (stepOrientation == ORIENTATION_NORTH ? 1 - d : 0),
-                position[2] + z,
-              ],
-              dimensions,
-              ['r']: [0, 0, zAngle],
-              entityBody: stepPart,
-              collisionGroup: COLLISION_GROUP_WALL,
-              variantIndex: layerVariant,
-            });
-            levelAddEntity(level, step);
-            return z + dimensions[2];
-          }, 0);
-        }
-        break;
-      default:
-        //if (cellAbove == LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR || cellAbove == LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR) {
-          // TODO add in a ceiling
-        //}
-        break;
+        const step: Entity = entityCreate({
+          entityType: ENTITY_TYPE_STAIR,
+          oriented: stepOrientation,
+          ['p']: [
+            position[0] + (stepOrientation == ORIENTATION_EAST ? 1 - d : 0),
+            position[1] + (stepOrientation == ORIENTATION_NORTH ? 1 - d : 0),
+            position[2] + z,
+          ],
+          dimensions,
+          ['r']: [0, 0, zAngle],
+          entityBody: stepPart,
+          collisionGroup: COLLISION_GROUP_WALL,
+          variantIndex: layerVariant,
+        });
+        levelAddEntity(level, step);
+        return z + dimensions[2];
+      }, 0);
     }
   });
 

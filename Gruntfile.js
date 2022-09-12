@@ -243,6 +243,9 @@ module.exports = function (grunt) {
               }, {
                 from: /var ([a-zA-Z_$]+=[^;\{]+);var/g,
                 to: "var $1,",
+              }, {
+                from: ",.075-.04)",
+                to: ",.035)",
               }]
           },
           js2: { // second pass for the bits that we changed above

@@ -19,6 +19,7 @@ const KEY_Q = 81;
 const KEY_S = 83;
 const KEY_W = 87;
 const KEY_X = 88;
+const KEY_Y = 89;
 const KEY_Z = 90;
 const KEY_LESS_THAN = 188;
 const KEY_GREATER_THAN = 190;
@@ -45,6 +46,7 @@ type KeyCode =
     | typeof KEY_S
     | typeof KEY_W
     | typeof KEY_X
+    | typeof KEY_Y
     | typeof KEY_Z
     | typeof KEY_LESS_THAN
     | typeof KEY_GREATER_THAN
@@ -139,25 +141,46 @@ const keySet = (keyCode: KeyCode, now: number, intensity: number) => {
   }
 };
 
-const INPUT_KEYS: Record<Input, KeyCode[] | KeyCode> & (KeyCode[] | KeyCode)[] = [
+const INPUT_KEYS: Record<Input, KeyCode[] | KeyCode> & (KeyCode[] | KeyCode)[] = FLAG_MULTIKEY_SUPPORT ? [
   // LEFT
-  FLAG_MULTIKEY_SUPPORT ? [KEY_LEFT, KEY_E] : KEY_LEFT, 
+  [KEY_LEFT, KEY_E],
   // RIGHT
-  FLAG_MULTIKEY_SUPPORT ? [KEY_RIGHT, KEY_F] : KEY_RIGHT,
+  [KEY_RIGHT, KEY_F],
   // UP
-  FLAG_MULTIKEY_SUPPORT ? [KEY_UP, KEY_SPACE, KEY_C] : KEY_UP,
+  [KEY_UP, KEY_SPACE, KEY_C],
   // DOWN
-  FLAG_MULTIKEY_SUPPORT ? [KEY_DOWN] : KEY_DOWN,
+  [KEY_DOWN],
   // RUN
-  FLAG_MULTIKEY_SUPPORT ? [KEY_SHIFT, KEY_CAPS_LOCK, KEY_G] : KEY_SHIFT,
+  [KEY_SHIFT, KEY_CAPS_LOCK, KEY_G],
   // ROTATE_CAMERA_LEFT
-  FLAG_MULTIKEY_SUPPORT ? [KEY_Z, KEY_K] : KEY_Z,
+  [KEY_Z, KEY_K, KEY_Y],
   // ROTATE_CAMERA_RIGHT
-  FLAG_MULTIKEY_SUPPORT ? [KEY_X, KEY_M] : KEY_X,
+  [KEY_X, KEY_M],
   // INTERACT
-  FLAG_MULTIKEY_SUPPORT ? [KEY_G, KEY_D] : KEY_D,
+  [KEY_G, KEY_D],
   // ATTACK LIGHT
-  FLAG_MULTIKEY_SUPPORT ? [KEY_J, KEY_A] : KEY_A,
+  [KEY_J, KEY_A],
   // ATTACK HEAVY
-  FLAG_MULTIKEY_SUPPORT ? [KEY_I, KEY_S]: KEY_S,
+  [KEY_I, KEY_S],
+] : [
+  // LEFT
+  KEY_LEFT, 
+  // RIGHT
+  KEY_RIGHT,
+  // UP
+  KEY_UP,
+  // DOWN
+  KEY_DOWN,
+  // RUN
+  KEY_SHIFT,
+  // ROTATE_CAMERA_LEFT
+  KEY_Z,
+  // ROTATE_CAMERA_RIGHT
+  KEY_X,
+  // INTERACT
+  KEY_D,
+  // ATTACK LIGHT
+  KEY_A,
+  // ATTACK HEAVY
+  KEY_S,
 ]

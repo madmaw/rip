@@ -263,15 +263,14 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
     //console.log('lines', JSON.stringify(lines.map(line => [line.point.slice(0, 2), line.direction.slice(0, 2)])));
     const perimeter: PerimeterEdge[] = [];
     let edge: PerimeterEdge = edges.find(edge => edge.firstOutgoingIntersectionEdge);
-    while (edge) {
+    let index = -1;
+    while (edge && index < 0) {
       perimeter.push(edge);
       edge = edge.firstOutgoingIntersectionEdge;
-      const index = perimeter.findIndex(p => p == edge);
-      if (index >= 0) {
-        perimeter.splice(0, index);
-        break;
-      }
+      index = perimeter.findIndex(p => p == edge);
     };
+    perimeter.splice(0, index);
+
     return {
       transformToCoordinateSpace,
       transformFromCoordinateSpace,

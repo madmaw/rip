@@ -281,7 +281,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
   )[1],
   [SKELETON_PART_ID_HAND_RIGHT]: [[
     [0, 0, 0],
-    [-Math.PI/2, 0, 0],
+    [-CONST_PI_ON_2_1DP, 0, 0],
   ], 1],
 };
 
@@ -583,8 +583,8 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         // make the forearm damaging so the hand
         // (which should be empty if you're using the default attack) inherits it
         [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-          [0, -Math.PI/1.5, Math.PI/6],
-          [0, -Math.PI/9, 0],
+          [0, -CONST_PI_ON_1_5_1DP, CONST_PI_ON_6_1DP],
+          [0, -CONST_PI_ON_9_1DP, 0],
         ], 1, EASE_IN_QUAD, .5],
       }],
     },
@@ -598,7 +598,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
         // make the forearm damaging so the hand
         // (which should be empty if you're using the default attack) inherits it
         [SKELETON_PART_ID_FOREARM_RIGHT]: [[
-          [0, -Math.PI/2, 0],
+          [0, -CONST_PI_ON_2_1DP, 0],
           [0, 0, 0],
         ], 1, EASE_IN_QUAD, 1],
       }],
@@ -701,7 +701,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               SKELETON_RIBCAGE_DEPTH/2 + SKELETON_HEAD_DEPTH/2 + SKELETON_NECK_LENGTH,
           ),
           jointAttachmentHolderPartId: SKELETON_PART_ID_HAND_LEFT,
-          jointAttachmentHeldTransform: matrix4Rotate(Math.PI/3, 0, 1, 0),
+          jointAttachmentHeldTransform: matrix4Rotate(CONST_PI_ON_3_0DP, 0, 1, 0),
         },
         // right shoulder
         {
@@ -753,14 +753,15 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               ),
               jointAttachmentHolderTransform: matrix4Multiply(
                   matrix4Rotate(
-                      -Math.PI/2,
+                      -CONST_PI_ON_2_1DP,
                       0,
                       1, 
                       0,
                   ),
                   matrix4Translate(
                     SKELETON_HAND_DIMENSION/2,
-                    SKELETON_HAND_DIMENSION/3,
+                    //SKELETON_HAND_DIMENSION/3,
+                    .02,
                     0,
                 ),
               ),
@@ -819,14 +820,15 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
               ),
               jointAttachmentHolderTransform: matrix4Multiply(
                   matrix4Rotate(
-                      -Math.PI/2,
+                      -CONST_PI_ON_2_1DP,
                       0,
                       1, 
                       0,
                   ),
                   matrix4Translate(
                     SKELETON_HAND_DIMENSION/2,
-                    -SKELETON_HAND_DIMENSION/3,
+                    //-SKELETON_HAND_DIMENSION/3,
+                    -.02,
                     0,
                 ),
               ),
@@ -880,7 +882,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           ),
           postRotationTransform: matrix4Multiply(
               matrix4Rotate(
-                  Math.PI/2.5,
+                  CONST_PI_ON_2_5_1DP,
                   0,
                   1, 
                   0,
@@ -941,7 +943,7 @@ const PART_SKELETON_BODY: EntityBody<SkeletonPartId> = {
           ),
           postRotationTransform: matrix4Multiply(
               matrix4Rotate(
-                  Math.PI/2.5,
+                  CONST_PI_ON_2_5_1DP,
                   0,
                   1, 
                   0,

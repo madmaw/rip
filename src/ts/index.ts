@@ -98,11 +98,11 @@ const L_TEXTURE_NORMAL_AND_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTextureNormal
 const L_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lPosition' : 'g';
 const L_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lNormal' : 'h';
 // intentionally left i
-const L_FOUND_TEXTURE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lFoundTexture' : 'j';
+const L_FOUND_TEXTURE_AND_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lFoundTexture' : 'j';
 const L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lMinTextureDelta' : 'k';
 const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
 // const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
-const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
+//const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
 //const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
 //const L_LIGHT_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightColor' : 'p';
 //const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
@@ -147,55 +147,57 @@ const FRAGMENT_SHADER = `#version 300 es
     ).xyz;
     
     float ${L_TEXTURE_DELTA_AND_LIGHT} = 0.;
-    vec3 ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION};
-    vec4 ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
+    vec4 ${L_TEXTURE_NORMAL_AND_COLOR};
     vec3 ${L_POSITION} = ${V_POSITION}.xyz;
     float ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = 0.;
+    float ${L_FOUND_TEXTURE_AND_DEPTH} = 0.;
 
-    if (${L_TEXTURE_NORMAL_AND_COLOR}.w < ${TEXTURE_ALPHA_THRESHOLD}) {
-      int ${L_FOUND_TEXTURE} = 0;
-      // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
-      for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-        float ${L_TEST} = ${L_FOUND_TEXTURE} > 0
-            ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
-            : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
-        ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
-            ${U_TEXTURE_NORMALS},
-            tn(${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST})
-        );
-        if (
-          ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
-        ) {
-          ${L_FOUND_TEXTURE} = 1;
-          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+    // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
+    for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
+      float ${L_TEST} = ${L_FOUND_TEXTURE_AND_DEPTH} > 0.
+          ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
+          : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
+      ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
+          ${U_TEXTURE_NORMALS},
+          tn(${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST})
+      );
+      if (
+        ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
+      ) {
+        ${L_FOUND_TEXTURE_AND_DEPTH} = 1.;
+        ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+      } else {
+        if (${L_FOUND_TEXTURE_AND_DEPTH} > 0.) {
+          ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
         } else {
-          if (${L_FOUND_TEXTURE} > 0) {
-            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
-          } else {
-            ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEXTURE_DELTA_AND_LIGHT};
-            ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
-          }
-        }  
-      }
-      if (${L_FOUND_TEXTURE} < 1) {
-        discard;
-      }
-      // texture position
-      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};  
-      // texture normal
-      ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
-      // virtual fragment position
-      ${L_POSITION} = (
-          ${U_MODEL_VIEW_MATRIX}
-              * vec4(
-                  ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT},
-                  1.
-              )
-      ).xyz;
+          ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEXTURE_DELTA_AND_LIGHT};
+          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+        }
+      }  
     }
+    if (${L_FOUND_TEXTURE_AND_DEPTH} < 1.) {
+      discard;
+    }
+    // texture position
+    vec3 ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = ${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT};
+    // texture normal
+    ${L_TEXTURE_NORMAL_AND_COLOR} = texture(${U_TEXTURE_NORMALS}, tn(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}));
+    // virtual fragment position
+    ${L_POSITION} = (
+        ${U_MODEL_VIEW_MATRIX}
+            * vec4(
+                ${V_MODEL_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEXTURE_DELTA_AND_LIGHT},
+                1.
+            )
+    ).xyz;
 
     vec3 ${L_NORMAL} = normalize(
-        abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y) < .5 && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z) < .5
+        // just use the surface normal if we are out of bounds
+        abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5
+            && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.y) < .5
+            && abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.z) < .5
+            // juse use the surface normal if we are really close to the surface
+            && ${L_TEXTURE_DELTA_AND_LIGHT} > .001
             ? (
                 ${U_MODEL_VIEW_MATRIX} * vec4(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * 2. - 1., 1.)
                 - ${U_MODEL_VIEW_MATRIX} * vec4(vec3(0.), 1.)
@@ -203,7 +205,7 @@ const FRAGMENT_SHADER = `#version 300 es
             : ${V_NORMAL}
     );
 
-    float ${L_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
+    ${L_FOUND_TEXTURE_AND_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
     // texture color
     ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
         ${U_TEXTURE_COLORS},
@@ -244,7 +246,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 )
             )
             // ensure bumps are not in shadow
-            + ${L_DEPTH}
+            + ${L_FOUND_TEXTURE_AND_DEPTH}
                 * 2.
                 * length(${V_MODEL_POSITION})
                 // texture scale
@@ -1091,7 +1093,7 @@ window.onload = window.onclick = () => {
               }
   
               const cameraDelta = entity.oriented % 2 - targetCameraOrientation % 2
-              const canTurn = availableActions & ACTION_ID_TURN && (cameraDelta || running);
+              const canTurn = (cameraDelta || running);
   
               const walkingBackward = entity.oriented == targetCameraOrientation && left
                   || entity.oriented != targetCameraOrientation && right;
