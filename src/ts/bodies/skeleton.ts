@@ -146,7 +146,7 @@ const SKELETON_LURCH_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnim
 
 const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        !FLAG_UNPACK_USE_ORIGINALS && [...'!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;  @("@P@@ME  @)"@F@@M@  @*"@M@@F@  @'],
+        !FLAG_UNPACK_USE_ORIGINALS && [...'!"@=@@C@  @""@B8@>5  @#"@F@@H@  @$"@0@@+@  @%"@H@@F@  @&"@0@@5@  @\'"@ME@P;! @("@P@@ME! @)"@F@@M@! @*"@M@@F@! @'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, 0],
@@ -159,19 +159,19 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
           [SKELETON_PART_ID_FEMUR_LEFT]: [[
             [0, Math.PI/2, 0],
             [0, Math.PI/2.5, Math.PI/6],
-          ]],
+          ], 1],
           [SKELETON_PART_ID_FEMUR_RIGHT]: [[
             [0, Math.PI/2.5, Math.PI/6],
             [0, Math.PI/2, -Math.PI/6],
-          ]],
+          ], 1],
           [SKELETON_PART_ID_SHIN_LEFT]: [[
             [0, Math.PI*4/10, 0],
             [0, Math.PI*2/10, 0],
-          ]],
+          ], 1],
           [SKELETON_PART_ID_SHIN_RIGHT]: [[
             [0, Math.PI*2/10, 0],
             [0, Math.PI*4/10, 0],
-          ]],
+          ], 1],
           [SKELETON_PART_ID_HUMERUS_LEFT]: [[
             [0, Math.PI/4, 0],
             [0, Math.PI/5, 0],
@@ -241,7 +241,7 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
 );
 
 const SKELETON_USE_SECONDARY_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    !FLAG_UNPACK_USE_ORIGINALS && [...' "@@@@@;! @""@@@@D@! @%"@U@@@D! @&"@+;@<@!!B\'"@K@@P@  @,"@@@P@K!!B'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...' "@@@@@;! @""@@@@D@! @%"@U@@@D! @&"@+;@<@!!@\'"@K@@P@  @("@@@@F@  @,"@@@P@K!!E'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_RIBCAGE]: [[
         [0, 0, 0],
@@ -258,14 +258,18 @@ const SKELETON_USE_SECONDARY_SEQUENCE: Partial<Record<SkeletonPartId, EntityBody
       [SKELETON_PART_ID_FOREARM_LEFT]: [[
         [0, -Math.PI/1.5, -Math.PI/6],
         [0, -Math.PI/9, 0],
-      ], 1, EASE_IN_QUAD, .1],
+      ], 1, EASE_IN_QUAD],
       [SKELETON_PART_ID_HAND_LEFT]: [[
         [0, 0, 0],
         [Math.PI/2, 0, Math.PI/3],
-      ], 1, EASE_IN_QUAD, .1],
+      ], 1, EASE_IN_QUAD, .3],
       [SKELETON_PART_ID_FEMUR_RIGHT]: [[
         [0, Math.PI/3, 0],
         [0, Math.PI/2, 0],
+      ]],
+      [SKELETON_PART_ID_FEMUR_LEFT]: [[
+        [0, 0, 0],
+        [0, Math.PI/5, 0],
       ]],
     }
 );
@@ -282,7 +286,7 @@ const SKELETON_LIGHT_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
 };
 
 const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyPartAnimationSequence>> = safeUnpackAnimationSequence(
-    !FLAG_UNPACK_USE_ORIGINALS && [...'!"@;K@;5! @""@=5@CK! @#"@K0@8@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
+    !FLAG_UNPACK_USE_ORIGINALS && [...'!"@;K@;5! @""@=5@CK! @#"@K0@<@!!@$"@0@@@@!!@\'"@P:@M:! @("@FH@K@! @*"@P@@D@  @+!@@@!!P'], 
     FLAG_UNPACK_SUPPLY_ORIGINALS && {
       [SKELETON_PART_ID_HEAD]: [[
         [0, -Math.PI/6, Math.PI/3],
@@ -306,7 +310,7 @@ const SKELETON_HEAVY_ATTACK_SEQUENCE: Partial<Record<SkeletonPartId, EntityBodyP
       ], 1],
       [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
         [0, Math.PI/3, -Math.PI/2],
-        [0, -Math.PI/4, 0],
+        [0, -Math.PI/9, 0],
       ], 1, EASE_IN_QUAD],
       [SKELETON_PART_ID_FOREARM_RIGHT]: [[
         [0, -Math.PI/2, 0],
@@ -354,7 +358,7 @@ const SKELETON_CLUB_ATTACK_LIGHT_SEQUENCE: EntityBodyAnimationSequence<number> =
 };
 
 const SKELETON_CLUB_ATTACK_HEAVY_SEQUENCE: EntityBodyAnimationSequence<number> = safeUnpackAnimationSequence(
-  !FLAG_UNPACK_USE_ORIGINALS && [...' "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@H@!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!X'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...' "@:@@D@! @!"@<@@@@! @""@@@@E@! @#"@=@@HD!!@$"@0@@@@! @\'"@P@@P@! @("@@@@8@! @)"@H@@P@! @*"@P@@U@! @+"@F@@@@!!X'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && {
     [SKELETON_PART_ID_HIPS]: [[
       [0, 0, 0],
@@ -386,7 +390,7 @@ const SKELETON_CLUB_ATTACK_HEAVY_SEQUENCE: EntityBodyAnimationSequence<number> =
     ], 1],
     [SKELETON_PART_ID_HUMERUS_RIGHT]: [[
       [0, -Math.PI/12, 0],
-      [0, Math.PI/4, 0],
+      [0, Math.PI/4, Math.PI/9],
     ], 1, EASE_IN_QUAD],
     [SKELETON_PART_ID_FOREARM_RIGHT]: [[
       [0, -Math.PI/2, 0],

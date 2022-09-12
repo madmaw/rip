@@ -302,12 +302,12 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
                           && cell != LEVEL_DESIGN_CELL_FLOOR
                       // do not allow corridors traveling in the same direction to be adjacent
                       // unless it's the starting point that is adjacent with them
-                      || j != 1 && i && cell == targetCellType
+                      || !(j == 1 && i) && cell == targetCellType
                       // do not allow corridors to be adjacent to stairs (above is fine)
                       // (TODO unless stair is facing tile)
                       || j && cell <= LEVEL_DESIGN_CELL_STAIR_SOUTH
                   ) {
-                    acc = -1;                      
+                    acc = -1;
                   } else if (cell == oppositeCellType) {
                     acc = Math.max(acc, z - tz + 1);
                   } else if (j && cell == LEVEL_DESIGN_CELL_FLOOR) {
@@ -369,7 +369,7 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
         const stairY = sy + dy * (adjacency.length - 2);
 
         if (
-            (!downHole || Math.random() > .5)
+            (!downHole || Math.random() > .5) 
             && adjacency.length > 3
             // ensure we aren't clobbering a cross corridor
             && !adjacency.slice(-2).some(i => i == 1)
