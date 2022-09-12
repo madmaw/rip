@@ -370,11 +370,22 @@ const entityMidpoint = (entity: Entity): Vector3 => {
   }) as Vector3;
 };
 
-const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: ActionId): EntityBodyAnimation<T> => {
+const entityGetActionAnims = <T extends number>(entity: Entity<T>, action: ActionId): EntityBodyAnimation<T> & {
+  // indicates the relative size of the item being used vs the size of the user
+  scaleFactor?: number,
+} => {
   let bodyAnimations: EntityBodyAnimation<number> | Falsey = entity.joints.reduce<Falsey | EntityBodyAnimation<number>>(
       (acc, joint) => {
         // synthesize in the warm up scaling factor
-        return joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action] || acc;
+        const attachedEntityAnimation = joint.attachedEntity && joint.attachedEntity.entityBody.jointAttachmentHolderAnims?.[action];
+        return attachedEntityAnimation
+            ? FLAG_SCALE_WARM_UP_SPEED
+                ? {
+                  ...attachedEntityAnimation,
+                  scaleFactor: ((joint.attachedEntity as Entity).scaled || 1)/(entity.scaled || 1),
+                }
+                : attachedEntityAnimation
+            : acc;
       },
       0,
   ) || entity.entityBody.anims?.[action];
@@ -406,7 +417,7 @@ const entityStartAnimation = <T extends number>(
     entity: Entity<T>,
     action: ActionId | 0,
 ) => {
-  const bodyAnimations: EntityBodyAnimation<number> | Falsey = action && entityGetActionAnims(entity, action);
+  const bodyAnimations = action && entityGetActionAnims(entity, action);
   if (bodyAnimations) {
     // find the index with the smallest move time
     const [bestAnimationDuration, bestAnimationIndex] = bodyAnimations.sequences.reduce((acc, bodyAnimation, i) => {
@@ -415,7 +426,7 @@ const entityStartAnimation = <T extends number>(
         const jointBodyAnim = bodyAnimation[jointId];
         // only interested in how long it takes to move to the first step
         const delta: Falsey | number = jointBodyAnim
-            && animDeltaRotation(v['r'], jointBodyAnim[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS][0]);
+            && animDeltaRotation(v['r'], jointBodyAnim[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS][0]) * (bodyAnimations.scaleFactor || 1);
         return delta > max
             ? delta
             : max;
@@ -434,7 +445,9 @@ const entityStartAnimation = <T extends number>(
       return bodyJointAnimation?.[ENTITY_BODY_PART_ANIMATION_SEQUENCE_INDEX_ROTATIONS]
           .reduce((acc, rotation, index) => {
             const deltaRotation = animDeltaRotation(prev, rotation);
-            const minDuration = deltaRotation / bodyAnimations.maxSpeed;
+            const minDuration = deltaRotation
+                * (FLAG_SCALE_WARM_UP_SPEED && !index && bodyAnimations.scaleFactor ? bodyAnimations.scaleFactor : 1)
+                / bodyAnimations.maxSpeed;
             if (index < acc.length) {
               acc[index] = Math.max(minDuration, acc[index]);
             } else {
