@@ -563,14 +563,13 @@ const startY = 4;
 
 let animationFrame: number = 0;
 let player: Entity<SkeletonPartId>;
-let worldTime = 0;
 
 window.onload = window.onclick = () => {
-
   // if the player is dead, or has fallen for a long time (fell into the abys probably)
-  if (player?.health > 0 && player.lastZCollision > worldTime - 3e3) {
+  if (player?.health > 0) {
     return;
   }
+
   window.cancelAnimationFrame(animationFrame);
   const level = levelCreate(9, 9);
   new Array(LEVEL_LAYER_CHUNK_SIZE).fill(0).forEach((_, i) => {
@@ -641,7 +640,7 @@ window.onload = window.onclick = () => {
   let cameraZRotation = 0;
   
   let previouslyPickedUpEntities: Entity[] = []
-  worldTime = 0;
+  let worldTime = 0;
   let then = 0;
 
   let updateCount = 0;
@@ -870,7 +869,6 @@ window.onload = window.onclick = () => {
           const d2 = getLightAppeal(l2, playerCenter);
           return d1 - d2;
         });
-    const previousLightsCopy = previousLights;
 
     // find the oldest texture
     let light: Light | undefined;
@@ -1006,6 +1004,7 @@ window.onload = window.onclick = () => {
     }
 
     previousPreviousLights = previousLights;
+    let playerUpdated: 0 | 1 = 0;
     previousLights = updateAndRenderLevel(
         cameraProjectionMatrix,
         cameraPosition,
@@ -1053,6 +1052,7 @@ window.onload = window.onclick = () => {
             levelRemoveEntity(level, entity);
   
             if (entity == player) {
+              playerUpdated = 1;
               const canIdle = availableActions & ACTION_ID_IDLE;
               const canWalk = availableActions & ACTION_ID_WALK;
               const canRun = availableActions & ACTION_ID_RUN;
@@ -1748,7 +1748,8 @@ window.onload = window.onclick = () => {
         },
         light,
     );
-  
+    // cheap hack to see if we fell off the world
+    player.health = playerUpdated * player.health;
     animationFrame = window.requestAnimationFrame(update);
   };
   update(0);
