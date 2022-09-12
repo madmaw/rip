@@ -135,6 +135,7 @@ const LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR = 6;
 const LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR = 7;
 const LEVEL_DESIGN_CELL_FLOOR = 8;
 const LEVEL_DESIGN_CELL_OUT_OF_BOUNDS = 9;
+const LEVEL_DESIGN_CELL_LANDING = 10;
 
 const levelPrintLayer = (level: Level, tz: number) => {
   const [width, height, depth] = level.dimensions;
@@ -164,6 +165,7 @@ type LevelDesignCell =
   | typeof LEVEL_DESIGN_CELL_NORTH_SOUTH_CORRIDOR
   | typeof LEVEL_DESIGN_CELL_FLOOR
   | typeof LEVEL_DESIGN_CELL_OUT_OF_BOUNDS
+  | typeof LEVEL_DESIGN_CELL_LANDING
   ;
 
 const LEVEL_MIN_CORRIDOR_LENGTH = 2;
@@ -200,13 +202,13 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
   let downHoles: [number, number, Orientation?][];
   let suggestedStartingPoints: [number, number, Orientation][];
 
-  let excessCorridorTiles: number;
+  let excessCorridorTiles: number = 0;
   let orientation: Orientation = ORIENTATION_EAST;
   let remainingAttempts = 0;
   let upwardStairs = 0;
   
   while (excessCorridorTiles > 0 || upwardStairs < LEVEL_MIN_UPWARD_STAIRS) {
-    if (!remainingAttempts) {
+    if (!remainingAttempts || excessCorridorTiles < -width * height / 4) {
       // reset the layer generation and try again
       downHoles = [];
       if (startingX && z == 1) {
@@ -226,7 +228,10 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
           }
         }
       } 
-      suggestedStartingPoints = [];
+      if (FLAG_FAST_LEVEL_GENERATION) {
+        suggestedStartingPoints = [];
+      }
+
       remainingAttempts = LEVEL_GENERATION_MAX_ATTEMPTS;
       excessCorridorTiles  = (width * height / 3 - z % width);
       upwardStairs = 0;
@@ -253,7 +258,9 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
       sy += ORIENTATION_OFFSETS[originalOrientation][1];
     } else {
       if (FLAG_FAST_LEVEL_GENERATION && suggestedStartingPoints.length) {
-        [[sx, sy, orientation]] = suggestedStartingPoints.splice(Math.random() * suggestedStartingPoints.length | 0, 1);
+        [[sx, sy, orientation]] = suggestedStartingPoints.splice(
+            Math.random() * suggestedStartingPoints.length | 0, 1,
+        );
       } else {
         sx = Math.random() * (width-2) + 1 | 0;
         sy = Math.random() * (height-2) + 1 | 0;  
@@ -273,8 +280,7 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
       const targetCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + (orientation % 2);
       const oppositeCellType = LEVEL_DESIGN_CELL_EAST_WEST_CORRIDOR + ((orientation + 1) % 2);
       // ensure the corridor does not sit adjacent to, or atop, any other corridors
-      const fill = new Array(corridorLength).fill(0);
-      const adjacency =  fill.map<number>(( _, i) => {
+      let adjacency =  new Array(corridorLength).fill(0).map<number>(( _, i) => {
         const x = sx + i * dx;
         const y = sy + i * dy;
         const leftX = x + dy;
@@ -283,9 +289,7 @@ const levelAppendLayer = (level: Level, startingX?: number | Falsey, startingY?:
         const rightY = y + dx;
         const nextX = x + dx;
         const nextY = y + dy;
-        const prevX = x + dx;
-        const prevY = y + dy;
-        return ([[x, y, z - 1], [x, y, z], [leftX, leftY, z], [rightX, rightY, z], [nextX, nextY, z], [prevX, prevY, z]] as const)
+        return ([[x, y, z - 1], [x, y, z], [leftX, leftY, z], [rightX, rightY, z], [nextX, nextY, z]] as const)
             .reduce<number>((acc, [tx, ty, tz], j) => {
               if (acc >= 0) {
                 if (tx > 0 && tx < width-1 && ty > 0 && ty < height-1) {
@@ -627,7 +631,9 @@ const levelPopulateLayer = (level: Level, layer: number) => {
         }));
         break;
       case LEVEL_DESIGN_CELL_FLOOR:
-        if (floorDepth > 0) {
+        // floor just refers to needing a surface, doesn't
+        // mean it actually exists
+        if (z && level.tiles[x][y][z - 1].cell != LEVEL_DESIGN_CELL_WALL) {
           // reuse the bottom step
           const step: Entity = entityCreate({
             entityType: ENTITY_TYPE_WALL,

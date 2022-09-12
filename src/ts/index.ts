@@ -1741,7 +1741,7 @@ window.onload = window.onclick = () => {
           const entityCenter = entityMidpoint(carrier || entity);
           const [cx, cy, cz] = vector3TransformMatrix4(cameraRenderCutoffTransform, ...entityCenter);
           return cy < 0
-              && (cz > 0 && !entity.velocity || cz > 1)
+              && (!entity.velocity && cz + entity.dimensions[2]/2 > STEP_DEPTH || cz > .7)
               // flicker if we have been damaged
               || (entity.invulnerableUntil > worldTime)
                   && ((worldTime/MAX_MILLISECONDS_PER_FRAME | 0) % 2) as Booleanish;
