@@ -1,7 +1,9 @@
+///<reference path="../flags.ts"/>
 ///<reference path="./hax.ts"/>
 
 // avoid white space ' ' = 32 so we don't strip it later and \' so we don't have to escape it
 const UNPACK_STARTING_CHAR_CODE = 40;
+const UNPACK_ALLOWABLE_OVERFLOW = 50;
 
 type Unpacker<T> = (c: string[]) => T;
 
@@ -15,21 +17,19 @@ const unpackTupleBuilder = <R extends T[], T = any>(...unpackers: Unpacker<T>[])
   };
 };
 
-const unpackFixedLengthArrayBuilder = <A extends T[], T = any>(unpacker: Unpacker<T>, length: number): Unpacker<A> => {
+const unpackArrayBuilder = <A extends T[], T = any>(unpacker: Unpacker<T>, length?: number): Unpacker<A> => {
   return (packed: string[]) => {
-    return new Array(length).fill(0).map(() => unpacker(packed)) as A;
-  };
-};
-
-const unpackSizedArrayBuilder = <T>(unpacker: Unpacker<T>): Unpacker<T[]> => {
-  return (packed: string[]) => {
-    let length  = unpackUnsignedInteger(packed);
+    let len = length
+        ? length
+        : length < 0
+            ? 0
+            : unpackUnsignedInteger(packed);
     const result: T[] = [];
-    while (length > 0) {
+    while (len > 0 || length < 0 && packed.length) {
       result.push(unpacker(packed));
-      length--;
+      len--;
     }
-    return result;
+    return result as A;
   }
 }
 
@@ -70,15 +70,15 @@ const unpackRecordBuilder = <Key extends string | number, Value>(
   };
 };
 
-const unpackVector3Rotations = unpackSizedArrayBuilder(unpackFixedLengthArrayBuilder<Vector3>(unpackAngle, 3));
-const unpackVector3Normal = unpackFixedLengthArrayBuilder<Vector3>(unpackFloat1, 3);
-const unpackVector4RGBA: Unpacker<Vector4> = unpackFixedLengthArrayBuilder(unpackColorComponent, 4);
-const unpackMatrix4: Unpacker<Matrix4> = unpackFixedLengthArrayBuilder(unpackFloat1, 16);
+const unpackVector3Rotations = unpackArrayBuilder(unpackArrayBuilder<Vector3>(unpackAngle, 3), -1);
+const unpackVector3Normal = unpackArrayBuilder<Vector3>(unpackFloat1, 3);
+const unpackVector4RGBA: Unpacker<Vector4> = unpackArrayBuilder(unpackColorComponent, 4);
+const unpackMatrix4: Unpacker<Matrix4> = unpackArrayBuilder(unpackFloat1, 16);
 
 const unpackEntityBodyPartAnimationSequences = unpackRecordBuilder<number, EntityBodyPartAnimationSequence>(
     unpackUnsignedInteger,
     unpackTupleBuilder<[Vector3[], 0 | 1, EasingId, number]>(
-        unpackVector3Rotations,
+        unpackArrayBuilder(unpackArrayBuilder<Vector3>(unpackAngle, 3)), // sized
         unpackUnsignedInteger,
         unpackUnsignedInteger,
         unpackFloat2,
@@ -93,18 +93,18 @@ const unpackSmallPlane: Unpacker<Plane> = (packed: string[]) => {
   }
 };
 
-const unpackSmallPlanes = unpackSizedArrayBuilder(unpackSmallPlane); 
-
-const unpackUnsignedIntegerArray = unpackSizedArrayBuilder(unpackUnsignedInteger);
-
-const unpackVector3Normals = unpackSizedArrayBuilder(unpackVector3Normal);
+const unpackSmallPlanes = unpackArrayBuilder(unpackSmallPlane, -1); 
+const unpackUnsignedIntegerArray = unpackArrayBuilder(unpackUnsignedInteger, -1);
+const unpackVector3Normals = unpackArrayBuilder(unpackVector3Normal, -1);
 
 const unpackEntityBodyPart: Unpacker<Part<number>> = (packed: string[]) => {
   const id = unpackUnsignedInteger(packed);
   const modelId = unpackUnsignedInteger(packed) as ModelId;
   const incomingDamageMultiplier = unpackFloat2(packed);
   const outgoingDamage = unpackFloat2(packed);
+  // broken by no sizing
   const colorTextureIds = unpackUnsignedIntegerArray(packed) as ColorTextureId[];
+  // broken by no sizing
   const normalTextureIds = unpackUnsignedIntegerArray(packed) as NormalTextureId[];
   const preRotationTransform = unpackMatrix4(packed);
   const postRotationTransform = unpackMatrix4(packed);
@@ -129,7 +129,7 @@ const unpackEntityBodyPart: Unpacker<Part<number>> = (packed: string[]) => {
   };
 };
 
-const unpackEntityBodyPartArray = unpackSizedArrayBuilder(unpackEntityBodyPart);
+const unpackEntityBodyPartArray = unpackArrayBuilder(unpackEntityBodyPart);
 
 
 
@@ -139,23 +139,17 @@ const unpackEntityBodyPartArray = unpackSizedArrayBuilder(unpackEntityBodyPart);
 
 type Packer<T> = (value: T) => string[];
 
-const packTupleBuilder = <R extends T[], T = any>(...packers: Packer<T>[]): Packer<R> => {
+const packTupleBuilder = <R extends readonly T[], T = any>(...packers: Packer<T>[]): Packer<R> => {
   return (value: R): string[]=> {
     return packers.map((v, i) => v(value[i])).flat() as any;
   };
 };
 
-const packFixedLengthArrayBuilder = <A extends T[], T = any>(packer: Packer<T>, length: number): Packer<A> => {
-  return (value: T[]): string[] => {
-    return value.map(packer).flat();
-  };
-};
-
-const packSizedArrayBuilder = <T>(packer: Packer<T>) => {
-  return (value: readonly T[]): string[] => {
-    return value.reduce((acc, v) => {
-      return [...acc, ...packer(v)];
-    }, packUnsignedInteger(value.length));
+// length can be zero/undefined, indicating we should write the length out, or -1, indicating we should gobble up all the values
+const packArrayBuilder = <R extends readonly T[], T = any>(packer: Packer<T>, arrayLength?: number) => {
+  return (value: R): string[] => {
+    const arr = arrayLength ? [] : packUnsignedInteger(value.length);
+    return [...arr, ...value.map(packer).flat()];
   };
 };
 
@@ -198,15 +192,15 @@ const packRecordBuilder = <Key extends string | number, Value>(keyPacker: Packer
   };
 };
 
-const packVector3Rotations = packSizedArrayBuilder(packFixedLengthArrayBuilder<Vector3>(packAngle, 3));
-const packVector3Normal = packFixedLengthArrayBuilder<Vector3>(packFloat1, 3)
-const packVector4RGBA = packFixedLengthArrayBuilder(packColorComponent, 4);
-const packMatrix4 = packFixedLengthArrayBuilder(packFloat1, 16);
+const packVector3Rotations = packArrayBuilder(packArrayBuilder<Vector3>(packAngle, 3), -1);
+const packVector3Normal = packArrayBuilder<Vector3>(packFloat1, 3)
+const packVector4RGBA = packArrayBuilder(packColorComponent, 4);
+const packMatrix4 = packArrayBuilder(packFloat1, 16);
 
 const packEntityBodyPartAnimationSequences = packRecordBuilder<number, EntityBodyPartAnimationSequence>(
   packParsedNumberBuilder(packUnsignedInteger),
   packTupleBuilder<[Vector3[], (0 | 1)?, EasingId?, number?]>(
-      packVector3Rotations, 
+      packArrayBuilder(packArrayBuilder<Vector3>(packAngle, 3)), // writes out size
       packDefaultBuilder(packUnsignedInteger, 0),
       packDefaultBuilder<EasingId>(packUnsignedInteger as Packer<EasingId>, EASE_LINEAR),
       packDefaultBuilder(packFloat2, 0),
@@ -218,9 +212,9 @@ const packSmallPlane: Packer<Plane> = (value: Plane): string[] => {
   return packVector3Normal(vectorNNormalize(value.normal)).concat(packUnsignedFloatPoint1(value.d));
 };
 
-const packSmallPlanes = packSizedArrayBuilder(packSmallPlane);
+const packSmallPlanes = packArrayBuilder(packSmallPlane, -1);
 
-const packUnsignedIntegerArray = packSizedArrayBuilder(packUnsignedInteger);
+const packUnsignedIntegerArray = packArrayBuilder(packUnsignedInteger, -1);
 
 const packEntityBodyPart: Packer<Part<number>> = (value: Part<number>) => {
   return [
@@ -228,7 +222,9 @@ const packEntityBodyPart: Packer<Part<number>> = (value: Part<number>) => {
     ...packUnsignedInteger(value.modelId),
     ...packFloat2(value.incomingDamageMultiplier || 0),
     ...packFloat2(value.outgoingDamage || 0),
+    // broken assumes greedy
     ...packUnsignedIntegerArray(value.colorTextureIds),
+    // broken assumes greedy
     ...packUnsignedIntegerArray(value.normalTextureIds || []),
     ...packMatrix4(value.preRotationTransform || matrix4Identity()), // identity matrix compresses well?
     ...packMatrix4(value.postRotationTransform || matrix4Identity()),
@@ -240,9 +236,9 @@ const packEntityBodyPart: Packer<Part<number>> = (value: Part<number>) => {
   ];
 };
 
-const packEntityBodyPartArray = packSizedArrayBuilder(packEntityBodyPart);
+const packEntityBodyPartArray = packArrayBuilder(packEntityBodyPart);
 
-const packVector3Normals = packSizedArrayBuilder(packVector3Normal);
+const packVector3Normals = packArrayBuilder(packVector3Normal, -1);
 
 // safe
 
@@ -259,9 +255,15 @@ const safeUnpackerBuilder = <T>(unpacker: Unpacker<T>, packer?: Packer<T> | Fals
           const diff = repackedOriginal.map((v, i) => packedOriginal[i] == v ? [] : [v, packedOriginal[i], i]).filter(i => i.length > 0);
           throw new Error(diff.map(([c1, c2, i]) => `${i}: ${c1}/${c2}`).join(' '));
         }
-        const unprintable = packedOriginal.findIndex(c => c.charCodeAt(0) > UNPACK_STARTING_CHAR_CODE + 64) 
+        const unprintable = packedOriginal.findIndex(c => c.charCodeAt(0) > UNPACK_STARTING_CHAR_CODE + 64 + UNPACK_ALLOWABLE_OVERFLOW) 
         if (unprintable >= 0) {
-          throw new Error('unprintable character at '+unprintable+' in '+packedOriginal.join(''));
+          throw new Error(
+              'unprintable character "'
+              + packedOriginal[unprintable]
+              + '"('
+              + packedOriginal[unprintable].charCodeAt(0)
+              + ') at '+unprintable+' in '+packedOriginal.join('')
+          );
         }
         try {
           throw new Error(`expected '${packedOriginal.join('').replace(/\\/g, '\\\\').replace(/\'/g, '\\\'')}' got '${packed.join('').replace(/\'/g, '\\\'')}' for ${JSON.stringify(original)}`)

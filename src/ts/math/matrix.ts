@@ -1,3 +1,5 @@
+///<reference path="../util/unpack.ts"/>
+
 type Matrix4 = [
   number, number, number, number,
   number, number, number, number,
@@ -5,22 +7,18 @@ type Matrix4 = [
   number, number, number, number,
 ];
 
-const MATRIX4_IDENTITY: Matrix4 = [
-  1, 0, 0, 0,
-  0, 1, 0, 0,
-  0, 0, 1, 0,
-  0, 0, 0, 1
-];
-
-const MATRIX_EMPTY = new Array<number>(16).fill(0) as Matrix4;
+const MATRIX4_IDENTITY: Matrix4 = safeUnpackUnsignedIntegerArray(
+    !FLAG_UNPACK_USE_ORIGINALS && [...')(((()(((()(((()'], 
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ],
+) as Matrix4;
 
 const matrix4Identity = (): Matrix4 => {
-  return [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ];
+  return [...MATRIX4_IDENTITY];
 }
 
 const matrix4Invert = (a: Matrix4): Matrix4 => {

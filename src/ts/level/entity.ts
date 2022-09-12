@@ -17,7 +17,7 @@ const ORIENTATIONS: Orientation[] = [
 ];
 
 const ORIENTATION_OFFSETS: Record<Orientation, Vector3> & Vector3[] = safeUnpackVector3Normals(
-    !FLAG_UNPACK_USE_ORIGINALS && [...',hHHHhH(HHH(H'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'hHHHhH(HHH(H'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [
       [1, 0, 0],
       [0, 1, 0],

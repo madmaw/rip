@@ -162,25 +162,28 @@ const INPUT_KEYS: Record<Input, KeyCode[] | KeyCode> & (KeyCode[] | KeyCode)[] =
   [KEY_J, KEY_A],
   // ATTACK HEAVY
   [KEY_I, KEY_S],
-] : [
-  // LEFT
-  KEY_LEFT, 
-  // RIGHT
-  KEY_RIGHT,
-  // UP
-  KEY_UP,
-  // DOWN
-  KEY_DOWN,
-  // RUN
-  KEY_SHIFT,
-  // ROTATE_CAMERA_LEFT
-  KEY_Z,
-  // ROTATE_CAMERA_RIGHT
-  KEY_X,
-  // INTERACT
-  KEY_D,
-  // ATTACK LIGHT
-  KEY_A,
-  // ATTACK HEAVY
-  KEY_S,
-]
+] : safeUnpackUnsignedIntegerArray(
+    !FLAG_UNPACK_USE_ORIGINALS && [...'=?>@(rp\\Yk'], 
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [
+      // LEFT
+      KEY_LEFT - KEY_SHIFT,  
+      // RIGHT
+      KEY_RIGHT - KEY_SHIFT,
+      // UP
+      KEY_UP - KEY_SHIFT,
+      // DOWN
+      KEY_DOWN - KEY_SHIFT,
+      // RUN
+      KEY_SHIFT - KEY_SHIFT,
+      // ROTATE_CAMERA_LEFT
+      KEY_Z - KEY_SHIFT,
+      // ROTATE_CAMERA_RIGHT
+      KEY_X - KEY_SHIFT,
+      // INTERACT
+      KEY_D - KEY_SHIFT,
+      // ATTACK LIGHT
+      KEY_A - KEY_SHIFT,
+      // ATTACK HEAVY
+      KEY_S - KEY_SHIFT,
+    ],
+).map(v => v + KEY_SHIFT) as any;

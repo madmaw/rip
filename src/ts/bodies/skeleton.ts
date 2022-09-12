@@ -77,7 +77,7 @@ const SKELETON_PART_FLIPS: Partial<Record<SkeletonPartId, SkeletonPartId>> = {
 
 
 const SKELETON_DEFAULT_ROTATIONS = safeUnpackVector3Rotations(
-  !FLAG_UNPACK_USE_ORIGINALS && [...'7HKHHEHHHHHSHHDHHSHHDHHRHHRHHRHHRHHHHHHHHHHHHH'],
+  !FLAG_UNPACK_USE_ORIGINALS && [...'HKHHEHHHHHSHHDHHSHHDHHRHHRHHRHHRHHHHHHHHHHHHH'],
   FLAG_UNPACK_SUPPLY_ORIGINALS && [
     //SKELETON_PART_ID_RIBCAGE
     [0, Math.PI/10, 0],
@@ -971,7 +971,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
   ...planeFlipAndDuplicateOnAxis(
       planeFlipAndDuplicateOnAxis(
           safeUnpackPlanes(
-              !FLAG_UNPACK_USE_ORIGINALS && [...'+H__bHf>U7b?N'],
+              !FLAG_UNPACK_USE_ORIGINALS && [...'H__bHf>U7b?N'],
               FLAG_UNPACK_SUPPLY_ORIGINALS && [
                 // shoulder
                 {
@@ -995,7 +995,7 @@ const SHAPE_SKELETON_TORSO = shapeFromPlanes([
       0,
   ),
   ...safeUnpackPlanes(
-      !FLAG_UNPACK_USE_ORIGINALS && [...'*_H_^1H_U'],
+      !FLAG_UNPACK_USE_ORIGINALS && [...'_H_^1H_U'],
       FLAG_UNPACK_SUPPLY_ORIGINALS && [
         // collar
         {
@@ -1019,7 +1019,7 @@ const SHAPE_SKELETON_HEAD = shapeFromPlanes([
   ),
   ...planeFlipAndDuplicateOnAxis(
       safeUnpackPlanes(
-          !FLAG_UNPACK_USE_ORIGINALS && [...'2>H*BhHHH6HcB^^OHZHcE[`>HHZcB2^OB2^AEH_1E'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'>H*BhHHH6HcB^^OHZHcE[`>HHZcB2^OB2^AEH_1E'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [
             // under jaw
             {
