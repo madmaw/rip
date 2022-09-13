@@ -96,7 +96,7 @@ const COLOR_TEXTURE_STONE_FROM = safeUnpackRGBA(
     FLAG_UNPACK_SUPPLY_ORIGINALS && [40, 80, 120, 127],
 );
 const COLOR_TEXTURE_STONE_TO = safeUnpackRGBA(
-    !FLAG_UNPACK_USE_ORIGINALS && [...'dKA0'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'dKA:'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [240, 140, 100, 70],
 );
 
@@ -231,12 +231,12 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   // TODO what would a radial gradient look like here instead?
   createRadialGradientTextureFactory(
       safeUnpackRGBA(
-          !FLAG_UNPACK_USE_ORIGINALS && [...'9:;A'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'9:;0'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 30]
       ),
       [0, 0, 0],
       safeUnpackRGBA(
-          !FLAG_UNPACK_USE_ORIGINALS && [...'FIN2'],
+          !FLAG_UNPACK_USE_ORIGINALS && [...'FIN+'],
           FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 10],
       ),
       .4,

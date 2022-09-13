@@ -11,3 +11,5 @@ A/S - Light/Heavy Attack
 D - Shove/Use/Drink
 Down+D - Pick Up/Drop
 Click to restart after death
+
+You can play it here 

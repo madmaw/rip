@@ -18,7 +18,7 @@ const WALL_COLOR_TEXTURE_IDS: ColorTextureId[] = safeUnpackUnsignedIntegerArray(
 ) as any;
 
 const WALL_NORMAL_TEXTURE_IDS: NormalTextureId[] = safeUnpackUnsignedIntegerArray(
-    !FLAG_UNPACK_USE_ORIGINALS && [...'01234/+-'],
+    !FLAG_UNPACK_USE_ORIGINALS && [...'32(10'],
     FLAG_UNPACK_SUPPLY_ORIGINALS && [
       NORMAL_TEXTURE_ID_BRICKS_4,
       NORMAL_TEXTURE_ID_BRICKS_3,

@@ -90,7 +90,7 @@ module.exports = function (grunt) {
               // turn on production mode
               {
                 from: /ENVIRONMENT = '\w+';/g,
-                to: "ENVIRONMENT = 'ultra';"
+                to: "ENVIRONMENT = 'small';"
               },
               // math
               /*

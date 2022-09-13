@@ -22,7 +22,7 @@ const FLAG_UNPACK_CHECK_ORIGINALS = ENVIRONMENT == 'test';
 const FLAG_UNPACK_USE_ORIGINALS = false;
 // NOTE the use of undefined here allows CC to remove the argument entirely in a && 
 const FLAG_UNPACK_SUPPLY_ORIGINALS = FLAG_UNPACK_CHECK_ORIGINALS || FLAG_UNPACK_USE_ORIGINALS ? true : undefined;
-const FLAG_HASH_TEXTURE_QUALITY = ENVIRONMENT == 'test';
+const FLAG_HASH_TEXTURE_QUALITY = ENVIRONMENT != 'ultra';
 const FLAG_DETECT_BROKEN_TRANSFORM = ENVIRONMENT == 'test';
 const FLAG_AI_USE_HEAVY_ATTACKS = true;
 const FLAG_DROP_ITEMS_FORWARD = ENVIRONMENT != 'ultra';
