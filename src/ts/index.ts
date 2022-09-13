@@ -61,18 +61,18 @@ const V_TEXTURE_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'vTextureCoords' : 'v';
 const VERTEX_SHADER = `#version 300 es
   precision ${WEBGL_PRECISION} float;
 
-  uniform mat4 ${U_MODEL_VIEW_MATRIX};
-  uniform mat4 ${U_PROJECTION_MATRIX};
+  uniform mat4 ${U_MODEL_VIEW_MATRIX},
+      ${U_PROJECTION_MATRIX};
 
   in vec4 ${A_VERTEX_POSIITON};
-  in vec3 ${A_VERTEX_NORMAL};
-  in vec3 ${A_TEXTURE_POSITION};
+  in vec3 ${A_VERTEX_NORMAL},
+      ${A_TEXTURE_POSITION};
 
   out vec4 ${V_POSITION};
-  out vec3 ${V_MODEL_POSITION};
-  out vec3 ${V_NORMAL};
-  out vec3 ${V_MODEL_NORMAL};
-  out vec3 ${V_TEXTURE_POSITION};
+  out vec3 ${V_MODEL_POSITION},
+      ${V_NORMAL},
+      ${V_MODEL_NORMAL},
+      ${V_TEXTURE_POSITION};
 
   void main() {
     ${V_MODEL_POSITION} = ${A_VERTEX_POSIITON}.xyz;
@@ -100,7 +100,7 @@ const L_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lNormal' : 'h';
 // intentionally left i
 const L_FOUND_TEXTURE_AND_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lFoundTexture' : 'j';
 const L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lMinTextureDelta' : 'k';
-const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
+//const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
 // const L_MODEL_POSITION = FLAG_LONG_GL_VARIABLE_NAMES ? 'lModelPosition' : 'm';
 //const L_DEPTH = FLAG_LONG_GL_VARIABLE_NAMES ? 'lDepth' : 'n';
 //const L_COLOR = FLAG_LONG_GL_VARIABLE_NAMES ? 'lColor' : 'o';
@@ -108,30 +108,31 @@ const L_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lTest' : 'l';
 //const L_LIGHT = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLight' : 'q';
 //const L_COS_LIGHT_ANGLE_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lCosLightAngleDelta' : 'r';
 const L_LIGHT_TEXEL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTexel' : 's';
-//const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't'; // unused
+const L_LIGHT_DELTA = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDelta' : 't'; // unused
 //const L_LIGHT_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightNormal' : 'u';
 const L_LIGHT_TEXTURE_NORMAL = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightTextureNormal' : 'U';
-const L_LIGHT_DISTANCE = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDistance' : 'T';
+const L_LIGHT_DISTANCE_AND_TEST = FLAG_LONG_GL_VARIABLE_NAMES ? 'lLightDistance' : 'T';
 //const L_BIAS = FLAG_LONG_GL_VARIABLE_NAMES ? 'lBias' : 'S';
 
 const FRAGMENT_SHADER = `#version 300 es
   precision ${WEBGL_PRECISION} float;
   precision ${WEBGL_PRECISION} sampler3D;
 
-  uniform mat4 ${U_MODEL_VIEW_MATRIX};
-  uniform mat4 ${U_MODEL_VIEW_MATRIX_INVERSE};
-  uniform vec3 ${U_CAMERA_POSITION};
+  uniform mat4 ${U_MODEL_VIEW_MATRIX},
+      ${U_MODEL_VIEW_MATRIX_INVERSE};
+  uniform vec3 ${U_CAMERA_POSITION},
+      ${U_MODEL_ATTRIBUTES};
   uniform vec4 ${U_LIGHT_POSITIONS}[${MAX_LIGHTS}];
-  uniform vec3 ${U_MODEL_ATTRIBUTES};
   uniform samplerCube ${U_LIGHT_TEXTURES}[${MAX_LIGHTS}];
-  uniform sampler3D ${U_TEXTURE_COLORS};
-  uniform sampler3D ${U_TEXTURE_NORMALS};
+  uniform sampler3D ${U_TEXTURE_COLORS},
+      ${U_TEXTURE_NORMALS};
 
   in vec4 ${V_POSITION};
-  in vec3 ${V_MODEL_POSITION};
-  in vec3 ${V_NORMAL};
-  in vec3 ${V_MODEL_NORMAL};
-  in vec3 ${V_TEXTURE_POSITION};
+  in vec3 ${V_MODEL_POSITION},
+      ${V_NORMAL},
+      ${V_MODEL_NORMAL},
+      ${V_TEXTURE_POSITION};
+  
   out vec4 ${OUT_RESULT};
 
   vec3 tn(vec3 p) {
@@ -140,41 +141,43 @@ const FRAGMENT_SHADER = `#version 300 es
   }
 
   void main() {
-    vec3 ${L_CAMERA_AND_LIGHT_DELTA} = ${V_POSITION}.xyz - ${U_CAMERA_POSITION};
-    vec3 ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(
-        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_AND_LIGHT_DELTA}, 1.) -
-        ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
-    ).xyz;
+    vec3 ${L_CAMERA_AND_LIGHT_DELTA} = ${V_POSITION}.xyz - ${U_CAMERA_POSITION},
+        ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(
+            ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(${L_CAMERA_AND_LIGHT_DELTA}, 1.) -
+            ${U_MODEL_VIEW_MATRIX_INVERSE} * vec4(vec3(0.), 1.)
+        ).xyz,
+        ${L_POSITION} = ${V_POSITION}.xyz;
     
-    float ${L_TEXTURE_DELTA_AND_LIGHT} = 0.;
     vec4 ${L_TEXTURE_NORMAL_AND_COLOR};
-    vec3 ${L_POSITION} = ${V_POSITION}.xyz;
-    float ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = 0.;
-    float ${L_FOUND_TEXTURE_AND_DEPTH} = 0.;
+    float ${L_TEXTURE_DELTA_AND_LIGHT} = 0., 
+        ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = 0.,
+        ${L_FOUND_TEXTURE_AND_DEPTH} = 0.,
+        ${L_LIGHT_DISTANCE_AND_TEST};
 
     // maximum extent should be 1,1,1, which gives a max len of sqrt(3)
     for (int i=0; i<${TEXTURE_LOOP_STEPS}; i++) {
-      float ${L_TEST} = ${L_FOUND_TEXTURE_AND_DEPTH} > 0.
+      ${L_LIGHT_DISTANCE_AND_TEST} = ${L_FOUND_TEXTURE_AND_DEPTH} > 0.
           ? (${L_TEXTURE_DELTA_AND_LIGHT} + ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS})/2.
           : ${L_TEXTURE_DELTA_AND_LIGHT} + ${TEXTURE_LOOP_STEP_SIZE};
       ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
           ${U_TEXTURE_NORMALS},
-          tn(${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_TEST})
+          tn(${V_TEXTURE_POSITION} + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} * ${L_LIGHT_DISTANCE_AND_TEST})
       );
       if (
         ${L_TEXTURE_NORMAL_AND_COLOR}.w > ${TEXTURE_ALPHA_THRESHOLD}
       ) {
         ${L_FOUND_TEXTURE_AND_DEPTH} = 1.;
-        ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+        ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_LIGHT_DISTANCE_AND_TEST};
       } else {
         if (${L_FOUND_TEXTURE_AND_DEPTH} > 0.) {
-          ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEST};
+          ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_LIGHT_DISTANCE_AND_TEST};
         } else {
           ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = ${L_TEXTURE_DELTA_AND_LIGHT};
-          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_TEST};
+          ${L_TEXTURE_DELTA_AND_LIGHT} = ${L_LIGHT_DISTANCE_AND_TEST};
         }
       }  
     }
+    // we didn't find a pixel
     if (${L_FOUND_TEXTURE_AND_DEPTH} < 1.) {
       discard;
     }
@@ -190,7 +193,7 @@ const FRAGMENT_SHADER = `#version 300 es
                 1.
             )
     ).xyz;
-
+    // effective surface normal
     vec3 ${L_NORMAL} = normalize(
         // just use the surface normal if we are out of bounds
         abs(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}.x) < .5
@@ -204,7 +207,7 @@ const FRAGMENT_SHADER = `#version 300 es
             ).xyz
             : ${V_NORMAL}
     );
-
+    // effective depth below the surface of the pixel
     ${L_FOUND_TEXTURE_AND_DEPTH} = ${L_TEXTURE_DELTA_AND_LIGHT} * dot(normalize(${V_NORMAL}), normalize(${L_CAMERA_AND_LIGHT_DELTA}));
     // texture color
     ${L_TEXTURE_NORMAL_AND_COLOR} = texture(
@@ -212,13 +215,13 @@ const FRAGMENT_SHADER = `#version 300 es
         (vec3(${U_MODEL_ATTRIBUTES}.x, 0., 0.) + clamp(${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(-${TEXTURE_EXTENT}), vec3(${TEXTURE_EXTENT})) + .5)
             / vec3(${COLOR_TEXTURE_FACTORIES.length}., 1., 1.)
     );
-
-    ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(max(0., (${L_TEXTURE_NORMAL_AND_COLOR}.w -.5) * 2.));
+    // light colour (really just the light)
+    ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(max(0., (${L_TEXTURE_NORMAL_AND_COLOR}.w -.5) * 2.)) + max(${U_MODEL_ATTRIBUTES}.z, 0.);
     for (int i = ${MAX_LIGHTS}; i > 0;) {
       i--;
       if (${U_LIGHT_POSITIONS}[i].w > 0. || i == 0) {
-        ${L_CAMERA_AND_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
-        ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(${L_CAMERA_AND_LIGHT_DELTA});
+        vec3 ${L_LIGHT_DELTA} = ${L_POSITION} - ${U_LIGHT_POSITIONS}[i].xyz;
+        ${L_MODEL_CAMERA_AND_LIGHT_NORMAL} = normalize(${L_LIGHT_DELTA});
         ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} = dot(${L_NORMAL}, ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
         // cannot index into samplers!
         vec4 ${L_LIGHT_TEXEL} = i == 0
@@ -229,7 +232,7 @@ const FRAGMENT_SHADER = `#version 300 es
                     ? texture(${U_LIGHT_TEXTURES}[2], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
                     : texture(${U_LIGHT_TEXTURES}[3], ${L_MODEL_CAMERA_AND_LIGHT_NORMAL});
     
-        float ${L_LIGHT_DISTANCE} = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+        ${L_LIGHT_DISTANCE_AND_TEST} = 2. * ${CUBE_MAP_PERPSECTIVE_Z_NEAR} * ${CUBE_MAP_PERPSECTIVE_Z_FAR}.
             / (
                 (${CUBE_MAP_PERPSECTIVE_Z_FAR}.
                     + ${CUBE_MAP_PERPSECTIVE_Z_NEAR}
@@ -252,33 +255,73 @@ const FRAGMENT_SHADER = `#version 300 es
                 // texture scale
                 * dot(normalize(${V_NORMAL}), ${L_MODEL_CAMERA_AND_LIGHT_NORMAL})
                     / length(${V_TEXTURE_POSITION});
-        ${L_TEXTURE_DELTA_AND_LIGHT} = mix(
-                max(0., -${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}),
-                1.,
-                pow(max(0., (${MIN_LIGHT_THROW_C} - length(${L_CAMERA_AND_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w), 2.)
-            )
-            * ${U_LIGHT_POSITIONS}[i].w
-            * (1. - pow(1. - max(0., ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_CAMERA_AND_LIGHT_DELTA}))/${MAX_LIGHT_THROW_C}, 2.));
         if (
             // don't (add/remove) light things facing away from us
             ${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS} < 0.
-            && length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
+            && length(${L_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE_AND_TEST}
                 // bias
                 // TODO distance in bias seems wrong
-                + pow(${L_LIGHT_DISTANCE}, 2.) * (2. - pow(${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.
-            || length(${L_CAMERA_AND_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE}
+                + pow(${L_LIGHT_DISTANCE_AND_TEST}, 2.) * (2. - pow(${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS}, 6.))/${CUBE_MAP_PERPSECTIVE_Z_FAR}.
+            || length(${L_LIGHT_DELTA}) < ${L_LIGHT_DISTANCE_AND_TEST}
         ) {
-          ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} += ${L_TEXTURE_DELTA_AND_LIGHT}
-              * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_TEXTURE_DELTA_AND_LIGHT}))
-              + (i == 0 ? max(${U_MODEL_ATTRIBUTES}.z, 0.) : 0.);
+          // diffuse lighting
+          ${L_TEXTURE_DELTA_AND_LIGHT} = 
+              // normal and just light everything nearby
+              max(
+                  -${L_MINIMUM_TEXTURE_AND_COS_LIGHT_ANGLE_DELTAS},
+                  (${MIN_LIGHT_THROW_C} - length(${L_LIGHT_DELTA}))*${U_LIGHT_POSITIONS}[i].w/${MIN_LIGHT_THROW_C}
+              )
+              // light strength
+              * ${U_LIGHT_POSITIONS}[i].w
+              // distance 
+              * (1. - pow(
+                  1. - max(
+                      0.,
+                      ${MAX_LIGHT_THROW_C}*${U_LIGHT_POSITIONS}[i].w - length(${L_LIGHT_DELTA})
+                  )/${MAX_LIGHT_THROW_C},
+                  2.
+              ));
+          ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} += 
+              (
+                  ${L_TEXTURE_DELTA_AND_LIGHT}
+                  // specular lighting
+                  + pow(
+                      // the angle between the eye and the camera
+                      dot(normalize(normalize(${L_CAMERA_AND_LIGHT_DELTA}) + ${L_MODEL_CAMERA_AND_LIGHT_NORMAL}), ${L_NORMAL}), 
+                      // want reflections to get less tight the further they are from the light source
+                      (9. + length(${L_LIGHT_DELTA}))/min(.5, ${L_TEXTURE_NORMAL_AND_COLOR}.w)
+                  )
+                  // player light does not get reflections
+                  * (i == 0 ? 0. : ${U_LIGHT_POSITIONS}[i].w)
+                  // scale it down by the shininess of the object
+                  * (1. - min(1., ${L_TEXTURE_NORMAL_AND_COLOR}.w * 2.))
+                  // fade out the reflections the further the point is from the camera
+                  * (1. - pow(
+                      1. - max(
+                          0.,
+                          ${MAX_LIGHT_THROW_C} - length(${L_CAMERA_AND_LIGHT_DELTA})
+                      )/${MAX_LIGHT_THROW_C},
+                      2.
+                  ))
+              )
+              // use light intensity to determine light color (player light is different color entirely)
+              * (i == 0 ? vec3(.1, 1., .7) : mix(vec3(1., .4, .1), vec3(1., 1., .8), ${L_TEXTURE_DELTA_AND_LIGHT}));
         } else if (i == 0) {
           ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} = vec3(0.);
         }
       }
-      ${L_TEXTURE_POSITION_AND_LIGHT_COLOR} *= 1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.1, .9, .9);
     }
 
-    ${OUT_RESULT} = vec4(pow(${L_TEXTURE_NORMAL_AND_COLOR}.xyz * ${L_TEXTURE_POSITION_AND_LIGHT_COLOR}, vec3(.45)), 1.);
+    ${OUT_RESULT} = vec4(
+        // gamma correction
+        pow(${L_TEXTURE_NORMAL_AND_COLOR}.xyz
+            * ${L_TEXTURE_POSITION_AND_LIGHT_COLOR}
+            // flash red
+            * (1. + min(${U_MODEL_ATTRIBUTES}.z, 0.) * vec3(.1, .9, .9)),
+            vec3(.45)
+        ),
+        1.
+    );
   }
 `;
 
@@ -616,8 +659,18 @@ window.onload = window.onclick = () => {
     //projection = matrix4Multiply(matrix4InfinitePerspective(.8, Z.width/Z.height, .1), baseCameraRotation);
     projection = matrix4Multiply(matrix4Perspective(.8, aspectRatio, .1, 99), baseCameraRotation);
   }
-  resizeCanvas();
-  onresize = resizeCanvas;
+  if (FLAG_NATIVE_RESOLUTION) {
+    resizeCanvas();
+    onresize = resizeCanvas;  
+  } else {
+    Z.width = TARGET_HORIZONTAL_RESOLUTION;
+    Z.height = TARGET_VERTICAL_RESOLUTION;
+    projection = 
+        matrix4Multiply(
+            matrix4Perspective(.8, TARGET_HORIZONTAL_RESOLUTION/TARGET_VERTICAL_RESOLUTION, .1, 99),
+            baseCameraRotation
+        );
+  }
   if (FLAG_ALLOW_ZOOM) {
     const zoom = (e?: WheelEvent) => {
       cameraOffset = Math.min(6, Math.max(1, cameraOffset + (e?.deltaY || 0)/99));

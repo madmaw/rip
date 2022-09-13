@@ -18,35 +18,35 @@ const charredBoneColor: Vector4 = safeUnpackRGBA(
 );
 
 const rightHandNormalFactory = createShapedTextureNormalFactory([
-  {
-    shaped: shapeFromPlanes(planesCapsule(6, .5, .05)),
-    transforms: matrix4Multiply(
+  [
+    shapeFromPlanes(planesCapsule(6, .5, .05)),
+    matrix4Multiply(
         matrix4Translate(-.6, 0, 0),
         matrix4Rotate(-CONST_PI_ON_5_1DP, 0, .8, -.7),
         matrix4Translate(.4, 0, 0),
     ),
-  },
-  ...new Array(4).fill(0).map((_, i) => {
+  ],
+  ...new Array(4).fill(0).map<ShapedRule[]>((_, i) => {
     const a = -CONST_PI_ON_15_2DP + i * CONST_PI_ON_15_2DP;
     const t = matrix4Multiply(
         matrix4Translate(-.6, 0, 0),
         matrix4Rotate(a, 0, 1, 0),
         matrix4Translate(.4, 0, 0),
     );
-    return [{
-      shaped: shapeFromPlanes(planesCapsule(6, .5, .05)),
-      transforms: t,
+    return [[
+      shapeFromPlanes(planesCapsule(6, .5, .05)),
+      t,
       //type: SHAPED_RULE_TYPE_ADDITION,
-    }, {
-      shaped: shapeFromPlanes(planesCapsule(6, .4, .05, .01)),
-      transforms: matrix4Multiply(
+    ], [
+      shapeFromPlanes(planesCapsule(6, .4, .05, .01)),
+      matrix4Multiply(
         t,
         matrix4Translate(.3, 0, 0),
         matrix4Rotate(CONST_PI_ON_4_1DP, 0, 0, 1),
         matrix4Translate(.2, 0, 0),
       )
       //type: SHAPED_RULE_TYPE_ADDITION,
-    }]
+    ]]
   }).flat(),
 ]);
 const leftHandNormalFactory = (z: number, y: number, x: number) => {
@@ -97,7 +97,7 @@ const COLOR_TEXTURE_STONE_FROM = safeUnpackRGBA(
 );
 const COLOR_TEXTURE_STONE_TO = safeUnpackRGBA(
     !FLAG_UNPACK_USE_ORIGINALS && [...'dKA0'],
-    FLAG_UNPACK_SUPPLY_ORIGINALS && [240, 140, 100, 30],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [240, 140, 100, 70],
 );
 
 const NORMAL_TEXTURE_BRICKS_COUNT = 4;
@@ -232,12 +232,12 @@ const COLOR_TEXTURE_FACTORIES: TextureFactory[] = [
   createRadialGradientTextureFactory(
       safeUnpackRGBA(
           !FLAG_UNPACK_USE_ORIGINALS && [...'9:;A'],
-          FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 99]
+          FLAG_UNPACK_SUPPLY_ORIGINALS && [67,70,75, 30]
       ),
       [0, 0, 0],
       safeUnpackRGBA(
           !FLAG_UNPACK_USE_ORIGINALS && [...'FIN2'],
-          FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 40],
+          FLAG_UNPACK_SUPPLY_ORIGINALS && [120,130,150, 10],
       ),
       .4,
   ),
@@ -260,123 +260,153 @@ const NORMAL_TEXTURE_FACTORIES: TextureFactory[] = [
   solidTextureNormalFactory,
   // NORMAL_TEXTURE_ID_BONE
   createShapedTextureNormalFactory([
-    {
+    [
       //shape: shapeFromPlanes(planesCube(.9, .3, 1)),
-      shaped: shapeFromPlanes(planesCapsule(8, .3, .4, .3)),
-      transforms: matrix4Translate(.05, 0, 0),
+      shapeFromPlanes(planesCapsule(8, .3, .4, .3)),
+      matrix4Translate(.05, 0, 0),
       //type: SHAPED_RULE_TYPE_ADDITION,
-    },
-    ...new Array(8).fill(0).map<ShapedRule>((_, i) => ({
-      shaped: shapeFromPlanes(planesCapsule(6, .4, .35, .4)),
-      transforms: matrix4Multiply(matrix4Rotate(i * CONST_PI_ON_4_1DP, 1, 0, 0), matrix4Translate(.1, 0, .5)),
-      ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-    }))
+    ],
+    ...new Array(8).fill(0).map<ShapedRule>((_, i) => ([
+      shapeFromPlanes(planesCapsule(6, .4, .35, .4)),
+      matrix4Multiply(matrix4Rotate(i * CONST_PI_ON_4_1DP, 1, 0, 0), matrix4Translate(.1, 0, .5)),
+      SHAPED_RULE_TYPE_SUBTRACTION,
+    ]))
   ]),
   
   // NORMAL_TEXTURE_ID_FOOT
   createShapedTextureNormalFactory([
-    ...new Array(5).fill(0).map((_, i) => {
+    ...new Array(5).fill(0).map<ShapedRule>((_, i) => {
       const a = -CONST_PI_ON_10_2DP + i * CONST_PI_ON_30_2DP;
       const t = matrix4Multiply(
           matrix4Translate(.6, 0, 0),
           matrix4Rotate(a, 0, 0, 1),
           matrix4Translate(-.4, 0, 0),
       );
-      return {
-        shaped: shapeFromPlanes(planesCapsule(6, 1, .05, .02)),
-        transforms: t,
+      return [
+        shapeFromPlanes(planesCapsule(6, 1, .05, .02)),
+        t,
         //type: SHAPED_RULE_TYPE_ADDITION,
-      };
+      ];
     }),
   ]),
 
   // NORMAL_TEXTURE_ID_SKULL
   createShapedTextureNormalFactory(
-      [{
-        shaped: shapeFromPlanes(planesCube(1, 1, 1)),
-        ruleType: SHAPED_RULE_TYPE_ADDITION,
-      }, {
+      [[
+        shapeFromPlanes(planesCube(1, 1, 1)),
+        //ruleType: SHAPED_RULE_TYPE_ADDITION,
+      ], [
         // eye
-        shaped: shapeFromPlanes(planesCapsule(8, .5, .1)),
-        transforms: matrix4Translate(.5, .2, 0),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }, {
+        shapeFromPlanes(planesCapsule(8, .5, .1)),
+        matrix4Translate(.5, .2, 0),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ], [
         // eye
-        shaped: shapeFromPlanes(planesCapsule(8, .5, .1)),
-        transforms: matrix4Translate(.5, -.2, 0),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }, {
+        shapeFromPlanes(planesCapsule(8, .5, .1)),
+        matrix4Translate(.5, -.2, 0),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ], [
         // tooth gap
-        shaped: shapeFromPlanes(planesCube(.4, .1, .3)),
-        transforms: matrix4Translate(.5, .1, -.5),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }, {
+        shapeFromPlanes(planesCube(.4, .1, .3)),
+        matrix4Translate(.5, .1, -.5),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ], [
         // tooth gap
-        shaped: shapeFromPlanes(planesCube(.4, .1, .3)),
-        transforms: matrix4Translate(.5, -.1, -.5),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }, {
+        shapeFromPlanes(planesCube(.4, .1, .3)),
+        matrix4Translate(.5, -.1, -.5),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ], [
         // back of teeth
-        shaped: shapeFromPlanes(planesCube(.2, 1, .2)),
-        transforms: matrix4Translate(.3, 0, -.5),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }, {
+        shapeFromPlanes(planesCube(.2, 1, .2)),
+        matrix4Translate(.3, 0, -.5),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ], [
         // cheek
-        shaped: shapeFromPlanes(planesCube(1, .3, .4)),
-        transforms: matrix4Translate(.5, -.5, -.5),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }, {
+        shapeFromPlanes(planesCube(1, .3, .4)),
+        matrix4Translate(.5, -.5, -.5),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ], [
         // cheek
-        shaped: shapeFromPlanes(planesCube(1, .3, .4)),
-        transforms: matrix4Translate(.5, .5, -.5),
-        ruleType: SHAPED_RULE_TYPE_SUBTRACTION,
-      }]
+        shapeFromPlanes(planesCube(1, .3, .4)),
+        matrix4Translate(.5, .5, -.5),
+        SHAPED_RULE_TYPE_SUBTRACTION,
+      ]]
   ),
   // NORMAL_TEXTURE_ID_HIPS
   createShapedTextureNormalFactory(
-      [{
-        shaped: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
-        transforms: matrix4Multiply(
-          matrix4Translate(0, .3, 0),
-          matrix4Rotate(-CONST_PI_ON_12_2DP, 1, 0, 0),
-          matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
+      [[
+        shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
+        safeUnpackMatrix4(
+            !FLAG_UNPACK_USE_ORIGINALS && [...'G@)HHg@HhHGHHRHh'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && matrix4Multiply(
+                matrix4Translate(0, .3, 0),
+                matrix4Rotate(-CONST_PI_ON_12_2DP, 1, 0, 0),
+                matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
+            )
+        ),
+        // matrix4Multiply(
+        //     matrix4Translate(0, .3, 0),
+        //     matrix4Rotate(-CONST_PI_ON_12_2DP, 1, 0, 0),
+        //     matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
+        // )
+        //type: SHAPED_RULE_TYPE_ADDITION,
+      ], [
+        shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
+        safeUnpackMatrix4(
+            !FLAG_UNPACK_USE_ORIGINALS && [...'GP)HHgPHhHGHH>Hh'],
+            FLAG_UNPACK_SUPPLY_ORIGINALS && matrix4Multiply(
+                matrix4Translate(0, -.3, 0),
+                matrix4Rotate(CONST_PI_ON_12_2DP, 1, 0, 0),
+                matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
+            ),
+        ),
+        // matrix4Multiply(
+        //     matrix4Translate(0, -.3, 0),
+        //     matrix4Rotate(CONST_PI_ON_12_2DP, 1, 0, 0),
+        //     matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
+        // )
+        //type: SHAPED_RULE_TYPE_ADDITION,
+      ], [
+        shapeFromPlanes(planesCapsule(6, .6, .15)),
+        // safeUnpackMatrix4(
+        //   !FLAG_UNPACK_USE_ORIGINALS && [...'GhHH(GHHHHhHHHRh'],
+        //   FLAG_UNPACK_SUPPLY_ORIGINALS && matrix4Multiply(
+        //       matrix4Translate(0, 0, .3),
+        //       matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
+        //   )
+        // ),
+        matrix4Multiply(
+            matrix4Translate(0, 0, .3),
+            matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
         ),
         //type: SHAPED_RULE_TYPE_ADDITION,
-      }, {
-        shaped: shapeFromPlanes(planesCapsule(6, .6, .2, .1)),
-        transforms: matrix4Multiply(
-          matrix4Translate(0, -.3, 0),
-          matrix4Rotate(CONST_PI_ON_12_2DP, 1, 0, 0),
-          matrix4Rotate(CONST_PI_ON_2_1DP, 0, 1, 0),
-        ),
+      ], [
+        shapeFromPlanes(planesCapsule(6, .2, .1)),
+        // safeUnpackMatrix4(
+        //   !FLAG_UNPACK_USE_ORIGINALS && [...'GhHH(GHHHHhHHHRh'],
+        //   FLAG_UNPACK_SUPPLY_ORIGINALS && matrix4Multiply(
+        //       matrix4Translate(0, 0, -.3),
+        //       matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
+        //   ),
+        // ),
+        matrix4Multiply(
+            matrix4Translate(0, 0, -.3),
+            matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
+        )
         //type: SHAPED_RULE_TYPE_ADDITION,
-      }, {
-        shaped: shapeFromPlanes(planesCapsule(6, .6, .15)),
-        transforms: matrix4Multiply(
-          matrix4Translate(0, 0, .3),
-          matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
-        ),
-        //type: SHAPED_RULE_TYPE_ADDITION,
-      }, {
-        shaped: shapeFromPlanes(planesCapsule(6, .2, .1)),
-        transforms: matrix4Multiply(
-          matrix4Translate(0, 0, -.3),
-          matrix4Rotate(CONST_PI_ON_2_1DP, 0, 0, 1),
-        ),
-        //type: SHAPED_RULE_TYPE_ADDITION,
-      }]
+      ]]
   ),
   // NORMAL_TEXTURE_ID_RIBCAGE
   createShapedTextureNormalFactory([
     // spine
-    {
-      shaped: shapeFromPlanes(planesCapsule(6, .8, .05)),
-      transforms: matrix4Multiply(
+    [
+      shapeFromPlanes(planesCapsule(6, .8, .05)),
+      matrix4Multiply(
         matrix4Translate(-.2, 0, 0),
         matrix4Rotate(CONST_PI_ON_2_2_1DP, 0, 1, 0),
       ),
       //type: SHAPED_RULE_TYPE_ADDITION,
-    },
+    ],
     // ribs
     ...new Array(4).fill(0).map<ShapedRule[]>((_, i) => {
       const RIB_RADIUS = .05;
@@ -386,43 +416,43 @@ const NORMAL_TEXTURE_FACTORIES: TextureFactory[] = [
       //const rib = shapeFromPlanes(planesCube(RIB_WIDTH, RIB_RADIUS, RIB_RADIUS));
       const z = .4 - i * .11;
       const yAngle = i * -CONST_PI_ON_9_1DP;
-      return [{
-        shaped: rib,
-        transforms: matrix4Multiply(
+      return [[
+        rib,
+        matrix4Multiply(
           matrix4Translate(CHEST_OFFSET, 0, z),
           matrix4Rotate(CONST_PI_ON_1_7_1DP, 0, 0, 1),
           matrix4Rotate(-yAngle, 0, 1, 0),
           matrix4Translate(RIB_WIDTH/2, 0, 0),
         ),
         //type: SHAPED_RULE_TYPE_ADDITION,
-      }, {
-        shaped: rib,
-        transforms: matrix4Multiply(
+      ], [
+        rib,
+        matrix4Multiply(
           matrix4Translate(CHEST_OFFSET, 0, z),
           matrix4Rotate(-CONST_PI_ON_1_7_1DP, 0, 0, 1),
           matrix4Rotate(-yAngle, 0, 1, 0),
           matrix4Translate(RIB_WIDTH/2, 0, 0),
         ),
         //type: SHAPED_RULE_TYPE_ADDITION,
-      }, {
-        shaped: rib,
-        transforms: matrix4Multiply(
+      ], [
+        rib,
+        matrix4Multiply(
           matrix4Translate(-CHEST_OFFSET, 0, z),
           matrix4Rotate(CONST_PI_ON_1_5_1DP, 0, 0, 1),
           matrix4Rotate(yAngle, 0, 1, 0),
           matrix4Translate(-RIB_WIDTH/2, 0, 0),
         ),
         //type: SHAPED_RULE_TYPE_ADDITION,
-      }, {
-        shaped: rib,
-        transforms: matrix4Multiply(
+      ], [
+        rib,
+        matrix4Multiply(
           matrix4Translate(-CHEST_OFFSET, 0, z),
           matrix4Rotate(-CONST_PI_ON_1_5_1DP, 0, 0, 1),
           matrix4Rotate(yAngle, 0, 1, 0),
           matrix4Translate(-RIB_WIDTH/2, 0, 0),
         ),
         //type: SHAPED_RULE_TYPE_ADDITION,
-      }]
+      ]]
     }).flat(),
   ]),
   // NORMAL_TEXTURE_ID_HAND_RIGHT

@@ -9,7 +9,7 @@ const BRICK_OFFSET_POINTS: Vector3[] = [[1, 0, 0], [0, 1, 0]];
 const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension: number): TextureFactory => {
   const blockDimension = 1/dimension;
 
-  const rules = array3New(dimension, dimension, dimension, (...pos) => {
+  const rules = array3New<ShapedRule>(dimension, dimension, dimension, (...pos) => {
     const center = pos.map(v => (v + .5) * blockDimension - .5) as Vector3;
     const [x, y, z] = pos;
     const brickId = descriptor[x][y][z];
@@ -48,13 +48,13 @@ const createBrickTextureNormalFactory = (descriptor: BricksDescriptor, dimension
     });
 
 
-    const rule: ShapedRule = {
-      shaped: shapeFromPlanes(planes),
-      transforms: matrix4Translate(...center),
+    const rule: ShapedRule = [
+      shapeFromPlanes(planes),
+      matrix4Translate(...center),
       // type: SHAPED_RULE_TYPE_ADDITION,
-    };
+    ];
     return rule;
-  }).flat(3);
+  }).flat(2);
 
   return createShapedTextureNormalFactory(rules);
 };

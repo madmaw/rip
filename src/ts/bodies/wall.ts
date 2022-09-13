@@ -17,13 +17,16 @@ const WALL_COLOR_TEXTURE_IDS: ColorTextureId[] = safeUnpackUnsignedIntegerArray(
     ]
 ) as any;
 
-const WALL_NORMAL_TEXTURE_IDS: NormalTextureId[] = [
-  NORMAL_TEXTURE_ID_BRICKS_4,
-  NORMAL_TEXTURE_ID_BRICKS_3,
-  /* intentional blank entry so it uses default solid block */,
-  NORMAL_TEXTURE_ID_BRICKS_2,
-  NORMAL_TEXTURE_ID_BRICKS_1,
-];
+const WALL_NORMAL_TEXTURE_IDS: NormalTextureId[] = safeUnpackUnsignedIntegerArray(
+    !FLAG_UNPACK_USE_ORIGINALS && [...'01234/+-'],
+    FLAG_UNPACK_SUPPLY_ORIGINALS && [
+      NORMAL_TEXTURE_ID_BRICKS_4,
+      NORMAL_TEXTURE_ID_BRICKS_3,
+      NORMAL_TEXTURE_ID_SOLID,
+      NORMAL_TEXTURE_ID_BRICKS_2,
+      NORMAL_TEXTURE_ID_BRICKS_1,
+    ]
+) as any;
 
 type WallPartId = typeof WALL_PART_ID_BODY;
 

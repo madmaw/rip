@@ -240,6 +240,13 @@ const packEntityBodyPartArray = packArrayBuilder(packEntityBodyPart);
 
 const packVector3Normals = packArrayBuilder(packVector3Normal, -1);
 
+// const packShapedRule: Packer<ShapedRule> = (value: ShapedRule) => {
+//   return [
+    
+//   ]
+// };
+// const packShapedRules = packArrayBuilder(packShapedRule, -1);
+
 // safe
 
 type SafeUnpacker<T> = (packed: string[], original?: T | Falsey) => T;
@@ -335,3 +342,10 @@ const safeUnpackUnsignedIntegerArray = FLAG_UNPACK_CHECK_ORIGINALS
       FLAG_UNPACK_CHECK_ORIGINALS && packUnsignedIntegerArray,
     )
     : unpackUnsignedIntegerArray;
+
+// const safeUnpackShapedRules = FLAG_UNPACK_CHECK_ORIGINALS
+//     ? safeUnpackerBuilder<ShapedRule>(
+//         unpackShapedRules,
+//         FLAG_UNPACK_CHECK_ORIGINALS && packShapedRules,
+//     )
+//     : unpackShapedRules;
