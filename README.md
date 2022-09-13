@@ -2,14 +2,14 @@
 
 IMPORTANT! The game will take about one minute to generate all the textures before starting. Just be patient.
 
-Z/X - Rotate Camera (you will need this)
-Left/Right - Move
-Shift - Run/Turn
-Up - Jump
-Walk Backward + Up - Backstep
-A/S - Light/Heavy Attack
-D - Shove/Use/Drink
-Down+D - Pick Up/Drop
+Z/X - Rotate Camera (you will need this)  
+Left/Right - Move  
+Shift - Run/Turn  
+Up - Jump  
+Walk Backward + Up - Backstep  
+A/S - Light/Heavy Attack  
+D - Shove/Use/Drink  
+Down+D - Pick Up/Drop  
 Click to restart after death
 
 You can play it [here](https://madmaw.github.io/rip/dist/index.html)
