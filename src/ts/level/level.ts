@@ -79,7 +79,7 @@ const levelIterateInBounds = (
       v => Math.max(v | 0, 0)
   );
   const [maxx, maxy, maxz] = position.map(
-      (v, i) => Math.min(Math.ceil(v + dimensions[i]), level.dimensions[i])
+      (v, i) => Math.min(v + dimensions[i] + 1 | 0, level.dimensions[i])
   );
   for (let x = minx; x < maxx; x++) {
     for (let y = miny; y < maxy; y++) {
