@@ -17,9 +17,13 @@ You can play it [here](https://madmaw.github.io/rip/dist/index.html)
 Alternatively, you can decide how long you want to wait vs how good your graphics will be.
 
 [Low Quality](https://madmaw.github.io/rip/dist/index.html#16)
+
 [Medium Quality](https://madmaw.github.io/rip/dist/index.html#24)
+
 [High Quality](https://madmaw.github.io/rip/dist/index.html#32) (default)
+
 [Very High Quality](https://madmaw.github.io/rip/dist/index.html#40)
+
 [Insane Quality](https://madmaw.github.io/rip/dist/index.html#64)
 
 
