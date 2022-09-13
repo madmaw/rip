@@ -246,7 +246,8 @@ const shapeFromPlanes = (planes: Plane[], transform: Matrix4 = matrix4Identity()
           const [nx1, ny1] = compare.dir;
           const [px1, py1] = compare.point;
           const d = (nx1 * py2 - nx1 * py1 - ny1 * px2 + ny1 * px1)/(ny1 * nx2 - nx1 * ny2);
-          if (maxD == null || d > maxD) {
+          // if maxD is null, it will also evaluate to false
+          if (!(d < maxD)) {
             minLine = compare;
             maxD = d;
           }

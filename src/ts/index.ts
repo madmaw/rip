@@ -1512,8 +1512,8 @@ window.onload = window.onclick = () => {
             let iterations = 0;
             let maxOverlapIndex: number;
             let remainingDelta = deltaTime;
-            let maxIntersectionArea = 0;
-            let verticalIntersectionCount = 0;
+            //let maxIntersectionArea = 0;
+            let stepIntersectionCount = 0;
   
             do {
               const targetPosition = entity['p'].map((v, i) => v + entity.velocity[i] * remainingDelta) as Vector3;
@@ -1601,37 +1601,43 @@ window.onload = window.onclick = () => {
                     }
                   } else {
                     // scale by velocity to get collision time
-                    const overlap = intersection.reduce<[number, number, number] | Falsey>((acc, intersectionDimension, i) => {
+                    const overlap = intersection.reduce<[number, number/*, number*/] | Falsey>((acc, intersectionDimension, i) => {
                       const velocity = entity.velocity[i];
-                      if (velocity) {
+                      // do not collide with edges that the same way as the velocity
+                      if (velocity > 0
+                            && maximalPosition[i] < collisionEntity['p'][i]
+                            || velocity < 0
+                            && maximalPosition[i] + maximalDimensions[i] > collisionEntity['p'][i] + collisionEntity.dimensions[i]
+                      ) {
                         const overlapDelta = intersectionDimension/Math.abs(velocity);
   
                         // unclear if this actually has any effect
-                        const intersectionArea = intersection.reduce((a, v, j) => a * (j == i ? 1 : v), 1);
+                        //const intersectionArea = intersection.reduce((a, v, j) => a * (j == i ? 1 : v), 1);
                         // if ((i != 2 || maxOverlapIndex >= 0 && maxOverlapIndex < 2) && overlapDelta <= remainingDelta) {
                         //   console.log('trip', intersection, i, velocity, intersectionArea);
                         // }
                         
                         if (overlapDelta < remainingDelta + EPSILON && 
                             (!acc
-                                || overlapDelta > acc[0]
-                                || overlapDelta > acc[0] - EPSILON && acc[1] < intersectionArea
+                                // want the smallest delta since we only start overlapping once all deltas are active
+                                || overlapDelta < acc[0] 
+                                //|| overlapDelta > acc[0] - EPSILON && acc[2] < intersectionArea
                             )
                         ) {
-                          return [overlapDelta, intersectionArea, i];
+                          return [overlapDelta, i /*, intersectionArea*/];
                         }  
                       }
                       return acc;
                     }, 0);
                     if (overlap) {
-                      const [overlapDelta, intersectionArea, overlapIndex] = overlap;
+                      const [overlapDelta, overlapIndex /*, intersectionArea*/] = overlap;
                       if (overlapDelta < remainingDelta && 
                           (overlapDelta > maxOverlapDelta
-                              || overlapDelta > maxOverlapDelta - EPSILON && maxIntersectionArea < intersectionArea
+                              //|| overlapDelta > maxOverlapDelta - EPSILON && maxIntersectionArea < intersectionArea
                           )
                       ) {
                         maxOverlapDelta = overlapDelta;
-                        maxIntersectionArea = intersectionArea;
+                        //maxIntersectionArea = intersectionArea;
                         maxOverlapIndex = overlapIndex;
                         maxCollisionEntity = collisionEntity;
                       }
@@ -1652,12 +1658,15 @@ window.onload = window.onclick = () => {
                   entity['previousMaximalDimensions'] = maximalDimensions;  
                   entity['previousTargetPosition'] = targetPosition;
                 }
+                // if (maxOverlapIndex != 2 && maxCollisionEntity) {
+                //   console.log('hit wall with velocity', maxOverlapIndex, entity.velocity);
+                // }
                 entity['p'] = entity['p'].map((v, i) => v + entity.velocity[i] * moveDelta) as Vector3;
                 if (maxCollisionEntity) {
                   if (FLAG_DEBUG_COLLISIONS) {
                     entity.previousCollision = {
                       maxCollisionEntity,
-                      maxIntersectionArea,
+                      //maxIntersectionArea,
                       maxOverlapIndex,
                       worldTime,
                     };  
@@ -1667,7 +1676,7 @@ window.onload = window.onclick = () => {
                       && (entity.entityType == ENTITY_TYPE_MONSTER || entity.entityType == ENTITY_TYPE_PLAYER)
                       && entity['p'][2] > maxCollisionEntity['p'][2] + maxCollisionEntity.dimensions[2] - STEP_DEPTH - EPSILON
                   ) {
-                    verticalIntersectionCount++;
+                    stepIntersectionCount++;
                   }
                   entity.velocity[maxOverlapIndex] = 0;
                   if (maxOverlapIndex == 2) {
@@ -1677,7 +1686,7 @@ window.onload = window.onclick = () => {
               }
             } while ((remainingDelta > EPSILON) && iterations < MAX_COLLISIONS);
   
-            if (verticalIntersectionCount == 1) {
+            if (stepIntersectionCount == 1) {
               entity.velocity[2] = Math.max(.0012, entity.velocity[2]);
               // steps count as a z collision
               entity.lastZCollision = worldTime;

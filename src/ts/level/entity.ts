@@ -116,7 +116,7 @@ type EntityBase<T extends number> = {
   readonly entityBody: EntityBody<T>,
   joints: Joint[],
   previousCollision?: {
-    maxIntersectionArea: number,
+    maxIntersectionArea?: number,
     maxOverlapIndex: number,
     maxCollisionEntity: Entity,
     worldTime: number,

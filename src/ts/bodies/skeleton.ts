@@ -195,7 +195,7 @@ const SKELETON_DEFENSIVE_WALK_SEQUENCES = entityFlipBodyPartAnimationSequences(
 
 const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
     safeUnpackAnimationSequence(
-        !FLAG_UNPACK_USE_ORIGINALS && [...')*HEEHEK((H**HKLHKD)+H+*HXHHHH((H,)H=H((H-*HHHHXH((H.)H=H((H/*HDBH]D)*H0*H]LHDN)*H1*HXHHRH)*H2*HRHHXH)*H'],
+        !FLAG_UNPACK_USE_ORIGINALS && [...')*HEEHEK((H**HKLHKD)+H+*HXHHHH((H,)H=H((H-*HHHHXH((H.)H=H((H/*HDBH]D)+H0*H]LHDN)+H1*HXHHRH)+H2*HRHHXH)+H'],
         FLAG_UNPACK_SUPPLY_ORIGINALS && {
           [SKELETON_PART_ID_HEAD]: [[
             [0, -Math.PI/12, -Math.PI/12],
@@ -208,19 +208,19 @@ const SKELETON_RUN_SEQUENCES = entityFlipBodyPartAnimationSequences(
           [SKELETON_PART_ID_FEMUR_LEFT]: [[
             [0, Math.PI/1.5, Math.PI/9],
             [0, -Math.PI/8, Math.PI/5],
-          ], 1, EASE_OUT_QUAD],
+          ], 1, EASE_IN_OUT_QUAD],
           [SKELETON_PART_ID_FEMUR_RIGHT]: [[
             [0, -Math.PI/8, -Math.PI/5],
             [0, Math.PI/1.5, -Math.PI/9],
-          ], 1, EASE_OUT_QUAD],
+          ], 1, EASE_IN_OUT_QUAD],
           [SKELETON_PART_ID_SHIN_LEFT]: [[
             [0, Math.PI*3/10, 0],
             [0, Math.PI*5/10, 0],
-          ], 1, EASE_OUT_QUAD],
+          ], 1, EASE_IN_OUT_QUAD],
           [SKELETON_PART_ID_SHIN_RIGHT]: [[
             [0, Math.PI*5/10, 0],
             [0, Math.PI*3/10, 0],
-          ], 1, EASE_OUT_QUAD],
+          ], 1, EASE_IN_OUT_QUAD],
           [SKELETON_PART_ID_HUMERUS_LEFT]: [[
             [0, 0, 0],
             [0, Math.PI/2, 0],
