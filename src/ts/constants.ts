@@ -15,7 +15,7 @@ const MAX_LIGHTS = 4;
 const MAX_LIGHT_THROW = 6;
 const MAX_LIGHT_THROW_C = `${MAX_LIGHT_THROW}.`;
 const MIN_LIGHT_THROW_C = '2.';
-const LIGHT_Z_FUTZ = .1;
+const LIGHT_Z_FUTZ = .05;
 const VERTICAL_INTERSECTION_IGNORE = .01;
 const PICK_UP_ITEM_RADIUS = .4; // this, plus the skeleton bounds, plus the item bounds should cover every scenario
 
